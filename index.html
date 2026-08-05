@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>摄像头 · 手肘与膝盖追踪</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: #0f1419;
+      color: #e6edf3;
+    }
+    body.camera-on { overflow: hidden; }
+    .setup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    body.camera-on .setup { display: none; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1rem; }
+    .panel {
+      background: #1c2128;
+      border-radius: 12px;
+      padding: 1.25rem;
+      max-width: 720px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+    #preview {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+      z-index: 1;
+      display: none;
+      transform: scaleX(-1);
+    }
+    body.camera-on #preview { display: block; }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      display: none;
+    }
+    body.camera-on #overlay { display: block; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      justify-content: center;
+    }
+    button {
+      font: inherit;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-start { background: #238636; color: #fff; }
+    .btn-start:hover { background: #2ea043; }
+    .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
+    .hint {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: #8b949e;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .error {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: rgba(218, 54, 51, 0.15);
+      color: #ff7b72;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .error.visible { display: block; }
+    #loadStatus {
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+      color: #8b949e;
+      text-align: center;
+    }
+    .hud {
+      position: fixed;
+      z-index: 10;
+      display: none;
+      font-size: 0.75rem;
+      line-height: 1.35;
+      color: #e6edf3;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+    }
+    body.camera-on .hud { display: block; }
+    .hud-stats {
+      bottom: 0.75rem;
+      left: 0.75rem;
+      right: auto;
+      pointer-events: none;
+      padding: 0.55rem 0.75rem;
+      border-radius: 10px;
+      background: rgba(22, 27, 34, 0.82);
+      border: 1px solid rgba(48, 54, 61, 0.85);
+      font-size: 0.82rem;
+      font-weight: 500;
+      max-width: min(22rem, calc(100vw - 1.5rem));
+    }
+    .hud-stats span {
+      color: #58a6ff;
+      font-variant-numeric: tabular-nums;
+    }
+    .hud-coords {
+      top: 0.65rem;
+      right: 0.65rem;
+      max-width: min(18rem, calc(100vw - 1.3rem));
+      max-height: calc(100vh - 1.3rem);
+      overflow: auto;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      background: rgba(22, 27, 34, 0.88);
+      border: 1px solid rgba(48, 54, 61, 0.95);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.7rem;
+      line-height: 1.45;
+    }
+    .hud-coords h2 {
+      margin: 0 0 0.35rem;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #8b949e;
+    }
+    .legend {
+      margin: 0.5rem 0 0;
+      font-size: 0.78rem;
+      color: #8b949e;
+    }
+    .legend i {
+      display: inline-block;
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 50%;
+      margin-right: 0.25rem;
+      vertical-align: -0.05rem;
+    }
+    .dot-elbow { background: #3fb950; }
+    .dot-knee { background: #f0883e; }
+    .dot-pose { background: #58a6ff; }
+  </style>
+</head>
+<body>
+  <div class="setup">
+    <div class="panel">
+      <h1>摄像头 · 手肘与膝盖追踪</h1>
+      <p style="margin: 0 0 1rem; font-size: 0.95rem; color: #8b949e;">
+        允许摄像头后画面铺满窗口。使用 MediaPipe 姿态模型实时追踪左右手肘与左右膝盖位置（含像素坐标）。
+      </p>
+      <div class="controls">
+        <button type="button" class="btn-start" id="btnStart" disabled>打开摄像头</button>
+      </div>
+      <p id="loadStatus">正在加载 MediaPipe 模型…</p>
+      <p id="err" class="error" role="alert"></p>
+      <p class="hint">
+        摄像头 API 在部分环境下要求安全来源（HTTPS 或 <code>localhost</code>）。
+        若 <code>file://</code> 下无法授权，请用本地服务器访问
+        （如 <code>python3 -m http.server 8765</code> 后打开
+        <code>http://localhost:8765/</code>）。建议全身入镜，手臂与腿部尽量可见。
+      </p>
+      <p class="legend">
+        <i class="dot-elbow"></i>手肘
+        &nbsp;&nbsp;<i class="dot-knee"></i>膝盖
+        &nbsp;&nbsp;<i class="dot-pose"></i>姿态骨架
+      </p>
+    </div>
+  </div>
+
+  <video id="preview" autoplay playsinline muted></video>
+  <canvas id="overlay" aria-hidden="true"></canvas>
+
+  <aside class="hud hud-coords" id="hudCoords" aria-label="关节坐标">
+    <h2>关节坐标（镜像画面）</h2>
+    <div id="coordText">等待检测…</div>
+  </aside>
+  <div class="hud hud-stats" id="hudStats">
+    FPS：<span id="statFps">—</span><br />
+    姿态：<span id="statPose">0</span>
+    · 肘：<span id="statElbows">0</span>
+    · 膝：<span id="statKnees">0</span>
+  </div>
+
+  <script type="module">
+    import {
+      FilesetResolver,
+      PoseLandmarker,
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/+esm";
+
+    const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm";
+    const POSE_MODEL =
+      "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+
+    /** Pose landmark indices (MediaPipe BlazePose). */
+    const POSE = {
+      LEFT_SHOULDER: 11,
+      RIGHT_SHOULDER: 12,
+      LEFT_ELBOW: 13,
+      RIGHT_ELBOW: 14,
+      LEFT_WRIST: 15,
+      RIGHT_WRIST: 16,
+      LEFT_HIP: 23,
+      RIGHT_HIP: 24,
+      LEFT_KNEE: 25,
+      RIGHT_KNEE: 26,
+      LEFT_ANKLE: 27,
+      RIGHT_ANKLE: 28,
+    };
+
+    const POSE_CONNECTIONS = [
+      [POSE.LEFT_SHOULDER, POSE.RIGHT_SHOULDER],
+      [POSE.LEFT_SHOULDER, POSE.LEFT_ELBOW],
+      [POSE.LEFT_ELBOW, POSE.LEFT_WRIST],
+      [POSE.RIGHT_SHOULDER, POSE.RIGHT_ELBOW],
+      [POSE.RIGHT_ELBOW, POSE.RIGHT_WRIST],
+      [POSE.LEFT_SHOULDER, POSE.LEFT_HIP],
+      [POSE.RIGHT_SHOULDER, POSE.RIGHT_HIP],
+      [POSE.LEFT_HIP, POSE.RIGHT_HIP],
+      [POSE.LEFT_HIP, POSE.LEFT_KNEE],
+      [POSE.LEFT_KNEE, POSE.LEFT_ANKLE],
+      [POSE.RIGHT_HIP, POSE.RIGHT_KNEE],
+      [POSE.RIGHT_KNEE, POSE.RIGHT_ANKLE],
+    ];
+
+    const VIS_MIN = 0.35;
+
+    const video = document.getElementById("preview");
+    const overlay = document.getElementById("overlay");
+    const ctx = overlay.getContext("2d");
+    const btnStart = document.getElementById("btnStart");
+    const errEl = document.getElementById("err");
+    const loadStatusEl = document.getElementById("loadStatus");
+    const coordTextEl = document.getElementById("coordText");
+    const statFpsEl = document.getElementById("statFps");
+    const statPoseEl = document.getElementById("statPose");
+    const statElbowsEl = document.getElementById("statElbows");
+    const statKneesEl = document.getElementById("statKnees");
+
+    let poseLandmarker = null;
+    let stream = null;
+    let rafId = 0;
+    let lastVideoTime = -1;
+    let fpsFrames = 0;
+    let fpsLastMs = performance.now();
+
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.classList.add("visible");
+    }
+
+    function clearError() {
+      errEl.textContent = "";
+      errEl.classList.remove("visible");
+    }
+
+    function resizeOverlay() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      overlay.width = Math.round(w * dpr);
+      overlay.height = Math.round(h * dpr);
+      overlay.style.width = w + "px";
+      overlay.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener("resize", resizeOverlay);
+
+    /** Map normalized landmark (mirrored video) to client CSS pixels under object-fit: cover. */
+    function landmarkToClient(lm) {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const cw = window.innerWidth;
+      const ch = window.innerHeight;
+      if (!vw || !vh) return { x: 0, y: 0, vis: 0 };
+      const scale = Math.max(cw / vw, ch / vh);
+      const dispW = vw * scale;
+      const dispH = vh * scale;
+      const ox = (cw - dispW) / 2;
+      const oy = (ch - dispH) / 2;
+      // Video is CSS-mirrored; landmarks are in raw camera space — mirror X for overlay.
+      const nx = 1 - lm.x;
+      return {
+        x: ox + nx * vw * scale,
+        y: oy + lm.y * vh * scale,
+        vis: lm.visibility ?? lm.presence ?? 1,
+      };
+    }
+
+    function drawJoint(pt, color, radius, label) {
+      if (pt.vis < VIS_MIN) return;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.stroke();
+      if (label) {
+        ctx.font = "600 12px system-ui, sans-serif";
+        ctx.fillStyle = "#fff";
+        ctx.strokeStyle = "rgba(0,0,0,0.75)";
+        ctx.lineWidth = 3;
+        ctx.strokeText(label, pt.x + radius + 4, pt.y - 4);
+        ctx.fillText(label, pt.x + radius + 4, pt.y - 4);
+      }
+    }
+
+    function drawSegment(a, b, color, width) {
+      if (a.vis < VIS_MIN || b.vis < VIS_MIN) return;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+
+    function fmtPt(pt) {
+      if (!pt || pt.vis < VIS_MIN) return "—";
+      return `${Math.round(pt.x)}, ${Math.round(pt.y)}`;
+    }
+
+    function render(poseResult) {
+      const cw = window.innerWidth;
+      const ch = window.innerHeight;
+      ctx.clearRect(0, 0, cw, ch);
+
+      const poses = poseResult?.landmarks || [];
+      let elbowCount = 0;
+      let kneeCount = 0;
+      const lines = [];
+
+      for (let pi = 0; pi < poses.length; pi++) {
+        const pts = poses[pi].map(landmarkToClient);
+
+        for (const [i, j] of POSE_CONNECTIONS) {
+          drawSegment(pts[i], pts[j], "rgba(88, 166, 255, 0.55)", 3);
+        }
+
+        for (const idx of [
+          POSE.LEFT_SHOULDER, POSE.RIGHT_SHOULDER,
+          POSE.LEFT_WRIST, POSE.RIGHT_WRIST,
+          POSE.LEFT_HIP, POSE.RIGHT_HIP,
+          POSE.LEFT_ANKLE, POSE.RIGHT_ANKLE,
+        ]) {
+          drawJoint(pts[idx], "rgba(88, 166, 255, 0.85)", 5);
+        }
+
+        const le = pts[POSE.LEFT_ELBOW];
+        const re = pts[POSE.RIGHT_ELBOW];
+        const lk = pts[POSE.LEFT_KNEE];
+        const rk = pts[POSE.RIGHT_KNEE];
+
+        if (le.vis >= VIS_MIN) elbowCount++;
+        if (re.vis >= VIS_MIN) elbowCount++;
+        if (lk.vis >= VIS_MIN) kneeCount++;
+        if (rk.vis >= VIS_MIN) kneeCount++;
+
+        drawJoint(le, "#3fb950", 10, "L-Elbow");
+        drawJoint(re, "#3fb950", 10, "R-Elbow");
+        drawJoint(lk, "#f0883e", 10, "L-Knee");
+        drawJoint(rk, "#f0883e", 10, "R-Knee");
+
+        lines.push(`Pose#${pi + 1}`);
+        lines.push(`  L-Elbow ${fmtPt(le)}`);
+        lines.push(`  R-Elbow ${fmtPt(re)}`);
+        lines.push(`  L-Knee  ${fmtPt(lk)}`);
+        lines.push(`  R-Knee  ${fmtPt(rk)}`);
+      }
+
+      if (!poses.length) {
+        coordTextEl.textContent = "未检测到人体\n请保证全身入镜";
+      } else {
+        coordTextEl.textContent = lines.join("\n");
+      }
+
+      statPoseEl.textContent = String(poses.length);
+      statElbowsEl.textContent = String(elbowCount);
+      statKneesEl.textContent = String(kneeCount);
+    }
+
+    function tick() {
+      rafId = requestAnimationFrame(tick);
+      if (!poseLandmarker) return;
+      if (video.readyState < 2) return;
+
+      const now = performance.now();
+      if (video.currentTime === lastVideoTime) return;
+      lastVideoTime = video.currentTime;
+
+      let poseResult = null;
+      try {
+        poseResult = poseLandmarker.detectForVideo(video, Math.round(now));
+      } catch (e) {
+        console.error(e);
+        return;
+      }
+
+      render(poseResult);
+
+      fpsFrames++;
+      if (now - fpsLastMs >= 1000) {
+        statFpsEl.textContent = String(fpsFrames);
+        fpsFrames = 0;
+        fpsLastMs = now;
+      }
+    }
+
+    async function startCamera() {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: "user",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+        video.srcObject = stream;
+        await video.play();
+        document.body.classList.add("camera-on");
+        resizeOverlay();
+        lastVideoTime = -1;
+        rafId = requestAnimationFrame(tick);
+      } catch (e) {
+        btnStart.disabled = false;
+        showError("无法打开摄像头：" + (e.message || e));
+      }
+    }
+
+    function stopCamera() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      document.body.classList.remove("camera-on");
+    }
+
+    window.addEventListener("pagehide", stopCamera);
+    window.addEventListener("beforeunload", stopCamera);
+
+    async function createPoseLandmarker(vision, delegate) {
+      return PoseLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: POSE_MODEL, delegate },
+        runningMode: "VIDEO",
+        numPoses: 1,
+        minPoseDetectionConfidence: 0.5,
+        minPosePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+    }
+
+    async function init() {
+      try {
+        const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+        loadStatusEl.textContent = "正在加载姿态模型…";
+        try {
+          poseLandmarker = await createPoseLandmarker(vision, "GPU");
+        } catch (gpuErr) {
+          console.warn("GPU delegate failed, falling back to CPU", gpuErr);
+          loadStatusEl.textContent = "GPU 不可用，改用 CPU 加载模型…";
+          poseLandmarker = await createPoseLandmarker(vision, "CPU");
+        }
+        loadStatusEl.textContent = "模型已就绪，可以打开摄像头。";
+        btnStart.disabled = false;
+      } catch (e) {
+        console.error(e);
+        loadStatusEl.textContent = "模型加载失败。";
+        showError(
+          "加载 MediaPipe 失败：" +
+            (e.message || e) +
+            "。请检查网络，或改用本地服务器访问本页。"
+        );
+      }
+    }
+
+    btnStart.addEventListener("click", startCamera);
+    init();
+  </script>
+</body>
+</html>
