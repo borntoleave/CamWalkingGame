@@ -96,8 +96,11 @@
     .connected-ip-label {
       font-size: 0.68rem;
       font-weight: 600;
-      color: #7ee787;
+      color: #6e7681;
       letter-spacing: 0.02em;
+    }
+    .connected-ip-label.has-devices {
+      color: #7ee787;
     }
     .connected-ip-list {
       display: flex;
@@ -407,6 +410,40 @@
     .head-prompt.below {
       transform: translate(-50%, 0%);
     }
+    .head-prompt.lane {
+      max-width: calc(100% - 12px);
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .head-prompt.lane.countdown { font-size: 42px; }
+    .head-prompt.lane.countdown .prompt-count { font-size: 64px; }
+    .head-prompt.lane.ready { font-size: 56px; }
+    .head-prompt.lane.illegal { font-size: 28px; }
+    .head-prompt.lane.illegal .prompt-title { font-size: 48px; -webkit-text-stroke: 3px #000; }
+    .head-prompt.lane.illegal .prompt-body { font-size: 22px; }
+    .head-prompt.lane.long { font-size: 26px; }
+    .prompt-layer,
+    .body-ip-layer,
+    .column-guides {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+    }
+    .column-guides .col-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      margin-left: -1px;
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgba(255, 230, 0, 0.55) 12%,
+        rgba(255, 230, 0, 0.55) 88%,
+        transparent 100%
+      );
+    }
     /* Connected IP label at torso mid (between shoulders and hips) */
     .body-ip-label {
       position: absolute;
@@ -432,6 +469,10 @@
     }
     .body-ip-label.visible {
       display: block;
+    }
+    .body-ip-label.spectator {
+      color: #8b949e;
+      font-size: 22px;
     }
     #btnRotateCamera {
       font: inherit;
@@ -490,6 +531,10 @@
     .hud-reset-btn:hover {
       background: rgba(240, 136, 62, 0.35);
     }
+    .hud-coords,
+    body.camera-on .hud-coords {
+      display: none;
+    }
     .hud-coords {
       top: 0.65rem;
       left: 0.65rem;
@@ -518,10 +563,10 @@
     /* Right panel — styled after PetoiWebCoding */
     .windows-container {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       flex: 3;
-      min-width: 280px;
-      max-width: 420px;
+      min-width: 434px;
+      max-width: 634px;
       height: 100%;
       overflow: hidden;
       background: #f5f5f5;
@@ -529,6 +574,75 @@
       gap: 6px;
       border-left: 1px solid #30363d;
       color: #222;
+    }
+    #angleChartPanel {
+      display: flex;
+      flex-direction: column;
+      flex: 0 0 222px;
+      width: 222px;
+      min-width: 180px;
+      max-width: 270px;
+      height: 100%;
+      min-height: 0;
+      background: #1e1e1e;
+      overflow: hidden;
+      border: 1px solid #30363d;
+    }
+    #angleChartPanel .area-header {
+      flex-shrink: 0;
+      grid-template-columns: 1fr;
+      padding: 6px 8px;
+      min-height: 0;
+    }
+    #angleChartPanel .area-title {
+      font-size: 11px;
+      letter-spacing: 0;
+      white-space: normal;
+      line-height: 1.25;
+    }
+    .angle-chart-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      background: #141820;
+    }
+    #angleChartCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .angle-chart-legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px 8px;
+      padding: 5px 8px 6px;
+      font: 600 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #c9d1d9;
+      background: #1e1e1e;
+      border-top: 1px solid #30363d;
+      flex-shrink: 0;
+    }
+    .angle-chart-legend span:nth-child(1) { grid-column: 1; grid-row: 1; }
+    .angle-chart-legend span:nth-child(2) { grid-column: 1; grid-row: 2; }
+    .angle-chart-legend span:nth-child(3) { grid-column: 2; grid-row: 1; text-align: right; }
+    .angle-chart-legend span:nth-child(4) { grid-column: 2; grid-row: 2; text-align: right; }
+    .angle-chart-legend span:nth-child(n+5) { grid-column: 1 / -1; }
+    .angle-chart-legend i {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: -1px;
+    }
+    .console-serial-stack {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      gap: 6px;
+      overflow: hidden;
     }
     #consoleWindow {
       display: flex;
@@ -928,7 +1042,7 @@
             autocomplete="off"
             title="Robot IP — type and Quick Connect; supports multiple devices"
           />
-          <div class="connected-ip-label" data-i18n="connectedIpsLabel">Connected</div>
+          <div id="connectedIpLabel" class="connected-ip-label">Not connected</div>
           <div
             id="connectedIpList"
             class="connected-ip-list"
@@ -974,8 +1088,9 @@
             <video id="preview" autoplay playsinline muted></video>
             <canvas id="overlay" aria-hidden="true"></canvas>
           </div>
-          <div id="headPromptEl" class="head-prompt" aria-live="polite"></div>
-          <div id="bodyIpEl" class="body-ip-label" aria-hidden="true"></div>
+          <div id="columnGuides" class="column-guides" aria-hidden="true"></div>
+          <div id="promptLayer" class="prompt-layer" aria-live="polite"></div>
+          <div id="bodyIpLayer" class="body-ip-layer" aria-hidden="true"></div>
         </div>
 
         <aside class="hud hud-coords" id="hudCoords" data-i18n-aria="hudCoordsAria">
@@ -994,37 +1109,55 @@
       </section>
 
       <aside class="windows-container" data-i18n-aria="robotConsoleAria">
-        <div id="consoleWindow">
+        <div id="angleChartPanel">
           <div class="area-header">
-            <span class="area-title" data-i18n="console">Console</span>
-            <div class="button-group">
-              <button type="button" class="toggle-button active" id="btnConsoleTime" data-i18n="btnTime">🕐 Time</button>
-              <button type="button" class="clear-button" id="btnClearConsole" data-i18n="btnClear">🗑️ Clear</button>
-            </div>
+            <span class="area-title" data-i18n="angleChartTitle">Δa · time ↓</span>
           </div>
-          <div id="consoleLog" class="dark-scrollbar" tabindex="0"></div>
+          <div class="angle-chart-wrap">
+            <canvas id="angleChartCanvas" aria-hidden="true"></canvas>
+          </div>
+          <div class="angle-chart-legend" id="angleChartLegend" aria-hidden="true">
+            <span><i style="background:#58a6ff"></i>LE ← +</span>
+            <span><i style="background:#3fb950"></i>LK ← +</span>
+            <span><i style="background:#f778ba"></i>RE → +</span>
+            <span><i style="background:#e3b341"></i>RK → +</span>
+            <span style="color:#ffe600" data-i18n="angleChartNoteBase">│ yellow=base 0</span>
+            <span style="color:#8b949e" data-i18n="angleChartNoteCenter">center=−R (elbow stretch)</span>
+          </div>
         </div>
-
-        <div class="horizontal-resizer" id="consoleSerialDivider"></div>
-
-        <div id="serialContainer">
-          <div class="area-header">
-            <div class="title-section">
-              <span class="area-title" id="serialOutputTitle" data-i18n="serialMonitor">Serial Monitor</span>
-              <div class="serial-port-info" id="serialPortInfo" style="display: none;"></div>
+        <div class="console-serial-stack">
+          <div id="consoleWindow">
+            <div class="area-header">
+              <span class="area-title" data-i18n="console">Console</span>
+              <div class="button-group">
+                <button type="button" class="toggle-button active" id="btnConsoleTime" data-i18n="btnTime">🕐 Time</button>
+                <button type="button" class="clear-button" id="btnClearConsole" data-i18n="btnClear">🗑️ Clear</button>
+              </div>
             </div>
-            <div class="button-group">
-              <button type="button" class="serial-button" id="openSerialBtn" data-i18n="btnConnect">🔌 Connect</button>
-              <button type="button" class="toggle-button active" id="btnSerialTime" style="display: none;" data-i18n="btnTime">🕐 Time</button>
-              <button type="button" class="clear-button" id="closeSerialBtn" style="display: none;" data-i18n="btnClose">❌ Close</button>
-              <button type="button" class="clear-button" id="clearSerialBtn" style="display: none;" data-i18n="btnClear">🗑️ Clear</button>
-            </div>
+            <div id="consoleLog" class="dark-scrollbar" tabindex="0"></div>
           </div>
-          <div id="serialInterface">
-            <div class="serial-output dark-scrollbar" id="serialOutput" tabindex="0"></div>
-            <div class="serial-input-container">
-              <input type="text" id="serialInput" data-i18n-placeholder="serialPlaceholder" placeholder="Enter content to send" autocomplete="off" />
-              <button type="button" id="btnSendSerial" data-i18n="btnSend">Send</button>
+
+          <div class="horizontal-resizer" id="consoleSerialDivider"></div>
+
+          <div id="serialContainer">
+            <div class="area-header">
+              <div class="title-section">
+                <span class="area-title" id="serialOutputTitle" data-i18n="serialMonitor">Serial Monitor</span>
+                <div class="serial-port-info" id="serialPortInfo" style="display: none;"></div>
+              </div>
+              <div class="button-group">
+                <button type="button" class="serial-button" id="openSerialBtn" data-i18n="btnConnect">🔌 Connect</button>
+                <button type="button" class="toggle-button active" id="btnSerialTime" style="display: none;" data-i18n="btnTime">🕐 Time</button>
+                <button type="button" class="clear-button" id="closeSerialBtn" style="display: none;" data-i18n="btnClose">❌ Close</button>
+                <button type="button" class="clear-button" id="clearSerialBtn" style="display: none;" data-i18n="btnClear">🗑️ Clear</button>
+              </div>
+            </div>
+            <div id="serialInterface">
+              <div class="serial-output dark-scrollbar" id="serialOutput" tabindex="0"></div>
+              <div class="serial-input-container">
+                <input type="text" id="serialInput" data-i18n-placeholder="serialPlaceholder" placeholder="Enter content to send" autocomplete="off" />
+                <button type="button" id="btnSendSerial" data-i18n="btnSend">Send</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1095,8 +1228,8 @@
           "<li><b>Query IP</b> — needs serial; fills IP and connects</li>" +
           "<li><b>Connect WiFi</b> — send SSID/password over serial, then auto-connect when an IP appears</li>" +
           "</ul></li>" +
-          "<li><b>Connected</b> lists online devices (duplicates removed). Click × to disconnect and forget that IP.</li>" +
-          "<li>The connected IP is shown on the camera view (center of the torso when possible).</li>" +
+          "<li>Under the IP box: <b>Not connected</b> / <b>Connected</b> reflects online devices only (empty list ≠ connected). Click × on a chip to disconnect and forget that IP.</li>" +
+          "<li>Online IPs are shown fixed under the ready prompt (not following the body).</li>" +
           "</ol>" +
           "<h4>2. What serial connection is for</h4>" +
           "<p>Use <b>Connect</b> in the Serial Monitor (Web Serial, 115200) when the robot is plugged in by USB. Serial is mainly for setup — not required for everyday pose control once WiFi is working:</p>" +
@@ -1105,36 +1238,46 @@
           "<li><b>Join a WiFi network</b> by sending SSID and password (<b>Connect WiFi</b>)</li>" +
           "<li><b>Debug</b> with the Serial Monitor: see robot replies and send manual commands</li>" +
           "</ul>" +
-          "<p>After the robot has WiFi and its IP is known, pose control runs over <b>WebSocket</b> (<code>ws://IP:81</code>). You can unplug USB and keep controlling wirelessly.</p>" +
+          "<p>After the robot has WiFi and its IP is known, pose control runs over <b>WebSocket</b> (<code>ws://IP:81</code>) using binary <code>I</code> joint commands (<code>T_INDEXED_SIMULTANEOUS_BIN</code> / <code>b64:</code>). You can unplug USB and keep controlling wirelessly.</p>" +
           "<h4>3. Get ready before control</h4>" +
           "<p>Keep your full body in frame, then follow the on-screen prompts:</p>" +
           "<table><thead><tr><th>You see</th><th>Do this</th></tr></thead><tbody>" +
-          "<tr><td><b>Invalid pose!</b></td><td>Stand or sit; show both elbows and knees</td></tr>" +
-          "<tr><td><b>Raise your arms…</b></td><td>Raise both arms above the shoulders</td></tr>" +
-          "<tr><td><b>Get Ready 3→2→1</b></td><td>Keep arms up</td></tr>" +
+          "<tr><td><b>Invalid pose!</b></td><td>Stand or sit; keep both elbows and knees fully in frame</td></tr>" +
+          "<tr><td><b>Extend…</b></td><td>Fully extend arms and legs; raise elbows above the shoulders</td></tr>" +
+          "<tr><td><b>Get Ready 3→2→1</b></td><td>Keep the stretch (elbows above shoulders)</td></tr>" +
           "<tr><td><b>READY!</b></td><td>Control starts; you may lower your arms</td></tr>" +
           "</tbody></table>" +
           "<ul>" +
           "<li>If you drop your arms during countdown, preparation restarts.</li>" +
-          "<li>Invalid pose / leaving the frame for about 2 seconds also restarts preparation.</li>" +
-          "<li>Joint commands are sent only after <b>READY!</b>.</li>" +
+          "<li>Invalid pose / leaving the frame for about <b>5 seconds</b> restarts preparation. During that illegal wait, <b>no joint commands are sent</b>.</li>" +
+          "<li>At <b>READY!</b>, stretch pose locks calibration: average elbows → shoulder <b>min</b> angle; average knees → hip <b>max</b> angle. The other end is a <b>fixed</b> pct span (not expanded later).</li>" +
+          "<li>The yellow baseline (0,0) is at approximate <b>navel</b> height (2/3 from mid-shoulder toward mid-hip).</li>" +
+          "<li>Joint angles are 1€-filtered for smoothness while keeping fast direction changes.</li>" +
           "</ul>" +
-          "<h4>4. Suggested first run</h4>" +
+          "<h4>4. Multi-player / multi-robot (max 2 people)</h4>" +
+          "<ul>" +
+          "<li><b>1 person</b> ready → that person sync-controls <b>all</b> connected robots.</li>" +
+          "<li><b>2 people, 1 robot</b> → the first-recognized person controls it.</li>" +
+          "<li><b>2 people, 2 robots</b> → screen splits into 2 columns; each person readies and controls independently (left→right ↔ connect order). One illegal pose does not block the other.</li>" +
+          "<li>Illegal / missing pose for about <b>5 seconds</b> restarts that person’s preparation only (and holds that person’s sends meanwhile).</li>" +
+          "</ul>" +
+          "<h4>5. Suggested first run</h4>" +
           "<ol>" +
           "<li>Open the camera and stand/sit fully in frame</li>" +
           "<li>(First time) Connect serial → Query IP or Connect WiFi → then Connect IP</li>" +
           "<li>Or Quick Connect if the IP is already known / cached</li>" +
-          "<li>Raise arms → wait for 3, 2, 1, READY!</li>" +
+          "<li>Fully extend → wait for 3, 2, 1, READY! (stretch locks calib)</li>" +
           "<li>Move elbows and knees to control the robot</li>" +
           "</ol>",
         reset: "Reset",
-        resetTitle: "Clear per-joint percentage min/max",
-        resetHud: "Reset min/max",
+        resetTitle: "Clear stretch calibration and restart ready",
+        resetHud: "Reset calib",
         rotateCamera: "↺ 90°",
         rotateCameraTitle: "Rotate camera view 90° counterclockwise",
         robotIpPlaceholder: "Robot IP",
         robotIpTitle: "Robot IP — type an IP and Quick Connect; multiple devices supported",
         connectedIpsLabel: "Connected",
+        connectedIpsNone: "Not connected",
         connectedIpsEmpty: "None",
         quickConnect: "Quick Connect",
         setupDesc:
@@ -1164,15 +1307,22 @@
         idle: "Idle",
         mapReady: "Ready b±{range}",
         mapTracking: "Tracking {n}/4",
-        expandMotion: "Move more to build min/max",
-        raiseArmsPrompt: "Raise your arms over shoulder\nto get ready",
+        expandMotion: "Waiting for stretch calibration",
+        raiseArmsPrompt: "Fully extend arms and legs,\nraise elbows above shoulders",
         getReadyN: "Get Ready\n{n}",
         readyFlash: "READY!",
         waitReady: "Waiting for ready",
-        poseIllegal: "Invalid pose!\nStand or sit — show all elbows and knees\nto get ready",
+        waitAllReady: "Waiting for everyone",
+        poseIllegal: "Invalid pose!\nStand or sit — keep both elbows and knees fully in frame",
+        spectatorLabel: "Spectator",
         notConnected: "Not connected",
         sendFailed: "Send failed",
         robotConsoleAria: "Robot console",
+        angleChartTitle: "Δa · time ↓",
+        angleChartNoteBase: "│ yellow=base 0",
+        angleChartNoteCenter: "center=−R (elbow stretch)",
+        serialUnavailable:
+          "Web Serial unavailable (use Chrome/Edge with HTTPS or localhost)",
         console: "Console",
         serialMonitor: "Serial Monitor",
         btnTime: "🕐 Time",
@@ -1191,7 +1341,7 @@
         btnConnectIp: "Connect IP",
         btnConnectWifi: "Connect WiFi",
         btnQueryIp: "Query IP",
-        resetDone: "Reset done\nDynamic pct min/max → b±{range}°",
+        resetDone: "Reset done\nStretch calib → b±{range}° (elbows=min a, knees=max a)",
         cameraError: "Cannot open camera: {msg}",
         mediapipeError:
           "Failed to load MediaPipe: {msg}. Check network or use a local server.",
@@ -1211,8 +1361,8 @@
           "<li><b>Query IP</b> — 需要串口；查询后填入 IP 并自动连接</li>" +
           "<li><b>Connect WiFi</b> — 经串口发送 SSID/密码，收到 IP 后自动连接</li>" +
           "</ul></li>" +
-          "<li><b>Connected</b> 显示在线设备（同一 IP 不重复）。点 × 可断开并忘记该 IP。</li>" +
-          "<li>已连接 IP 会显示在画面身体中部（肩与髋之间）。</li>" +
+          "<li>IP 框下方：<b>未连接</b> / <b>已连接</b> 只表示当前在线设备（列表为空时不会显示已连接）。点芯片上的 × 可断开并忘记该 IP。</li>" +
+          "<li>在线 IP 固定显示在准备提示下方（不跟随身体移动）。</li>" +
           "</ol>" +
           "<h4>2. 串口连接的作用</h4>" +
           "<p>在右侧 <b>Serial Monitor</b> 点 <b>Connect</b>（Web Serial，115200）可通过 USB 连接机器人。串口主要用于初次配置，WiFi 就绪后日常姿态控制不必一直插着：</p>" +
@@ -1221,36 +1371,46 @@
           "<li><b>配置 WiFi</b>：下发 SSID 与密码（<b>Connect WiFi</b>）</li>" +
           "<li><b>调试</b>：在串口监视器查看回传、手动发送指令</li>" +
           "</ul>" +
-          "<p>机器人连上 WiFi 并得知 IP 后，姿态控制走 <b>WebSocket</b>（<code>ws://IP:81</code>）。此后可拔掉 USB，继续无线控制。</p>" +
+          "<p>机器人连上 WiFi 并得知 IP 后，姿态控制走 <b>WebSocket</b>（<code>ws://IP:81</code>），关节指令为二进制 <code>I</code>（<code>T_INDEXED_SIMULTANEOUS_BIN</code> / <code>b64:</code>）。此后可拔掉 USB，继续无线控制。</p>" +
           "<h4>3. 控制前的准备</h4>" +
           "<p>请全身入镜，并按屏幕提示操作：</p>" +
           "<table><thead><tr><th>看到</th><th>请做</th></tr></thead><tbody>" +
-          "<tr><td><b>Invalid pose!</b></td><td>站立或坐下，露出双手肘与双膝</td></tr>" +
-          "<tr><td><b>Raise your arms…</b></td><td>双臂举过肩膀</td></tr>" +
-          "<tr><td><b>Get Ready 3→2→1</b></td><td>保持举手</td></tr>" +
+          "<tr><td><b>Invalid pose!</b></td><td>站立或坐下，使双肘和双膝完整入镜</td></tr>" +
+          "<tr><td><b>舒展…</b></td><td>使双臂和双腿充分舒展，双肘抬过肩</td></tr>" +
+          "<tr><td><b>Get Ready 3→2→1</b></td><td>保持舒展（双肘过肩）</td></tr>" +
           "<tr><td><b>READY!</b></td><td>开始控制，可放下手臂</td></tr>" +
           "</tbody></table>" +
           "<ul>" +
           "<li>倒计时中放下双臂，准备流程会重来。</li>" +
-          "<li>非法姿态或离开画面约 2 秒，也会重新准备。</li>" +
-          "<li>只有出现 <b>READY!</b> 后才会发送关节控制指令。</li>" +
+          "<li>非法姿态或离开画面约 <b>5 秒</b> 会重新准备；在非法等待期间<strong>不发送</strong>关节指令。</li>" +
+          "<li>出现 <b>READY!</b> 时锁定舒展标定：双肘平均位置 → 肩关节<strong>最小角</strong>；双膝平均位置 → 髋关节<strong>最大角</strong>；另一端为<strong>固定</strong>百分数跨度（之后不再动态扩大）。</li>" +
+          "<li>黄色基准线（0,0）在近似<strong>肚脐</strong>高度（肩中点→髋中点的 2/3 处）。</li>" +
+          "<li>关节角经 1€ 滤波平滑，同时尽量保留快速转向拐点。</li>" +
           "</ul>" +
-          "<h4>4. 建议首次流程</h4>" +
+          "<h4>4. 多人 / 多机（最多 2 人）</h4>" +
+          "<ul>" +
+          "<li><b>1 人</b> ready → 同步控制所有已连接机器人。</li>" +
+          "<li><b>2 人 1 机</b> → 先被识别的人控制。</li>" +
+          "<li><b>2 人 2 机</b> → 屏幕左右分列，各自独立准备与控制（左→右 ↔ 连接顺序）；一人姿态非法不影响另一人。</li>" +
+          "<li>非法姿态 / 离开画面约 <b>5 秒</b> 只重置该人的准备流程（其间暂停该人的指令发送）。</li>" +
+          "</ul>" +
+          "<h4>5. 建议首次流程</h4>" +
           "<ol>" +
           "<li>打开摄像头，站立或坐下并保证全身入镜</li>" +
           "<li>（首次）连接串口 → Query IP 或 Connect WiFi → 再 Connect IP</li>" +
           "<li>若 IP 已知/已缓存，可直接 Quick Connect</li>" +
-          "<li>举手 → 等待 3、2、1、READY!</li>" +
+          "<li>充分舒展 → 等待 3、2、1、READY!（此时锁定标定）</li>" +
           "<li>用肘、膝动作控制机器人</li>" +
           "</ol>",
         reset: "Reset",
-        resetTitle: "清空各关节百分数 min/max",
-        resetHud: "Reset 清空 min/max",
+        resetTitle: "清空舒展标定并重新准备",
+        resetHud: "Reset 标定",
         rotateCamera: "↺ 90°",
         rotateCameraTitle: "摄像头视图逆时针旋转 90°",
         robotIpPlaceholder: "机器人 IP",
         robotIpTitle: "输入 IP 后 Quick Connect；支持多设备同时连接",
         connectedIpsLabel: "已连接",
+        connectedIpsNone: "未连接",
         connectedIpsEmpty: "无",
         quickConnect: "Quick Connect",
         setupDesc:
@@ -1280,15 +1440,22 @@
         idle: "待机",
         mapReady: "就绪 b±{range}",
         mapTracking: "追踪 {n}/4",
-        expandMotion: "扩大动作以建立 min/max",
-        raiseArmsPrompt: "双臂举过肩膀\n以准备",
+        expandMotion: "等待舒展标定",
+        raiseArmsPrompt: "使双臂和双腿充分舒展，\n双肘抬过肩",
         getReadyN: "Get Ready\n{n}",
         readyFlash: "READY!",
         waitReady: "等待就绪",
-        poseIllegal: "姿态无效！\n请站立或坐下，露出双手肘与双膝\n以准备",
+        waitAllReady: "等待所有人就绪",
+        poseIllegal: "姿态无效！\n请站立或坐下，使双肘和双膝完整入镜",
+        spectatorLabel: "观战",
         notConnected: "未连接",
         sendFailed: "发送失败",
         robotConsoleAria: "机器人控制台",
+        angleChartTitle: "Δa · 时间↓",
+        angleChartNoteBase: "│ 黄线=base 0",
+        angleChartNoteCenter: "中线=−R（肘舒展）",
+        serialUnavailable:
+          "Web Serial 不可用（请用 Chrome/Edge，且为 HTTPS 或 localhost）",
         console: "控制台",
         serialMonitor: "串口监视器",
         btnTime: "🕐 时间",
@@ -1307,7 +1474,7 @@
         btnConnectIp: "Connect IP",
         btnConnectWifi: "Connect WiFi",
         btnQueryIp: "Query IP",
-        resetDone: "已 Reset\n动态追踪百分数 min/max → b±{range}°",
+        resetDone: "已 Reset\n舒展标定 → b±{range}°（肘=最小角，膝=最大角）",
         cameraError: "无法打开摄像头：{msg}",
         mediapipeError:
           "加载 MediaPipe 失败：{msg}。请检查网络，或改用本地服务器访问本页。",
@@ -1369,6 +1536,7 @@
       if (typeof coordTextEl !== "undefined" && coordTextEl && !document.body.classList.contains("camera-on")) {
         coordTextEl.textContent = t("waitingDetect");
       }
+      if (typeof refreshConnectedUi === "function") refreshConnectedUi();
     }
 
     const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm";
@@ -1376,18 +1544,27 @@
       "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
     const BAUD = 115200;
     /** Robot joints 2..5 map to LE, RE, RK, LK (a[0..3]). */
-    const B_BASE = [0, 0, 25, 25];
+    const B_BASE = [5, 5, 25, 25];
     const ROBOT_JOINT_IDS = [2, 3, 4, 5];
     /** Usable angle range around baseline: [b - RANGE, b + RANGE]. */
-    const ANGLE_RANGE = 30;
+    const ANGLE_RANGE = 25;
     /** Minimum pct span before mapping is considered valid. */
     const MIN_PCT_SPAN = 3;
-    /** Sliding window for dynamic min/max (discard samples older than this). */
-    const RANGE_WINDOW_MS = 5000;
-    /** Max wait for robot 'i' / WS completed before allowing next send. */
-    const CMD_ACK_TIMEOUT_MS = 2500;
+    /**
+     * Fixed pct span locked at READY (shoulder-width %).
+     * Stretch anchors one end; the other end is stretch±this — never expands later
+     * (avoids "harder and harder" after reaching a new extreme).
+     */
+    const STRETCH_PCT_SPAN = 50;
+    /** Max wait for robot 'I' / WS completed; 100ms ≈ 10 cmd/s while keeping UI responsive. */
+    const CMD_ACK_TIMEOUT_MS = 100;
+    /** Skip send when every joint |Δa| vs last sent is below this (degrees). */
+    const ANGLE_SEND_MIN_DELTA = 3;
+    /** Auto-reconnect after unexpected WebSocket close (exponential backoff). */
+    const WS_RECONNECT_BASE_MS = 1000;
+    const WS_RECONNECT_MAX_MS = 15000;
     /** Restart ready flow after this long of illegal / missing pose. */
-    const ILLEGAL_RESET_MS = 2000;
+    const ILLEGAL_RESET_MS = 5000;
     const COUNTDOWN_START = 3;
     const COUNTDOWN_STEP_MS = 1000;
     const READY_FLASH_MS = 900;
@@ -1435,7 +1612,7 @@
     /** High-contrast overlay colors by line type (dark camera background). */
     const LINE = {
       skeleton: "#00F0FF", // cyan — pose bones + shoulder width
-      baseline: "#FFE600", // yellow — torso horizontal 0-line
+      baseline: "#FFE600", // yellow — navel-height horizontal 0-line
       drop: "#FF3D9A", // magenta — joint vertical drops
       joint: "#FFFFFF",
     };
@@ -1460,10 +1637,11 @@
     const cameraPane = document.getElementById("cameraPane");
     const cameraStage = document.getElementById("cameraStage");
     const cameraStageInner = document.getElementById("cameraStageInner");
-    const headPromptEl = document.getElementById("headPromptEl");
-    const bodyIpEl = document.getElementById("bodyIpEl");
+    const columnGuidesEl = document.getElementById("columnGuides");
+    const promptLayerEl = document.getElementById("promptLayer");
+    const bodyIpLayerEl = document.getElementById("bodyIpLayer");
     /** Last ready-prompt box in camera-stage coordinates (for stacking IP below). */
-    let promptOverlayBox = null;
+    let promptOverlayBoxes = [];
     const video = document.getElementById("preview");
     const overlay = document.getElementById("overlay");
     const ctx = overlay.getContext("2d");
@@ -1481,6 +1659,10 @@
     const btnResetCalib = document.getElementById("btnResetCalib");
 
     const consoleLogEl = document.getElementById("consoleLog");
+    const angleChartCanvas = document.getElementById("angleChartCanvas");
+    const angleChartCtx = angleChartCanvas
+      ? angleChartCanvas.getContext("2d")
+      : null;
     const serialOutputEl = document.getElementById("serialOutput");
     const serialInputEl = document.getElementById("serialInput");
     const serialContainer = document.getElementById("serialContainer");
@@ -1494,6 +1676,7 @@
     const btnConsoleTime = document.getElementById("btnConsoleTime");
     const quickConnectBtn = document.getElementById("quickConnectBtn");
     const robotIpInput = document.getElementById("robotIpInput");
+    const connectedIpLabelEl = document.getElementById("connectedIpLabel");
     const connectedIpListEl = document.getElementById("connectedIpList");
     const divider = document.getElementById("consoleSerialDivider");
     const wifiOverlay = document.getElementById("wifiOverlay");
@@ -1502,6 +1685,12 @@
 
     const IP_STORAGE_KEY = "camWalkingGame.robotIps";
     const IP_STORAGE_KEY_LEGACY = "camWalkingGame.robotIp";
+    /** MediaPipe + control support at most two people. */
+    const MAX_POSES = 2;
+    const PERSON_TRACK_LOST_MS = 1200;
+    /** Ignore brief false-positive poses until seen this long. */
+    const PERSON_CONFIRM_MS = 450;
+    const SERIAL_ROBOT_ID = "serial";
 
     let poseLandmarker = null;
     let stream = null;
@@ -1511,38 +1700,123 @@
     let fpsLastMs = performance.now();
     let showConsoleTime = true;
     let showSerialTime = true;
-    let lastSentAngles = null;
-    /** True while waiting for robot 'i' / WS completed ack. */
-    let cmdBusy = false;
-    /** Latest angles requested while busy — only the newest is sent after ack. */
-    let latestAngles = null;
     let lastControlSnapshot = null;
     /** Display rotation in degrees CCW: 0, 90, 180, 270. */
     let cameraRotation = 0;
-    /** Ready-gate: legal sit/stand → raise arms → countdown → READY → control. */
-    let readyGate = {
-      phase: READY_PHASE.WAITING,
-      count: COUNTDOWN_START,
-      stepStartedAt: 0,
-      illegalSince: null,
-      lastTickAt: 0,
-      prompt: "",
-      legal: false,
+
+    /** Per-destination command queues: robotId | "__sync__" → queue state. */
+    const cmdQueues = new Map();
+    /** trackId → player control state (ready gate + joint trackers). */
+    const playerStates = new Map();
+    /** Active person tracks across frames (first-seen order via rising ids). */
+    let personTracks = [];
+    let nextTrackId = 1;
+    /** Latest multi-control layout for HUD / overlays. */
+    let controlLayout = {
+      mode: "idle", // idle | sync | assign | lanes
+      personCount: 0,
+      robotCount: 0,
+      assignments: [],
     };
 
-    function resetReadyGate(reason) {
-      const wasPastWaiting = readyGate.phase !== READY_PHASE.WAITING;
-      readyGate.phase = READY_PHASE.WAITING;
-      readyGate.count = COUNTDOWN_START;
-      readyGate.stepStartedAt = 0;
-      readyGate.illegalSince = null;
-      readyGate.lastTickAt = 0;
-      readyGate.prompt = "";
-      readyGate.legal = false;
-      latestAngles = null;
-      if (wasPastWaiting && reason) {
+    function createReadyGateState() {
+      return {
+        phase: READY_PHASE.WAITING,
+        count: COUNTDOWN_START,
+        stepStartedAt: 0,
+        illegalSince: null,
+        lastTickAt: 0,
+        prompt: "",
+        legal: false,
+      };
+    }
+
+    function resetReadyGateState(gate, reason, { log = true } = {}) {
+      if (!gate) return;
+      const wasPastWaiting = gate.phase !== READY_PHASE.WAITING;
+      gate.phase = READY_PHASE.WAITING;
+      gate.count = COUNTDOWN_START;
+      gate.stepStartedAt = 0;
+      gate.illegalSince = null;
+      gate.lastTickAt = 0;
+      gate.prompt = "";
+      gate.legal = false;
+      if (log && wasPastWaiting && reason) {
         addConsoleMessage("Ready gate reset: " + reason, "warn");
       }
+    }
+
+    function getCmdQueue(key) {
+      if (!cmdQueues.has(key)) {
+        cmdQueues.set(key, {
+          busy: false,
+          latestAngles: null,
+          lastSentAngles: null,
+        });
+      }
+      return cmdQueues.get(key);
+    }
+
+    function clearAllCmdQueues() {
+      for (const q of cmdQueues.values()) {
+        q.busy = false;
+        q.latestAngles = null;
+        q.lastSentAngles = null;
+      }
+    }
+
+    function ensurePlayerState(trackId) {
+      if (!playerStates.has(trackId)) {
+        playerStates.set(trackId, {
+          trackId,
+          readyGate: createReadyGateState(),
+          trackers: null, // filled once PctRangeTracker / JOINT_NAMES exist
+          angleFilters: null,
+          calibLocked: false,
+        });
+      }
+      const st = playerStates.get(trackId);
+      if (!st.trackers && typeof createJointTrackers === "function") {
+        st.trackers = createJointTrackers(trackId);
+      }
+      if (!st.angleFilters && typeof createAngleFilters === "function") {
+        st.angleFilters = createAngleFilters();
+      }
+      return st;
+    }
+
+    function prunePlayerStates(activeIds) {
+      for (const id of [...playerStates.keys()]) {
+        if (!activeIds.has(id)) playerStates.delete(id);
+      }
+    }
+
+    function resetReadyGate(reason) {
+      for (const st of playerStates.values()) {
+        resetReadyGateState(st.readyGate, reason, { log: false });
+        resetPlayerCalibration(st);
+      }
+      clearAllCmdQueues();
+      if (reason) addConsoleMessage("Ready gate reset: " + reason, "warn");
+    }
+
+    /** Connected robots in connection order (WebSocket pool, else serial-only). */
+    function connectedRobotsOrdered() {
+      const robots = [];
+      if (typeof petoiPool !== "undefined" && petoiPool) {
+        for (const ip of petoiPool.list()) {
+          robots.push({ id: ip, ip, via: "ws" });
+        }
+      }
+      if (
+        !robots.length &&
+        typeof transport !== "undefined" &&
+        transport &&
+        transport.isConnected()
+      ) {
+        robots.push({ id: SERIAL_ROBOT_ID, ip: null, via: "serial" });
+      }
+      return robots;
     }
 
     /** True for upright sit/stand; false for lying, upside-down, or incomplete torso. */
@@ -1652,147 +1926,373 @@
       return null;
     }
 
-    function connectedIpsForOverlay() {
-      const ips = [];
-      if (typeof petoiPool !== "undefined" && petoiPool) {
-        for (const ip of petoiPool.list()) {
-          const n = normalizeIp(ip);
-          if (isValidIp(n) && !ips.includes(n)) ips.push(n);
-        }
-      }
-      if (!ips.length && robotIpInput) {
-        const typed = normalizeIp(robotIpInput.value);
-        if (isValidIp(typed)) ips.push(typed);
-      }
-      return ips;
-    }
-
-    function showBodyIpLabel(pts) {
-      if (!bodyIpEl) return;
-      const ips = connectedIpsForOverlay();
-      if (!ips.length) {
-        bodyIpEl.classList.remove("visible");
-        bodyIpEl.textContent = "";
-        return;
-      }
-      const { w: pw, h: ph } = paneSize();
-      const anchor = torsoMidAnchor(pts);
-      let x = pw / 2;
-      let y = ph * 0.45;
-      if (anchor) {
-        const preferred = stageLocalToScreen(anchor.x, anchor.y);
-        x = preferred.x;
-        y = preferred.y;
-      }
-
-      // Keep IP below the ready prompt so they never overlap
-      if (promptOverlayBox && headPromptEl && headPromptEl.classList.contains("visible")) {
-        bodyIpEl.textContent = ips.join("\n");
-        bodyIpEl.classList.add("visible");
-        bodyIpEl.style.left = x + "px";
-        bodyIpEl.style.top = y + "px";
-        const ipH = bodyIpEl.offsetHeight || 40;
-        const gap = 14;
-        const minCenterY = promptOverlayBox.bottom + gap + ipH / 2;
-        if (y < minCenterY) y = minCenterY;
-        x = promptOverlayBox.left + promptOverlayBox.width / 2;
-      }
-
-      x = Math.max(24, Math.min(pw - 24, x));
-      y = Math.max(24, Math.min(ph - 24, y));
-      bodyIpEl.textContent = ips.join("\n");
-      bodyIpEl.style.left = x + "px";
-      bodyIpEl.style.top = y + "px";
-      bodyIpEl.classList.add("visible");
+    function robotLabel(robot) {
+      if (!robot) return "";
+      if (robot.via === "serial") return "Serial";
+      return robot.ip || robot.id || "";
     }
 
     /**
-     * Ready flow state machine.
+     * Match MediaPipe poses to stable track ids (first-seen = lower id).
+     * @returns {{ trackId: number, pts: any[], cx: number, cy: number, screenX: number }[]}
+     */
+    function matchPersonTracks(posePtsList, now) {
+      const { w, h } = stageSize();
+      const maxDist = Math.max(80, Math.min(w, h) * 0.22);
+      const detections = posePtsList.map((pts) => {
+        const anchor = torsoMidAnchor(pts);
+        const cx = anchor ? anchor.x : w / 2;
+        const cy = anchor ? anchor.y : h / 2;
+        const screen = stageLocalToScreen(cx, cy);
+        return { pts, cx, cy, screenX: screen.x, screenY: screen.y };
+      });
+
+      const tracks = personTracks.filter((tr) => now - tr.lastSeen <= PERSON_TRACK_LOST_MS);
+      const usedTrack = new Set();
+      const usedDet = new Set();
+      const pairs = [];
+
+      // Greedy nearest matching
+      const candidates = [];
+      for (let ti = 0; ti < tracks.length; ti++) {
+        for (let di = 0; di < detections.length; di++) {
+          const d = Math.hypot(tracks[ti].cx - detections[di].cx, tracks[ti].cy - detections[di].cy);
+          if (d <= maxDist) candidates.push({ ti, di, d });
+        }
+      }
+      candidates.sort((a, b) => a.d - b.d);
+      for (const c of candidates) {
+        if (usedTrack.has(c.ti) || usedDet.has(c.di)) continue;
+        usedTrack.add(c.ti);
+        usedDet.add(c.di);
+        pairs.push(c);
+      }
+
+      const nextTracks = [];
+      const out = [];
+      for (const p of pairs) {
+        const tr = tracks[p.ti];
+        const det = detections[p.di];
+        const firstSeen = tr.firstSeen || now;
+        const confirmed = !!tr.confirmed || now - firstSeen >= PERSON_CONFIRM_MS;
+        const updated = {
+          id: tr.id,
+          cx: det.cx,
+          cy: det.cy,
+          lastSeen: now,
+          firstSeen,
+          confirmed,
+        };
+        nextTracks.push(updated);
+        // Unconfirmed hits stay internal — do not affect layout / overlays
+        if (!confirmed) continue;
+        out.push({
+          trackId: tr.id,
+          pts: det.pts,
+          cx: det.cx,
+          cy: det.cy,
+          screenX: det.screenX,
+          screenY: det.screenY,
+        });
+      }
+
+      for (let di = 0; di < detections.length; di++) {
+        if (usedDet.has(di)) continue;
+        const det = detections[di];
+        const id = nextTrackId++;
+        // New tracks start unconfirmed (filters one-frame false positives)
+        nextTracks.push({
+          id,
+          cx: det.cx,
+          cy: det.cy,
+          lastSeen: now,
+          firstSeen: now,
+          confirmed: false,
+        });
+      }
+
+      // Keep unmatched confirmed tracks until timeout (ghosts for ready stability).
+      // Do not ghost unconfirmed blips — they caused flickering "extra person" labels.
+      for (let ti = 0; ti < tracks.length; ti++) {
+        if (usedTrack.has(ti)) continue;
+        const tr = tracks[ti];
+        if (!tr.confirmed) continue;
+        nextTracks.push(tr);
+        const screen = stageLocalToScreen(tr.cx, tr.cy);
+        out.push({
+          trackId: tr.id,
+          pts: null,
+          cx: tr.cx,
+          cy: tr.cy,
+          screenX: screen.x,
+          screenY: screen.y,
+          missing: true,
+        });
+      }
+
+      personTracks = nextTracks;
+      out.sort((a, b) => a.trackId - b.trackId);
+      return out;
+    }
+
+    /**
+     * People ↔ robots assignment.
+     * - 1 person: sync all robots
+     * - people === robots (>1): lane columns, 1:1 left→right ↔ connect order
+     * - otherwise: first-recognized people take robots in connect order; extras spectate
+     */
+    function computeControlLayout(peopleIn, robots) {
+      // Hard cap: only the first MAX_POSES people (by recognition order) participate
+      const people = [...peopleIn]
+        .sort((a, b) => a.trackId - b.trackId)
+        .slice(0, MAX_POSES);
+      const n = people.length;
+      const m = robots.length;
+      if (!n) {
+        return { mode: "idle", personCount: 0, robotCount: m, assignments: [] };
+      }
+
+      if (n === 1) {
+        const p = people[0];
+        return {
+          mode: "sync",
+          personCount: n,
+          robotCount: m,
+          assignments: [
+            {
+              trackId: p.trackId,
+              robotIds: robots.map((r) => r.id),
+              robots: robots.slice(),
+              column: null,
+              isController: true,
+              person: p,
+            },
+          ],
+        };
+      }
+
+      if (m > 0 && n === m) {
+        const byX = [...people].sort((a, b) => a.screenX - b.screenX);
+        return {
+          mode: "lanes",
+          personCount: n,
+          robotCount: m,
+          assignments: byX.map((p, i) => ({
+            trackId: p.trackId,
+            robotIds: robots[i] ? [robots[i].id] : [],
+            robots: robots[i] ? [robots[i]] : [],
+            column: i,
+            isController: true,
+            person: p,
+          })),
+        };
+      }
+
+      // First recognized (lower trackId) claim robots in connection order.
+      // If no robots yet, keep the first person as controller so they can still ready.
+      const byId = [...people].sort((a, b) => a.trackId - b.trackId);
+      const take = m > 0 ? Math.min(n, m) : 1;
+      const assignments = byId.map((p, idx) => {
+        const isController = idx < take;
+        const robot = m > 0 && isController ? robots[idx] : null;
+        return {
+          trackId: p.trackId,
+          robotIds: robot ? [robot.id] : [],
+          robots: robot ? [robot] : [],
+          column: null,
+          isController,
+          person: p,
+        };
+      });
+      return {
+        mode: "assign",
+        personCount: n,
+        robotCount: m,
+        assignments,
+      };
+    }
+
+    function syncColumnGuides(laneCount) {
+      if (!columnGuidesEl) return;
+      columnGuidesEl.innerHTML = "";
+      if (laneCount < 2) return;
+      const { w: pw } = paneSize();
+      for (let i = 1; i < laneCount; i++) {
+        const line = document.createElement("div");
+        line.className = "col-line";
+        line.style.left = (pw * i) / laneCount + "px";
+        columnGuidesEl.appendChild(line);
+      }
+    }
+
+    function ensureOverlayEl(layer, className, index) {
+      if (!layer) return null;
+      while (layer.children.length <= index) {
+        const el = document.createElement("div");
+        el.className = className;
+        layer.appendChild(el);
+      }
+      return layer.children[index];
+    }
+
+    function hideOverlayPool(layer, fromIndex) {
+      if (!layer) return;
+      for (let i = fromIndex; i < layer.children.length; i++) {
+        const el = layer.children[i];
+        el.classList.remove("visible", "spectator");
+        el.textContent = "";
+      }
+    }
+
+    /** Fixed IP labels under ready prompts (never follow the body; no spectator text). */
+    function showBodyIpLabels(assignments) {
+      if (!bodyIpLayerEl) return;
+      const { w: pw, h: ph } = paneSize();
+      const controllers = assignments.filter((a) => a.isController);
+      let used = 0;
+
+      for (let i = 0; i < controllers.length; i++) {
+        const asg = controllers[i];
+        let label = "";
+        if (asg.robots && asg.robots.length) {
+          label = asg.robots.map(robotLabel).filter(Boolean).join("\n");
+        } else if (controlLayout.mode === "sync") {
+          label = connectedRobotsOrdered()
+            .map(robotLabel)
+            .filter(Boolean)
+            .join("\n");
+        }
+        if (!label) continue;
+
+        const el = ensureOverlayEl(bodyIpLayerEl, "body-ip-label", used);
+        used++;
+        el.classList.remove("spectator");
+        el.textContent = label;
+        el.classList.add("visible");
+
+        // Anchor under the matching prompt box; fall back to top-center / column center
+        const boxIndex =
+          asg.column != null
+            ? asg.column
+            : controllers.length === 1
+              ? 0
+              : i;
+        const box = promptOverlayBoxes[boxIndex];
+        let x;
+        let y;
+        if (box) {
+          const ipH = el.offsetHeight || 40;
+          const gap = 14;
+          x = box.left + box.width / 2;
+          y = box.bottom + gap + ipH / 2;
+        } else if (controlLayout.mode === "lanes" && asg.column != null) {
+          const cols = Math.max(1, controlLayout.personCount);
+          const colW = pw / cols;
+          x = (asg.column + 0.5) * colW;
+          y = 120;
+        } else {
+          x = pw / 2;
+          y = 120;
+        }
+
+        x = Math.max(24, Math.min(pw - 24, x));
+        y = Math.max(24, Math.min(ph - 24, y));
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+      }
+
+      hideOverlayPool(bodyIpLayerEl, used);
+    }
+
+    /**
+     * Ready flow state machine (per person).
      * Illegal / missing pose for > ILLEGAL_RESET_MS restarts preparation.
      */
-    function updateReadyGate(pts, now) {
+    function updateReadyGateState(gate, pts, now, { label = "", onHardReset } = {}) {
       const legal = isLegalSitOrStand(pts);
-      readyGate.legal = legal;
+      gate.legal = legal;
 
       if (!legal) {
-        latestAngles = null;
-        if (readyGate.illegalSince == null) readyGate.illegalSince = now;
+        if (gate.illegalSince == null) gate.illegalSince = now;
         // Freeze countdown / ready-flash clock while briefly illegal
         if (
-          readyGate.lastTickAt &&
-          (readyGate.phase === READY_PHASE.COUNTDOWN ||
-            readyGate.phase === READY_PHASE.READY_FLASH)
+          gate.lastTickAt &&
+          (gate.phase === READY_PHASE.COUNTDOWN ||
+            gate.phase === READY_PHASE.READY_FLASH)
         ) {
-          readyGate.stepStartedAt += now - readyGate.lastTickAt;
+          gate.stepStartedAt += now - gate.lastTickAt;
         }
-        readyGate.lastTickAt = now;
+        gate.lastTickAt = now;
 
         if (
-          readyGate.phase !== READY_PHASE.WAITING &&
-          now - readyGate.illegalSince >= ILLEGAL_RESET_MS
+          gate.phase !== READY_PHASE.WAITING &&
+          now - gate.illegalSince >= ILLEGAL_RESET_MS
         ) {
-          resetReadyGate("illegal pose > 2s");
+          resetReadyGateState(
+            gate,
+            (label ? label + ": " : "") + "illegal pose > 5s"
+          );
+          if (typeof onHardReset === "function") onHardReset();
         }
-        if (readyGate.phase === READY_PHASE.WAITING) {
-          // Show even when no person is detected
-          readyGate.prompt = t("poseIllegal");
+        if (gate.phase === READY_PHASE.WAITING) {
+          gate.prompt = t("poseIllegal");
         }
-        return readyGate;
+        return gate;
       }
 
-      readyGate.illegalSince = null;
-      readyGate.lastTickAt = now;
+      gate.illegalSince = null;
+      gate.lastTickAt = now;
 
-      if (readyGate.phase === READY_PHASE.WAITING) {
-        readyGate.phase = READY_PHASE.RAISE_ARMS;
-        readyGate.prompt = t("raiseArmsPrompt");
+      if (gate.phase === READY_PHASE.WAITING) {
+        gate.phase = READY_PHASE.RAISE_ARMS;
+        gate.prompt = t("raiseArmsPrompt");
       }
 
-      if (readyGate.phase === READY_PHASE.RAISE_ARMS) {
-        readyGate.prompt = t("raiseArmsPrompt");
+      if (gate.phase === READY_PHASE.RAISE_ARMS) {
+        gate.prompt = t("raiseArmsPrompt");
         if (armsOverShoulders(pts)) {
-          readyGate.phase = READY_PHASE.COUNTDOWN;
-          readyGate.count = COUNTDOWN_START;
-          readyGate.stepStartedAt = now;
-          readyGate.prompt = t("getReadyN", { n: readyGate.count });
+          gate.phase = READY_PHASE.COUNTDOWN;
+          gate.count = COUNTDOWN_START;
+          gate.stepStartedAt = now;
+          gate.prompt = t("getReadyN", { n: gate.count });
         }
-      } else if (readyGate.phase === READY_PHASE.COUNTDOWN) {
-        // Arms must stay up through countdown; dropping resets preparation
+      } else if (gate.phase === READY_PHASE.COUNTDOWN) {
         if (!armsOverShoulders(pts)) {
-          readyGate.phase = READY_PHASE.RAISE_ARMS;
-          readyGate.count = COUNTDOWN_START;
-          readyGate.stepStartedAt = 0;
-          readyGate.prompt = t("raiseArmsPrompt");
-        } else if (now - readyGate.stepStartedAt >= COUNTDOWN_STEP_MS) {
-          readyGate.stepStartedAt = now;
-          // 3→2→1→READY (skip showing 0)
-          if (readyGate.count > 1) {
-            readyGate.count -= 1;
-            readyGate.prompt = t("getReadyN", { n: readyGate.count });
+          gate.phase = READY_PHASE.RAISE_ARMS;
+          gate.count = COUNTDOWN_START;
+          gate.stepStartedAt = 0;
+          gate.prompt = t("raiseArmsPrompt");
+        } else if (now - gate.stepStartedAt >= COUNTDOWN_STEP_MS) {
+          gate.stepStartedAt = now;
+          if (gate.count > 1) {
+            gate.count -= 1;
+            gate.prompt = t("getReadyN", { n: gate.count });
           } else {
-            readyGate.phase = READY_PHASE.READY_FLASH;
-            readyGate.prompt = t("readyFlash");
-            addConsoleMessage("READY!", "good");
+            gate.phase = READY_PHASE.READY_FLASH;
+            gate.prompt = t("readyFlash");
+            addConsoleMessage(
+              "READY!" + (label ? " (" + label + ")" : ""),
+              "good"
+            );
           }
         } else {
-          readyGate.prompt = t("getReadyN", { n: readyGate.count });
+          gate.prompt = t("getReadyN", { n: gate.count });
         }
-      } else if (readyGate.phase === READY_PHASE.READY_FLASH) {
-        readyGate.prompt = t("readyFlash");
-        if (now - readyGate.stepStartedAt >= READY_FLASH_MS) {
-          readyGate.phase = READY_PHASE.CONTROLLING;
-          readyGate.prompt = "";
-          addConsoleMessage("Control enabled", "good");
+      } else if (gate.phase === READY_PHASE.READY_FLASH) {
+        gate.prompt = t("readyFlash");
+        if (now - gate.stepStartedAt >= READY_FLASH_MS) {
+          gate.phase = READY_PHASE.CONTROLLING;
+          gate.prompt = "";
+          addConsoleMessage(
+            "Control enabled" + (label ? " (" + label + ")" : ""),
+            "good"
+          );
         }
-      } else if (readyGate.phase === READY_PHASE.CONTROLLING) {
-        readyGate.prompt = "";
+      } else if (gate.phase === READY_PHASE.CONTROLLING) {
+        gate.prompt = "";
       }
 
-      if (readyGate.phase !== READY_PHASE.CONTROLLING) {
-        latestAngles = null;
-      }
-
-      return readyGate;
+      return gate;
     }
 
     /** Map a point in stage-inner (pre-CSS-transform) space to camera-stage pixels. */
@@ -1819,14 +2319,11 @@
         .replace(/"/g, "&quot;");
     }
 
-    function updatePromptOverlayBox() {
-      if (!headPromptEl || !cameraStage || !headPromptEl.classList.contains("visible")) {
-        promptOverlayBox = null;
-        return;
-      }
+    function measurePromptBox(el) {
+      if (!el || !cameraStage || !el.classList.contains("visible")) return null;
       const stageRect = cameraStage.getBoundingClientRect();
-      const r = headPromptEl.getBoundingClientRect();
-      promptOverlayBox = {
+      const r = el.getBoundingClientRect();
+      return {
         left: r.left - stageRect.left,
         top: r.top - stageRect.top,
         width: r.width,
@@ -1835,24 +2332,23 @@
       };
     }
 
-    function fillHeadPromptContent(text) {
-      const phase = readyGate.phase;
+    function fillHeadPromptContent(el, text, phase) {
       if (phase === READY_PHASE.READY_FLASH) {
-        headPromptEl.classList.add("ready");
-        headPromptEl.textContent = text;
+        el.classList.add("ready");
+        el.textContent = text;
       } else if (phase === READY_PHASE.COUNTDOWN) {
-        headPromptEl.classList.add("countdown");
+        el.classList.add("countdown");
         const parts = text.split("\n");
         const label = escapeHtml(parts[0] || "Get Ready");
         const num = escapeHtml(parts[1] != null ? parts[1] : "");
-        headPromptEl.innerHTML =
+        el.innerHTML =
           label + (num !== "" ? '\n<span class="prompt-count">' + num + "</span>" : "");
       } else if (phase === READY_PHASE.WAITING) {
-        headPromptEl.classList.add("illegal");
+        el.classList.add("illegal");
         const nl = text.indexOf("\n");
         const title = nl >= 0 ? text.slice(0, nl) : text;
         const body = nl >= 0 ? text.slice(nl + 1) : "";
-        headPromptEl.innerHTML =
+        el.innerHTML =
           '<span class="prompt-title">' +
           escapeHtml(title) +
           "</span>" +
@@ -1860,34 +2356,110 @@
             ? '\n<span class="prompt-body">' + escapeHtml(body) + "</span>"
             : "");
       } else {
-        headPromptEl.classList.toggle("long", text.includes("\n"));
-        headPromptEl.textContent = text;
+        el.classList.toggle("long", text.includes("\n"));
+        el.textContent = text;
       }
     }
 
-    /** Ready prompts stay fixed at the top-center of the screen. */
-    function placeHeadPromptTop() {
+    function placePromptEl(el, { column = null, columns = 1, screenX = null } = {}) {
       const { w: pw } = paneSize();
-      headPromptEl.classList.add("below");
-      headPromptEl.style.left = pw / 2 + "px";
-      headPromptEl.style.top = "16px";
+      el.classList.add("below");
+      if (column != null && columns > 1) {
+        const colW = pw / columns;
+        el.style.left = (column + 0.5) * colW + "px";
+        el.classList.add("lane");
+      } else if (screenX != null && controlLayout.mode === "assign") {
+        el.style.left = Math.max(48, Math.min(pw - 48, screenX)) + "px";
+        el.classList.remove("lane");
+      } else {
+        el.style.left = pw / 2 + "px";
+        el.classList.remove("lane");
+      }
+      el.style.top = "16px";
     }
 
-    function showHeadPrompt(pts, text) {
-      if (!headPromptEl) return;
-      const clearClasses = ["visible", "long", "countdown", "ready", "illegal", "below"];
-      if (!text) {
-        headPromptEl.classList.remove(...clearClasses);
-        headPromptEl.textContent = "";
-        promptOverlayBox = null;
+    /**
+     * Render ready prompts for current assignments.
+     * Lanes mode: one prompt per column. Otherwise controllers (or empty-frame illegal).
+     */
+    function showReadyPrompts(assignments, { emptyFramePrompt = "" } = {}) {
+      if (!promptLayerEl) return;
+      const clearClasses = [
+        "visible",
+        "long",
+        "countdown",
+        "ready",
+        "illegal",
+        "below",
+        "lane",
+      ];
+      promptOverlayBoxes = [];
+
+      if (controlLayout.mode === "lanes") {
+        const cols = controlLayout.personCount;
+        syncColumnGuides(cols);
+        for (let i = 0; i < cols; i++) {
+          const asg = assignments.find((a) => a.column === i);
+          const st = asg ? ensurePlayerState(asg.trackId) : null;
+          const gate = st?.readyGate;
+          const text = gate?.prompt || "";
+          const el = ensureOverlayEl(promptLayerEl, "head-prompt", i);
+          el.classList.remove(...clearClasses);
+          if (!text) {
+            el.textContent = "";
+            promptOverlayBoxes[i] = null;
+            continue;
+          }
+          fillHeadPromptContent(el, text, gate.phase);
+          placePromptEl(el, { column: i, columns: cols });
+          el.classList.add("visible");
+          promptOverlayBoxes[i] = measurePromptBox(el);
+        }
+        hideOverlayPool(promptLayerEl, cols);
         return;
       }
 
-      headPromptEl.classList.remove(...clearClasses);
-      fillHeadPromptContent(text);
-      placeHeadPromptTop();
-      headPromptEl.classList.add("visible");
-      updatePromptOverlayBox();
+      syncColumnGuides(0);
+
+      if (!assignments.length) {
+        const el = ensureOverlayEl(promptLayerEl, "head-prompt", 0);
+        el.classList.remove(...clearClasses);
+        if (emptyFramePrompt) {
+          fillHeadPromptContent(el, emptyFramePrompt, READY_PHASE.WAITING);
+          placePromptEl(el, {});
+          el.classList.add("visible");
+          promptOverlayBoxes[0] = measurePromptBox(el);
+        } else {
+          el.textContent = "";
+        }
+        hideOverlayPool(promptLayerEl, 1);
+        return;
+      }
+
+      const controllers = assignments.filter((a) => a.isController);
+      const multi = controllers.length > 1;
+      let used = 0;
+      for (const asg of controllers) {
+        const st = ensurePlayerState(asg.trackId);
+        const gate = st.readyGate;
+        const text = gate.prompt || "";
+        const el = ensureOverlayEl(promptLayerEl, "head-prompt", used);
+        el.classList.remove(...clearClasses);
+        if (!text) {
+          el.textContent = "";
+          promptOverlayBoxes[used] = null;
+          used++;
+          continue;
+        }
+        fillHeadPromptContent(el, text, gate.phase);
+        placePromptEl(el, {
+          screenX: multi ? asg.person.screenX : null,
+        });
+        el.classList.add("visible");
+        promptOverlayBoxes[used] = measurePromptBox(el);
+        used++;
+      }
+      hideOverlayPool(promptLayerEl, used);
     }
 
     // ——— Console ———
@@ -1918,6 +2490,190 @@
 
     function clearConsole() {
       consoleLogEl.innerHTML = "";
+    }
+
+    /**
+     * Vertical joint-angle strip (left of console).
+     * Time flows top→bottom (now at top, older downward).
+     * Center vertical line = time axis.
+     * Left joints LE/LK: +Δa to the left; base at center − RANGE.
+     * Right joints RE/RK: +Δa to the right; base at center + RANGE.
+     * Full ±RANGE around each base spans the whole half (center ↔ outer edge).
+     * Indices: 0=LE, 1=RE, 2=RK, 3=LK
+     */
+    const ANGLE_CHART_WINDOW_MS = 12000;
+    const ANGLE_CHART_COLORS = ["#58a6ff", "#f778ba", "#e3b341", "#3fb950"];
+    /** true = left side (positive toward −x) */
+    const ANGLE_CHART_IS_LEFT = [true, false, false, true];
+    /** @type {{ t: number, d: number[] }[]} */
+    let angleChartHistory = [];
+    let angleChartRaf = 0;
+
+    function pushAngleChartSample(angles, nowMs) {
+      if (!angles || angles.length < 4) return;
+      const t = nowMs != null ? nowMs : performance.now();
+      const d = [
+        angles[0] - B_BASE[0],
+        angles[1] - B_BASE[1],
+        angles[2] - B_BASE[2],
+        angles[3] - B_BASE[3],
+      ];
+      angleChartHistory.push({ t, d });
+      const cutoff = t - ANGLE_CHART_WINDOW_MS;
+      while (angleChartHistory.length && angleChartHistory[0].t < cutoff) {
+        angleChartHistory.shift();
+      }
+      scheduleAngleChartDraw();
+    }
+
+    function scheduleAngleChartDraw() {
+      if (angleChartRaf) return;
+      angleChartRaf = requestAnimationFrame(() => {
+        angleChartRaf = 0;
+        drawAngleChart();
+        if (angleChartHistory.length) scheduleAngleChartDraw();
+      });
+    }
+
+    function resizeAngleChartCanvas() {
+      if (!angleChartCanvas || !angleChartCtx) return;
+      const wrap = angleChartCanvas.parentElement;
+      if (!wrap) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.max(1, wrap.clientWidth);
+      const h = Math.max(1, wrap.clientHeight);
+      const pw = Math.round(w * dpr);
+      const ph = Math.round(h * dpr);
+      if (angleChartCanvas.width !== pw || angleChartCanvas.height !== ph) {
+        angleChartCanvas.width = pw;
+        angleChartCanvas.height = ph;
+      }
+      scheduleAngleChartDraw();
+    }
+
+    function drawAngleChart() {
+      if (!angleChartCanvas || !angleChartCtx) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = angleChartCanvas.width / dpr;
+      const h = angleChartCanvas.height / dpr;
+      const ctx = angleChartCtx;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const padT = 18;
+      const padB = 4;
+      const padX = 4;
+      const plotW = Math.max(1, w - padX * 2);
+      const plotH = Math.max(1, h - padT - padB);
+      const cx = padX + plotW / 2;
+      // Each half is 2·RANGE wide: −R at center, 0 at mid-half (base), +R at outer
+      const unit = plotW / (4 * ANGLE_RANGE);
+      const R = ANGLE_RANGE;
+      const now = performance.now();
+      const tOldest = now - ANGLE_CHART_WINDOW_MS;
+      while (angleChartHistory.length && angleChartHistory[0].t < tOldest) {
+        angleChartHistory.shift();
+      }
+
+      ctx.fillStyle = "#141820";
+      ctx.fillRect(0, 0, w, h);
+
+      function tToY(t) {
+        const u = (now - t) / ANGLE_CHART_WINDOW_MS;
+        return padT + Math.max(0, Math.min(1, u)) * plotH;
+      }
+
+      /** Δa → x; left + toward left, right + toward right; base at center±R */
+      function dToX(ji, d) {
+        const dd = Math.max(-R, Math.min(R, d));
+        if (ANGLE_CHART_IS_LEFT[ji]) {
+          return cx - R * unit - dd * unit;
+        }
+        return cx + R * unit + dd * unit;
+      }
+
+      const xBaseL = cx - R * unit;
+      const xBaseR = cx + R * unit;
+      const xOuterL = cx - 2 * R * unit;
+      const xOuterR = cx + 2 * R * unit;
+
+      // Center time axis (= Δa −R for both sides)
+      ctx.strokeStyle = "#484f58";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx, padT);
+      ctx.lineTo(cx, padT + plotH);
+      ctx.stroke();
+
+      // Outer ±R guides
+      ctx.save();
+      ctx.strokeStyle = "#30363d";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      for (const x of [xOuterL, xOuterR]) {
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, padT + plotH);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // Base (Δa = 0) — bright so it is not mistaken for the time axis
+      ctx.strokeStyle = "#ffe600";
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.85;
+      for (const x of [xBaseL, xBaseR]) {
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, padT + plotH);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // Top scale: +R (outer) · 0 base · −R (center) · 0 base · +R (outer)
+      ctx.font = "8px ui-monospace, Menlo, Consolas, monospace";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#8b949e";
+      ctx.textAlign = "center";
+      ctx.fillText("+" + R, xOuterL, 2);
+      ctx.fillStyle = "#ffe600";
+      ctx.fillText("0", xBaseL, 2);
+      ctx.fillStyle = "#8b949e";
+      ctx.fillText("−" + R, cx, 2);
+      ctx.fillStyle = "#ffe600";
+      ctx.fillText("0", xBaseR, 2);
+      ctx.fillStyle = "#8b949e";
+      ctx.fillText("+" + R, xOuterR, 2);
+
+      if (angleChartHistory.length >= 2) {
+        for (let ji = 0; ji < 4; ji++) {
+          ctx.beginPath();
+          ctx.strokeStyle = ANGLE_CHART_COLORS[ji];
+          ctx.lineWidth = 1.5;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          let started = false;
+          for (const sample of angleChartHistory) {
+            if (sample.t < tOldest) continue;
+            const x = dToX(ji, sample.d[ji]);
+            const y = tToY(sample.t);
+            if (!started) {
+              ctx.moveTo(x, y);
+              started = true;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+          if (started) ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = "#6e7681";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.fillText("—", cx, padT + plotH / 2);
+      }
     }
 
     // ——— Serial UI helpers ———
@@ -2079,12 +2835,20 @@
         chip.appendChild(btn);
         connectedIpListEl.appendChild(chip);
       }
+      // Label is status, not a static title — empty list must not say "Connected"
+      if (connectedIpLabelEl) {
+        const online = ips.length > 0;
+        connectedIpLabelEl.textContent = online
+          ? t("connectedIpsLabel")
+          : t("connectedIpsNone");
+        connectedIpLabelEl.classList.toggle("has-devices", online);
+      }
     }
 
     function refreshConnectedUi() {
-      const serialOk = typeof transport !== "undefined" && transport && transport.isConnected();
       const wifiOk = typeof petoiPool !== "undefined" && petoiPool && petoiPool.hasAny();
-      setConnectedUi(!!(serialOk || wifiOk));
+      // Green "connected" only when the online IP list is non-empty
+      setConnectedUi(!!wifiOk);
       renderConnectedIps();
     }
 
@@ -2158,111 +2922,304 @@
       addConsoleMessage("WiFi connected: " + target + " (devices: " + petoiPool.list().length + ")", "good");
     }
 
-    /** Petoi lowercase/uppercase command encoder (from WebCoding). */
+    /**
+     * Petoi command encoder (from WebCoding).
+     * - lowercase (e.g. 'i'): ASCII text  "i2 25 3 25..."
+     * - UPPERCASE (e.g. 'I' = T_INDEXED_SIMULTANEOUS_BIN): binary
+     *   bytes [token..., param0&0xff, ..., 126('~')] as "bytes:[...]"
+     */
     function encodeCommand(token, params) {
       if (token.charCodeAt(0) >= 65 && token.charCodeAt(0) <= 90) {
         const byteArray = [];
         for (let i = 0; i < token.length; i++) byteArray.push(token.charCodeAt(i));
         for (let i = 0; i < params.length; i++) byteArray.push(params[i] & 0xff);
-        byteArray.push(126);
+        byteArray.push(126); // '~' terminator for binary tokens
         return "bytes:" + JSON.stringify(byteArray);
       }
       return params.length > 0 ? `${token}${params.join(" ")}` : token;
     }
 
-    function clampToJointRange(v, b) {
-      const lo = b - ANGLE_RANGE;
-      const hi = b + ANGLE_RANGE;
-      return Math.max(lo, Math.min(hi, Math.round(v)));
+    /** "bytes:[...]" → Uint8Array for serial / base64 packing. */
+    function bytesCommandToUint8Array(command) {
+      if (typeof command !== "string" || !command.startsWith("bytes:")) return null;
+      return new Uint8Array(JSON.parse(command.substring(6)));
     }
 
     /**
-     * Dynamically track pct min/max over a 5s sliding window;
-     * map pct∈[min,max] → angle∈[b+R, b-R] (raise → smaller angle).
+     * Wire format for WebSocket JSON commands[]:
+     * binary "bytes:[...]" → "b64:<base64>" (firmware webServer.h).
      */
-    class PctRangeTracker {
-      constructor(name) {
-        this.name = name;
+    function toWifiCommand(command) {
+      const bytes = bytesCommandToUint8Array(command);
+      if (!bytes) return command;
+      let dataText = "";
+      for (let i = 0; i < bytes.length; i++) dataText += String.fromCharCode(bytes[i]);
+      return "b64:" + btoa(dataText);
+    }
+
+    function formatCommandForLog(command) {
+      const bytes = bytesCommandToUint8Array(command);
+      if (!bytes) return String(command);
+      return (
+        "I[" +
+        [...bytes]
+          .map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : b))
+          .join(",") +
+        "]"
+      );
+    }
+
+    function clampToJointRange(v, b, { round = true } = {}) {
+      const lo = b - ANGLE_RANGE;
+      const hi = b + ANGLE_RANGE;
+      const clamped = Math.max(lo, Math.min(hi, v));
+      return round ? Math.round(clamped) : clamped;
+    }
+
+    /**
+     * 1€ filter (Casiez et al.): strong smoothing when slow, low lag on fast
+     * direction changes — good for jittery pose → robot joint commands.
+     */
+    class OneEuroFilter {
+      constructor(mincutoff = 1.0, beta = 0.05, dcutoff = 1.0) {
+        this.mincutoff = mincutoff;
+        this.beta = beta;
+        this.dcutoff = dcutoff;
         this.reset();
       }
 
       reset() {
-        this.history = []; // { t, v }
+        this.xPrev = null;
+        this.dxPrev = 0;
+        this.tPrev = null;
+      }
+
+      _alpha(cutoff, te) {
+        const tau = 1 / (2 * Math.PI * cutoff);
+        return 1 / (1 + tau / te);
+      }
+
+      /** @param {number} x @param {number} [timestampMs] */
+      filter(x, timestampMs) {
+        if (x == null || Number.isNaN(x)) return this.xPrev;
+        const t =
+          (timestampMs != null ? timestampMs : performance.now()) / 1000;
+        if (this.tPrev == null || this.xPrev == null) {
+          this.tPrev = t;
+          this.xPrev = x;
+          this.dxPrev = 0;
+          return x;
+        }
+        let te = t - this.tPrev;
+        if (te <= 0) te = 1 / 60;
+        // Large gap (tab freeze / lost track): snap, do not smear
+        if (te > 0.45) {
+          this.tPrev = t;
+          this.xPrev = x;
+          this.dxPrev = 0;
+          return x;
+        }
+        const ad = this._alpha(this.dcutoff, te);
+        const dx = (x - this.xPrev) / te;
+        const edx = ad * dx + (1 - ad) * this.dxPrev;
+        const cutoff = this.mincutoff + this.beta * Math.abs(edx);
+        const a = this._alpha(cutoff, te);
+        const xhat = a * x + (1 - a) * this.xPrev;
+        this.tPrev = t;
+        this.xPrev = xhat;
+        this.dxPrev = edx;
+        return xhat;
+      }
+    }
+
+    // pct units (~%/s): quieter when still, track turns via beta
+    const PCT_FILTER_MINCUTOFF = 1.2;
+    const PCT_FILTER_BETA = 0.07;
+    const PCT_FILTER_DCUTOFF = 1.0;
+    // joint angle degrees: smooth command stream, keep inflection
+    const ANG_FILTER_MINCUTOFF = 1.0;
+    const ANG_FILTER_BETA = 0.4;
+    const ANG_FILTER_DCUTOFF = 1.0;
+
+    /**
+     * Stretch-calibrated fixed pct range → angle∈[b+R, b-R] (raise → smaller angle).
+     * At READY both ends lock: stretch anchors one end, the other is ±STRETCH_PCT_SPAN.
+     * Later motion only clamps inside that band — range never grows.
+     * freeEnd "min": elbows — stretch → maxV (a_min), minV = stretch − span (a_max).
+     * freeEnd "max": knees — stretch → minV (a_max), maxV = stretch + span (a_min).
+     */
+    class PctRangeTracker {
+      constructor(name, freeEnd) {
+        this.name = name;
+        this.freeEnd = freeEnd === "max" ? "max" : "min";
+        this.pctFilter = new OneEuroFilter(
+          PCT_FILTER_MINCUTOFF,
+          PCT_FILTER_BETA,
+          PCT_FILTER_DCUTOFF
+        );
+        this.reset();
+      }
+
+      reset() {
         this.smoothed = null;
         this.minV = Infinity;
         this.maxV = -Infinity;
+        this.stretchLocked = false;
+        this.pctFilter.reset();
       }
 
       get ready() {
         return (
+          this.stretchLocked &&
           Number.isFinite(this.minV) &&
           Number.isFinite(this.maxV) &&
           this.maxV - this.minV >= MIN_PCT_SPAN
         );
       }
 
-      pruneAndRecompute(now) {
-        const cutoff = now - RANGE_WINDOW_MS;
-        while (this.history.length && this.history[0].t < cutoff) {
-          this.history.shift();
+      /**
+       * Lock a fixed pct band from the stretch pose (no later expansion).
+       * Elbows: pct → maxV (b−R). Knees: pct → minV (b+R).
+       */
+      lockStretch(pct) {
+        if (pct == null || Number.isNaN(pct)) return;
+        if (this.freeEnd === "min") {
+          this.maxV = pct;
+          this.minV = pct - STRETCH_PCT_SPAN;
+        } else {
+          this.minV = pct;
+          this.maxV = pct + STRETCH_PCT_SPAN;
         }
-        let minV = Infinity;
-        let maxV = -Infinity;
-        for (const sample of this.history) {
-          if (sample.v < minV) minV = sample.v;
-          if (sample.v > maxV) maxV = sample.v;
-        }
-        this.minV = minV;
-        this.maxV = maxV;
+        this.stretchLocked = true;
+        this.pctFilter.reset();
+        this.smoothed = this.pctFilter.filter(pct, performance.now());
       }
 
-      push(pct) {
+      push(pct, timestampMs) {
         if (pct == null || Number.isNaN(pct)) return null;
-        const now = performance.now();
-        this.smoothed =
-          this.smoothed == null ? pct : this.smoothed * 0.7 + pct * 0.3;
-        this.history.push({ t: now, v: this.smoothed });
-        this.pruneAndRecompute(now);
+        this.smoothed = this.pctFilter.filter(
+          pct,
+          timestampMs != null ? timestampMs : performance.now()
+        );
+        // minV/maxV stay fixed after lockStretch — mapToAngle clamps
         return this.smoothed;
       }
 
-      /** Linear map: min→b+R, max→b-R. */
+      /** Linear map: min→b+R, max→b-R (unchanged direction). Float until angle filter. */
       mapToAngle(pct, b) {
-        this.pruneAndRecompute(performance.now());
         if (!this.ready || pct == null || Number.isNaN(pct)) return null;
         const span = this.maxV - this.minV;
         let t = (pct - this.minV) / span;
-        t = Math.max(0, Math.min(1, t));
+        t = Math.max(0, Math.min(1, t)); // clamp past stretch / past free end
         const angle = b + ANGLE_RANGE - t * (2 * ANGLE_RANGE);
-        return clampToJointRange(angle, b);
+        return clampToJointRange(angle, b, { round: false });
       }
     }
 
     const JOINT_NAMES = ["L-Elbow", "R-Elbow", "R-Knee", "L-Knee"];
-    const trackers = JOINT_NAMES.map((n) => new PctRangeTracker(n));
+    /** LE/RE: stretch locks maxV; RK/LK: stretch locks minV. */
+    const JOINT_FREE_ENDS = ["min", "min", "max", "max"];
+
+    function createJointTrackers(suffix) {
+      const tag = suffix != null ? String(suffix) : "";
+      return JOINT_NAMES.map(
+        (n, i) => new PctRangeTracker(tag ? n + "#" + tag : n, JOINT_FREE_ENDS[i])
+      );
+    }
+
+    function createAngleFilters() {
+      return JOINT_NAMES.map(
+        () =>
+          new OneEuroFilter(
+            ANG_FILTER_MINCUTOFF,
+            ANG_FILTER_BETA,
+            ANG_FILTER_DCUTOFF
+          )
+      );
+    }
+
+    /** Average elbow pct → shoulder min angle; average knee pct → hip max angle. */
+    function lockStretchCalibration(st, pcts) {
+      if (!st || !st.trackers || !pcts || pcts.length < 4) return false;
+      const elbowVals = [pcts[0], pcts[1]].filter(
+        (v) => v != null && !Number.isNaN(v)
+      );
+      const kneeVals = [pcts[2], pcts[3]].filter(
+        (v) => v != null && !Number.isNaN(v)
+      );
+      if (elbowVals.length < 2 || kneeVals.length < 2) return false;
+      const elbowAvg =
+        elbowVals.reduce((s, v) => s + v, 0) / elbowVals.length;
+      const kneeAvg = kneeVals.reduce((s, v) => s + v, 0) / kneeVals.length;
+      st.trackers[0].lockStretch(elbowAvg);
+      st.trackers[1].lockStretch(elbowAvg);
+      st.trackers[2].lockStretch(kneeAvg);
+      st.trackers[3].lockStretch(kneeAvg);
+      st.calibLocked = true;
+      addConsoleMessage(
+        `Stretch calib P#${st.trackId}: elbows@${elbowAvg.toFixed(0)}%→a_min, knees@${kneeAvg.toFixed(0)}%→a_max`,
+        "good"
+      );
+      return true;
+    }
+
+    function resetPlayerCalibration(st) {
+      if (!st) return;
+      st.calibLocked = false;
+      if (st.trackers) st.trackers.forEach((tr) => tr.reset());
+      if (st.angleFilters) st.angleFilters.forEach((f) => f.reset());
+      else if (typeof createAngleFilters === "function") {
+        st.angleFilters = createAngleFilters();
+      }
+    }
+
+    /** Stop queuing joint commands for this assignment (illegal / lost pose). */
+    function holdPlayerCommands(asg) {
+      if (!asg || !asg.isController) return;
+      const queueKey =
+        controlLayout.mode === "sync"
+          ? "__sync__"
+          : (asg.robotIds && asg.robotIds[0]) || "__none__";
+      if (queueKey === "__none__") return;
+      getCmdQueue(queueKey).latestAngles = null;
+    }
+
+    // Patch player states created before trackers were available
+    for (const st of playerStates.values()) {
+      if (!st.trackers) st.trackers = createJointTrackers(st.trackId);
+    }
 
     function resetCalibration() {
-      trackers.forEach((t) => t.reset());
-      lastSentAngles = null;
+      for (const st of playerStates.values()) {
+        resetPlayerCalibration(st);
+      }
       lastControlSnapshot = null;
-      cmdBusy = false;
-      latestAngles = null;
-      lastSentAngles = null;
+      clearAllCmdQueues();
+      angleChartHistory = [];
+      scheduleAngleChartDraw();
       resetReadyGate("manual reset");
       statCalibEl.textContent = t("tracking");
       statControlEl.textContent = t("idle");
       coordTextEl.textContent = t("resetDone", { range: ANGLE_RANGE });
-      addConsoleMessage(`Reset: cleared pct min/max; remapping to b±${ANGLE_RANGE}°`, "warn");
+      addConsoleMessage(
+        `Reset: cleared stretch calib; remap to b±${ANGLE_RANGE}° (elbows→a_min, knees→a_max)`,
+        "warn"
+      );
     }
 
     /**
      * Multi-device WebSocket pool for Petoi ws://IP:81.
      * Waits for per-task {status:"completed"} after each command (firmware finishWebCommand).
+     * Unexpected closes auto-reconnect while the IP remains desired (until user × / disconnect).
      */
     class PetoiWsPool {
       constructor() {
         this.clients = new Map(); // ip -> { ws, ip }
         this.pending = new Map(); // taskId -> { resolve, reject, timer }
+        /** IPs that should stay connected (manual × / disconnect clears). */
+        this.desired = new Set();
+        this.reconnectTimers = new Map(); // ip -> timeout id
+        this.reconnectAttempts = new Map(); // ip -> attempt count
       }
 
       list() {
@@ -2293,6 +3250,50 @@
         return false;
       }
 
+      _clearReconnect(ip) {
+        const t = this.reconnectTimers.get(ip);
+        if (t) clearTimeout(t);
+        this.reconnectTimers.delete(ip);
+      }
+
+      _rejectPendingForIp(ip) {
+        const needle = "-" + ip + "-";
+        for (const [taskId, entry] of [...this.pending]) {
+          if (!taskId.includes(needle)) continue;
+          clearTimeout(entry.timer);
+          this.pending.delete(taskId);
+          entry.reject(new Error("WS closed: " + ip));
+        }
+      }
+
+      /** Schedule reconnect with exponential backoff while IP is still desired. */
+      _scheduleReconnect(ip) {
+        if (!this.desired.has(ip) || this.isConnected(ip)) return;
+        if (this.reconnectTimers.has(ip)) return;
+        const attempt = this.reconnectAttempts.get(ip) || 0;
+        const delay = Math.min(
+          WS_RECONNECT_MAX_MS,
+          WS_RECONNECT_BASE_MS * Math.pow(2, attempt)
+        );
+        this.reconnectAttempts.set(ip, attempt + 1);
+        addConsoleMessage(
+          "WebSocket lost " + ip + " — reconnect in " + Math.round(delay / 1000) + "s…",
+          "warn"
+        );
+        const timer = setTimeout(() => {
+          this.reconnectTimers.delete(ip);
+          if (!this.desired.has(ip) || this.isConnected(ip)) return;
+          // connect() logs success; on failure it re-schedules while still desired
+          this.connect(ip).catch((e) => {
+            addConsoleMessage(
+              "WebSocket reconnect failed: " + ip + ": " + (e.message || e),
+              "warn"
+            );
+          });
+        }, delay);
+        this.reconnectTimers.set(ip, timer);
+      }
+
       _handleMessage(ip, text) {
         if (text && text.length < 240) appendSerialLine("WS[" + ip + "] " + text, false);
         const clean = (text || "").replace(/[\r\n\t\f\v]/g, " ").trim();
@@ -2312,15 +3313,36 @@
         else entry.reject(new Error(msg.error || "WS task error"));
       }
 
+      /** Close sockets for IP without clearing desired (used when replacing a socket). */
+      _dropClient(ip, { rejectPending = false } = {}) {
+        const target = normalizeIp(ip) || ip;
+        const keys = [...this.clients.keys()].filter(
+          (raw) => raw === ip || normalizeIp(raw) === target
+        );
+        for (const key of keys) {
+          const c = this.clients.get(key);
+          if (!c) continue;
+          try {
+            c.ws.onclose = null;
+            c.ws.onerror = null;
+            c.ws.close();
+          } catch {
+            /* ignore */
+          }
+          this.clients.delete(key);
+        }
+        if (rejectPending) this._rejectPendingForIp(target);
+      }
+
       connect(ip) {
         const clean = normalizeIp(ip);
         if (!clean || !isValidIp(clean)) return Promise.reject(new Error("No IP"));
         ip = clean;
+        this.desired.add(ip);
+        this._clearReconnect(ip);
         if (this.isConnected(ip)) return Promise.resolve();
-        // Drop any alias keys for the same IP before opening a new socket
-        for (const raw of [...this.clients.keys()]) {
-          if (normalizeIp(raw) === ip) this.disconnect(raw, { silent: true });
-        }
+        // Drop any alias / stale sockets for the same IP before opening a new one
+        this._dropClient(ip);
         return new Promise((resolve, reject) => {
           let settled = false;
           const url = `ws://${ip}:81`;
@@ -2328,44 +3350,47 @@
           try {
             ws = new WebSocket(url);
           } catch (e) {
+            if (this.desired.has(ip)) this._scheduleReconnect(ip);
             reject(e);
             return;
           }
           this.clients.set(ip, { ws, ip });
+          const failConnect = (err) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (this.clients.get(ip)?.ws === ws) this.clients.delete(ip);
+            if (this.desired.has(ip)) this._scheduleReconnect(ip);
+            reject(err);
+          };
           const timer = setTimeout(() => {
-            if (!settled) {
-              settled = true;
-              try {
-                ws.close();
-              } catch {
-                /* ignore */
-              }
-              if (this.clients.get(ip)?.ws === ws) this.clients.delete(ip);
-              reject(new Error("WebSocket timeout"));
+            try {
+              ws.close();
+            } catch {
+              /* ignore */
             }
+            failConnect(new Error("WebSocket timeout"));
           }, 4000);
           ws.onopen = () => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
+            this.reconnectAttempts.set(ip, 0);
             rememberIp(ip);
             addConsoleMessage("WebSocket connected: " + url, "good");
             refreshConnectedUi();
             resolve();
           };
           ws.onerror = () => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            if (this.clients.get(ip)?.ws === ws) this.clients.delete(ip);
-            reject(new Error("WebSocket error"));
+            failConnect(new Error("WebSocket error"));
           };
           ws.onclose = () => {
             // Drop live socket only; keep IP in localStorage for next refresh
-            if (this.clients.get(ip)?.ws === ws) {
-              this.clients.delete(ip);
-              refreshConnectedUi();
-            }
+            if (this.clients.get(ip)?.ws !== ws) return;
+            this.clients.delete(ip);
+            this._rejectPendingForIp(ip);
+            refreshConnectedUi();
+            if (this.desired.has(ip)) this._scheduleReconnect(ip);
           };
           ws.onmessage = (ev) => {
             const text = typeof ev.data === "string" ? ev.data : "";
@@ -2376,25 +3401,38 @@
 
       disconnect(ip, { silent = false } = {}) {
         const target = normalizeIp(ip) || ip;
+        this.desired.delete(target);
+        this._clearReconnect(target);
+        this.reconnectAttempts.delete(target);
         const keys = [...this.clients.keys()].filter(
           (raw) => raw === ip || normalizeIp(raw) === target
         );
-        if (!keys.length) return;
+        if (!keys.length) {
+          if (!silent) refreshConnectedUi();
+          return;
+        }
         for (const key of keys) {
           const c = this.clients.get(key);
           if (!c) continue;
           try {
             c.ws.onclose = null;
+            c.ws.onerror = null;
             c.ws.close();
           } catch {
             /* ignore */
           }
           this.clients.delete(key);
         }
+        this._rejectPendingForIp(target);
         if (!silent) refreshConnectedUi();
       }
 
       disconnectAll({ silent = false } = {}) {
+        for (const ip of [...this.desired]) {
+          this._clearReconnect(ip);
+        }
+        this.desired.clear();
+        this.reconnectAttempts.clear();
         for (const ip of [...this.clients.keys()]) {
           this.disconnect(ip, { silent: true });
         }
@@ -2412,10 +3450,11 @@
           return Promise.reject(new Error("WS not open: " + ip));
         }
         const taskId = Date.now() + "-" + ip + "-" + Math.random().toString(36).slice(2, 7);
+        const wireCmd = toWifiCommand(command);
         const message = {
           type: "command",
           taskId,
-          commands: [command],
+          commands: [wireCmd],
           timestamp: Date.now(),
         };
         return new Promise((resolve, reject) => {
@@ -2469,53 +3508,89 @@
     }
 
     /**
-     * Send command and wait for firmware ack:
-     * - Serial: lone line token (e.g. 'i') via printToAllPorts
-     * - WebSocket: {type:response, status:completed} via finishWebCommand
+     * Send command and wait for firmware ack on selected robots.
+     * - Serial: raw bytes for "bytes:[...]" (no newline); else ASCII + newline
+     * - WebSocket: binary commands converted to b64:; wait finishWebCommand
+     * @param {string} command
+     * @param {{ token?: string, timeoutMs?: number, robotIds?: string[]|null }} [opts]
+     *        robotIds null/undefined → sync all connected (legacy broadcast)
      */
-    async function sendRobotCommandAwaitAck(command, { token = "i", timeoutMs = CMD_ACK_TIMEOUT_MS } = {}) {
+    async function sendRobotCommandAwaitAck(
+      command,
+      { token = "I", timeoutMs = CMD_ACK_TIMEOUT_MS, robotIds = null } = {}
+    ) {
       const waits = [];
       const vias = [];
+      const robots = connectedRobotsOrdered();
+      const targets =
+        robotIds == null
+          ? robots
+          : robots.filter((r) => robotIds.includes(r.id));
+      const isBinary = !!bytesCommandToUint8Array(command);
 
-      if (transport.isConnected()) {
+      const wantSerial =
+        targets.some((r) => r.via === "serial") ||
+        (robotIds == null && transport.isConnected() && !petoiPool.hasAny());
+      // In sync broadcast with WS devices, also mirror to serial if plugged in
+      const mirrorSerial =
+        robotIds == null && transport.isConnected() && petoiPool.hasAny();
+
+      if ((wantSerial || mirrorSerial) && transport.isConnected()) {
         const from = transport.serialBuffer.length;
         waits.push(
           transport
-            .send(command, { addNewline: true, logConsole: false })
+            .send(command, { addNewline: !isBinary, logConsole: false })
             .then(() => transport.waitForToken(token, timeoutMs, from))
             .then(() => {
               vias.push("serial");
             })
         );
       }
-      if (petoiPool.hasAny()) {
+
+      const wsIps = targets
+        .filter((r) => r.via === "ws" && r.ip)
+        .map((r) => r.ip);
+      if (wsIps.length) {
         waits.push(
-          petoiPool.broadcastAndWait(command, timeoutMs).then((n) => {
-            vias.push("ws×" + n);
+          Promise.all(
+            wsIps.map((ip) => petoiPool.sendAndWait(ip, command, timeoutMs))
+          ).then(() => {
+            vias.push("ws×" + wsIps.length);
           })
         );
       }
+
       if (!waits.length) throw new Error("No serial / WebSocket connection");
 
-      // If only WiFi (no serial send path), show outbound command in monitor
-      if (!transport.isConnected() && petoiPool.hasAny()) {
-        appendSerialLine(command + "  [wait " + token + " / WS]", true);
+      if (!transport.isConnected() && wsIps.length) {
+        appendSerialLine(
+          formatCommandForLog(command) + "  [wait " + token + " / WS]",
+          true
+        );
       }
       await Promise.all(waits);
       return vias.join("+") || "ok";
     }
 
-    async function flushCommandQueue() {
-      if (cmdBusy) return;
-      if (!latestAngles) return;
-      if (!(transport.isConnected() || petoiPool.hasAny())) {
-        statControlEl.textContent = t("notConnected") + " a=[" + latestAngles.join(",") + "]";
+    async function flushCommandQueue(queueKey, robotIds) {
+      const q = getCmdQueue(queueKey);
+      if (q.busy) return;
+      if (!q.latestAngles) return;
+      if (!connectedRobotsOrdered().length) {
+        statControlEl.textContent =
+          t("notConnected") + " a=[" + q.latestAngles.join(",") + "]";
         return;
       }
 
-      const angles = latestAngles;
-      latestAngles = null;
-      if (lastSentAngles && angles.every((v, i) => v === lastSentAngles[i])) {
+      const angles = q.latestAngles;
+      q.latestAngles = null;
+      // Deadband: if all joints moved < ANGLE_SEND_MIN_DELTA° since last send, skip
+      if (
+        q.lastSentAngles &&
+        angles.every(
+          (v, i) => Math.abs(v - q.lastSentAngles[i]) < ANGLE_SEND_MIN_DELTA
+        )
+      ) {
         statControlEl.textContent = "a=[" + angles.join(",") + "]";
         return;
       }
@@ -2524,39 +3599,47 @@
       for (let i = 0; i < 4; i++) {
         params.push(ROBOT_JOINT_IDS[i], angles[i]);
       }
-      const command = encodeCommand("i", params);
+      // 'I' = T_INDEXED_SIMULTANEOUS_BIN (binary over socket via b64:)
+      const command = encodeCommand("I", params);
 
-      cmdBusy = true;
+      q.busy = true;
       try {
-        const via = await sendRobotCommandAwaitAck(command, { token: "i" });
-        lastSentAngles = angles.slice();
+        const via = await sendRobotCommandAwaitAck(command, {
+          token: "I",
+          robotIds: robotIds == null ? null : robotIds,
+        });
+        q.lastSentAngles = angles.slice();
         statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
       } catch (e) {
         statControlEl.textContent = t("sendFailed") + ": " + (e.message || e);
-        // Do not keep lastSentAngles stuck — allow retry of same pose after timeout
       } finally {
-        cmdBusy = false;
-        if (latestAngles) {
-          // Send only the newest pose accumulated while waiting for ack
-          queueMicrotask(() => flushCommandQueue());
+        q.busy = false;
+        if (q.latestAngles) {
+          queueMicrotask(() => flushCommandQueue(queueKey, robotIds));
         }
       }
     }
 
     /**
-     * Dynamic min/max of pct → linear map to [b-R, b+R] (raise → smaller a).
-     * Sends encodeCommand('i', ...) only after ready-gate + previous 'i' ack.
+     * Stretch-calib pct → [b-R, b+R], 1€-filtered, then send 'I'.
      * @param {number[]} pcts
-     * @param {{ allowSend?: boolean }} [opts]
+     * @param {{ allowSend?: boolean, trackers?: PctRangeTracker[], angleFilters?: OneEuroFilter[], queueKey?: string, robotIds?: string[]|null, readyPhase?: string, statusHint?: string, updateHud?: boolean, now?: number }} [opts]
      */
     function updateGaitControl(pcts, opts) {
       const allowSend = !!(opts && opts.allowSend);
+      const trackers = opts && opts.trackers;
+      if (!trackers) return null;
+      const angleFilters = opts && opts.angleFilters;
+      const now = (opts && opts.now) || performance.now();
+      const queueKey = (opts && opts.queueKey) || "__sync__";
+      const robotIds = opts && "robotIds" in opts ? opts.robotIds : null;
+      const updateHud = !opts || opts.updateHud !== false;
       const a = [null, null, null, null];
       const ranges = [];
       let readyCount = 0;
 
       for (let i = 0; i < 4; i++) {
-        const smoothed = trackers[i].push(pcts[i]);
+        const smoothed = trackers[i].push(pcts[i], now);
         const tr = trackers[i];
         ranges.push({
           min: tr.minV,
@@ -2565,18 +3648,30 @@
         });
         if (tr.ready) {
           readyCount++;
-          a[i] = tr.mapToAngle(smoothed, B_BASE[i]);
+          let ang = tr.mapToAngle(smoothed, B_BASE[i]);
+          if (ang != null && angleFilters && angleFilters[i]) {
+            ang = angleFilters[i].filter(ang, now);
+          }
+          a[i] = clampToJointRange(ang != null ? ang : B_BASE[i], B_BASE[i]);
         } else {
           a[i] = B_BASE[i];
+          if (angleFilters && angleFilters[i]) angleFilters[i].reset();
         }
       }
 
-      statCalibEl.textContent =
-        readyCount === 4
-          ? t("mapReady", { range: ANGLE_RANGE })
-          : t("mapTracking", { n: readyCount });
+      if (updateHud) {
+        statCalibEl.textContent =
+          readyCount === 4
+            ? t("mapReady", { range: ANGLE_RANGE })
+            : t("mapTracking", { n: readyCount });
+      }
 
       const angles = a.map((v, i) => (v == null ? B_BASE[i] : v));
+      // Chart: relative to each joint's B_BASE (0 at base)
+      if (updateHud && readyCount === 4) {
+        pushAngleChartSample(angles, now);
+      }
+      const q = getCmdQueue(queueKey);
       lastControlSnapshot = {
         phase: !allowSend
           ? "gated"
@@ -2586,33 +3681,43 @@
         pcts,
         a: angles,
         ranges,
-        cmdBusy,
-        readyPhase: readyGate.phase,
+        cmdBusy: q.busy,
+        readyPhase: (opts && opts.readyPhase) || "",
+        queueKey,
       };
 
       if (!allowSend) {
-        latestAngles = null;
-        statControlEl.textContent = t("waitReady") + " · " + (readyGate.prompt || readyGate.phase);
+        q.latestAngles = null;
+        if (updateHud) {
+          const hint =
+            (opts && opts.statusHint) ||
+            t("waitReady");
+          statControlEl.textContent = hint;
+        }
         return null;
       }
 
       if (readyCount < 4) {
-        statControlEl.textContent = t("expandMotion");
+        if (updateHud) statControlEl.textContent = t("expandMotion");
         return null;
       }
 
-      if (!(transport.isConnected() || petoiPool.hasAny())) {
-        statControlEl.textContent = t("notConnected") + " a=[" + angles.join(",") + "]";
+      if (!connectedRobotsOrdered().length) {
+        if (updateHud) {
+          statControlEl.textContent =
+            t("notConnected") + " a=[" + angles.join(",") + "]";
+        }
         return { a: angles, sent: false };
       }
 
-      // Keep only the newest target; send after previous 'i' is acknowledged.
-      latestAngles = angles.slice();
-      if (cmdBusy) {
-        statControlEl.textContent = "a=[" + angles.join(",") + "] (wait ack)";
+      q.latestAngles = angles.slice();
+      if (q.busy) {
+        if (updateHud) {
+          statControlEl.textContent = "a=[" + angles.join(",") + "] (wait ack)";
+        }
         return { a: angles, sent: false, queued: true };
       }
-      flushCommandQueue();
+      flushCommandQueue(queueKey, robotIds);
       return { a: angles, sent: true };
     }
 
@@ -2707,7 +3812,7 @@
 
       async connect() {
         if (!navigator.serial) {
-          throw new Error("Web Serial 不可用（请用 Chrome/Edge，且为 HTTPS 或 localhost）");
+          throw new Error(t("serialUnavailable"));
         }
         let ports = [];
         try {
@@ -2779,13 +3884,22 @@
         loop();
       }
 
-      async send(text, { addNewline = true, logConsole = true } = {}) {
+      async send(data, { addNewline = true, logConsole = true } = {}) {
         if (!this.writer) throw new Error("Serial not connected");
-        let payload = text;
-        if (addNewline && !payload.endsWith("\n")) payload += "\n";
-        await this.writer.write(new TextEncoder().encode(payload));
-        appendSerialLine(payload.replace(/\n$/, ""), true);
-        if (logConsole) addConsoleMessage("Sent: " + payload.replace(/\n$/, ""), "sent");
+        let bytes = bytesCommandToUint8Array(data);
+        let display;
+        if (bytes) {
+          // Binary UPPERCASE tokens already end with '~' — do not append '\n'
+          display = formatCommandForLog(data);
+        } else {
+          let payload = String(data);
+          if (addNewline && !payload.endsWith("\n")) payload += "\n";
+          bytes = new TextEncoder().encode(payload);
+          display = payload.replace(/\n$/, "");
+        }
+        await this.writer.write(bytes);
+        appendSerialLine(display, true);
+        if (logConsole) addConsoleMessage("Sent: " + display, "sent");
       }
 
       async waitForToken(token, timeoutMs = 10000, fromIndex) {
@@ -3183,17 +4297,50 @@
       ctx.stroke();
     }
 
-    /** Hip center (0,0) = midpoint of left and right hip joints. */
+    /** Hip midpoint (fallback / anatomy helper). */
     function hipCenter(pts) {
       const lh = pts[POSE.LEFT_HIP];
       const rh = pts[POSE.RIGHT_HIP];
       if (!lh || !rh || lh.vis < VIS_MIN || rh.vis < VIS_MIN) {
-        // Fallback to whichever hip is visible
         if (lh && lh.vis >= VIS_MIN) return { x: lh.x, y: lh.y, vis: 1 };
         if (rh && rh.vis >= VIS_MIN) return { x: rh.x, y: rh.y, vis: 1 };
         return null;
       }
       return { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2, vis: 1 };
+    }
+
+    /**
+     * Navel-height baseline origin (0,0).
+     * MediaPipe has no umbilicus landmark — approximate as 2/3 from
+     * mid-shoulder toward mid-hip along the torso.
+     */
+    const NAVEL_FROM_SHOULDER = 2 / 3;
+    function navelCenter(pts) {
+      if (!pts) return null;
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      const midHip = hipCenter(pts);
+      const midShoulder =
+        ls && rs && ls.vis >= VIS_MIN && rs.vis >= VIS_MIN
+          ? { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 }
+          : ls && ls.vis >= VIS_MIN
+            ? { x: ls.x, y: ls.y }
+            : rs && rs.vis >= VIS_MIN
+              ? { x: rs.x, y: rs.y }
+              : null;
+      if (midShoulder && midHip) {
+        const t = NAVEL_FROM_SHOULDER;
+        return {
+          x: midShoulder.x + (midHip.x - midShoulder.x) * t,
+          y: midShoulder.y + (midHip.y - midShoulder.y) * t,
+          vis: 1,
+        };
+      }
+      // Fallback: slightly above hips if shoulders missing
+      if (midHip) {
+        return { x: midHip.x, y: midHip.y - 24, vis: 1 };
+      }
+      return null;
     }
 
     function shoulderWidthPx(pts) {
@@ -3206,7 +4353,7 @@
     }
 
     /**
-     * Y offset relative to hip center (0,0), UP positive (screen Y is down).
+     * Y offset relative to navel baseline (0,0), UP positive (screen Y is down).
      * Raising a limb → pct increases → maps to smaller joint angle.
      */
     function jointYOffsetPct(joint, center, shoulderW) {
@@ -3297,14 +4444,89 @@
       const lines = [];
       const now = performance.now();
 
-      // Ready-gate uses primary pose only; missing body counts as illegal
-      const primaryPts = poses.length ? poses[0].map(landmarkToClient) : null;
-      updateReadyGate(primaryPts, now);
+      const posePtsList = poses.map((lm) => lm.map(landmarkToClient));
+      // Cap to MAX_POSES (2): first-recognized tracks only
+      const people = matchPersonTracks(posePtsList, now)
+        .sort((a, b) => a.trackId - b.trackId)
+        .slice(0, MAX_POSES);
+      const robots = connectedRobotsOrdered();
+      controlLayout = computeControlLayout(people, robots);
 
-      for (let pi = 0; pi < poses.length; pi++) {
-        const pts = pi === 0 ? primaryPts : poses[pi].map(landmarkToClient);
-        const legal = pi === 0 ? readyGate.legal : isLegalSitOrStand(pts);
-        const center = hipCenter(pts);
+      const activeIds = new Set([
+        ...people.map((p) => p.trackId),
+        ...personTracks.map((tr) => tr.id),
+      ]);
+      prunePlayerStates(activeIds);
+
+      const visiblePeople = people.filter((p) => p.pts);
+      // Truly empty: no live or ghost tracks
+      if (!people.length) {
+        showReadyPrompts([], { emptyFramePrompt: t("poseIllegal") });
+        showBodyIpLabels([]);
+        coordTextEl.textContent = t("noBody");
+        for (const q of cmdQueues.values()) q.latestAngles = null;
+        syncColumnGuides(0);
+        statPoseEl.textContent = "0";
+        statElbowsEl.textContent = "0";
+        statKneesEl.textContent = "0";
+        return;
+      }
+
+      lines.push(
+        `mode=${controlLayout.mode}  people=${controlLayout.personCount}  robots=${controlLayout.robotCount}`
+      );
+
+      // Pass 1: advance per-person ready gates
+      for (const person of people) {
+        const asg =
+          controlLayout.assignments.find((a) => a.trackId === person.trackId) ||
+          null;
+        const st = ensurePlayerState(person.trackId);
+        if (!st.trackers) st.trackers = createJointTrackers(person.trackId);
+        if (asg && asg.isController) {
+          updateReadyGateState(st.readyGate, person.pts, now, {
+            label: "P" + person.trackId,
+            onHardReset: () => {
+              resetPlayerCalibration(st);
+              holdPlayerCommands(asg);
+            },
+          });
+        } else {
+          st.readyGate.legal = isLegalSitOrStand(person.pts);
+          st.readyGate.prompt = "";
+        }
+      }
+
+      for (let pi = 0; pi < people.length; pi++) {
+        const person = people[pi];
+        const pts = person.pts;
+        const asg =
+          controlLayout.assignments.find((a) => a.trackId === person.trackId) ||
+          null;
+        const st = ensurePlayerState(person.trackId);
+        const isController = !!(asg && asg.isController);
+
+        if (!pts) {
+          lines.push(`P#${person.trackId}  (briefly lost)`);
+          if (isController) {
+            holdPlayerCommands(asg);
+            lines.push(
+              `  ready: ${st.readyGate.phase}` +
+                (st.readyGate.prompt ? ` — ${st.readyGate.prompt}` : "")
+            );
+            lines.push("  send: held (pose lost)");
+          }
+          continue;
+        }
+
+        const legal = isController
+          ? st.readyGate.legal
+          : isLegalSitOrStand(pts);
+        // Illegal pose / 5s grace before reset: do not send joint commands
+        if (isController && !legal) {
+          holdPlayerCommands(asg);
+        }
+        const center = navelCenter(pts);
         const shoulderW = shoulderWidthPx(pts);
 
         for (const [i, j] of POSE_CONNECTIONS) {
@@ -3320,7 +4542,6 @@
           drawJoint(pts[idx], LINE.skeleton, 7);
         }
 
-        // Shoulder width guide (same type as skeleton)
         const ls = pts[POSE.LEFT_SHOULDER];
         const rs = pts[POSE.RIGHT_SHOULDER];
         if (ls.vis >= VIS_MIN && rs.vis >= VIS_MIN) {
@@ -3337,11 +4558,9 @@
         if (lk.vis >= VIS_MIN) kneeCount++;
         if (rk.vis >= VIS_MIN) kneeCount++;
 
-        // Filter non sit/stand poses from baseline / control mapping
         if (center && legal) {
           drawHorizontalThroughCenter(center, cw);
 
-          // Channel order 1..4 → LE, RE, RK, LK → robot joints 2,3,4,5
           const targets = [
             { joint: le, tag: "LE", name: "L-Elbow" },
             { joint: re, tag: "RE", name: "R-Elbow" },
@@ -3349,78 +4568,137 @@
             { joint: lk, tag: "LK", name: "L-Knee" },
           ];
 
-          const pcts = targets.map((t) => {
-            const off = jointYOffsetPct(t.joint, center, shoulderW);
+          const pcts = targets.map((tg) => {
+            const off = jointYOffsetPct(tg.joint, center, shoulderW);
             return off ? off.pct : null;
           });
 
-          // Primary pose: map always (when legal); send only after READY
-          if (pi === 0) {
+          if (isController) {
+            // At READY: lock stretch pose — elbow avg → a_min, knee avg → a_max
+            if (
+              !st.calibLocked &&
+              (st.readyGate.phase === READY_PHASE.READY_FLASH ||
+                st.readyGate.phase === READY_PHASE.CONTROLLING)
+            ) {
+              lockStretchCalibration(st, pcts);
+            }
+
+            // Each controller is independent — one person's illegal / not-ready
+            // must not block the other person's robot commands.
+            // Must be CONTROLLING and currently legal (no send during illegal wait).
+            const allowSend =
+              st.readyGate.phase === READY_PHASE.CONTROLLING &&
+              !!st.readyGate.legal &&
+              st.readyGate.illegalSince == null;
+            const statusHint = !st.readyGate.legal
+              ? t("poseIllegal").split("\n")[0] + " · hold"
+              : t("waitReady") +
+                " · " +
+                (st.readyGate.prompt || st.readyGate.phase);
+
+            const queueKey =
+              controlLayout.mode === "sync"
+                ? "__sync__"
+                : asg.robotIds[0] || "__none__";
+            const robotIds =
+              controlLayout.mode === "sync" ? null : asg.robotIds.slice();
+
+            if (!st.angleFilters) st.angleFilters = createAngleFilters();
             updateGaitControl(pcts, {
-              allowSend: readyGate.phase === READY_PHASE.CONTROLLING,
+              allowSend: allowSend && queueKey !== "__none__",
+              trackers: st.trackers,
+              angleFilters: st.angleFilters,
+              now,
+              queueKey,
+              robotIds,
+              readyPhase: st.readyGate.phase,
+              statusHint,
+              updateHud: pi === 0 || (asg && asg.column === 0),
             });
           }
 
-          lines.push(`Pose#${pi + 1}  shoulderW=${shoulderW.toFixed(0)}px`);
-          lines.push(`  hip center (0,0) @ ${Math.round(center.x)}, ${Math.round(center.y)}`);
-          lines.push(`  ready: ${readyGate.phase}` + (readyGate.prompt ? ` — ${readyGate.prompt}` : ""));
-          lines.push(`  map: pct[min..max] → a[b+${ANGLE_RANGE}..b-${ANGLE_RANGE}]`);
+          const role = !asg
+            ? "?"
+            : asg.isController
+              ? controlLayout.mode === "sync"
+                ? "sync-all"
+                : "ctrl→" + (asg.robots.map(robotLabel).join(",") || "—")
+              : "spectator";
+          lines.push(
+            `P#${person.trackId}  ${role}  shoulderW=${shoulderW.toFixed(0)}px`
+          );
+          lines.push(
+            `  navel baseline (0,0) @ ${Math.round(center.x)}, ${Math.round(center.y)}`
+          );
+          if (isController) {
+            lines.push(
+              `  ready: ${st.readyGate.phase}` +
+                (st.readyGate.prompt ? ` — ${st.readyGate.prompt}` : "")
+            );
+            lines.push(
+              `  map: stretch calib pct[min..max] → a[b+${ANGLE_RANGE}..b-${ANGLE_RANGE}]` +
+                (st.calibLocked ? " (locked)" : " (pending)")
+            );
+          }
 
           for (let ti = 0; ti < targets.length; ti++) {
-            const t = targets[ti];
+            const tg = targets[ti];
             const pct = pcts[ti];
-            drawJointDropToCenter(t.joint, center, pct, t.tag);
-            const tr = trackers[ti];
-            let extra = fmtPct(pct);
-            if (tr.ready) {
-              const ang = tr.mapToAngle(pct, B_BASE[ti]);
-              extra += `  [${tr.minV.toFixed(0)}..${tr.maxV.toFixed(0)}]→a=${ang}`;
-            } else if (Number.isFinite(tr.minV)) {
-              extra += `  min=${tr.minV.toFixed(0)} max=${tr.maxV.toFixed(0)}`;
+            drawJointDropToCenter(tg.joint, center, pct, tg.tag);
+            if (isController && st.trackers) {
+              const tr = st.trackers[ti];
+              let extra = fmtPct(pct);
+              if (tr.ready) {
+                const ang = tr.mapToAngle(pct, B_BASE[ti]);
+                extra += `  [${tr.minV.toFixed(0)}..${tr.maxV.toFixed(0)}]→a=${ang}`;
+              } else if (Number.isFinite(tr.minV)) {
+                extra += `  min=${tr.minV.toFixed(0)} max=${tr.maxV.toFixed(0)}`;
+              }
+              lines.push(`  ${tg.name.padEnd(8)} ${extra}`);
             }
-            lines.push(`  ${t.name.padEnd(8)} ${extra}`);
           }
 
           if (
-            pi === 0 &&
+            isController &&
             lastControlSnapshot &&
+            lastControlSnapshot.queueKey &&
             (lastControlSnapshot.phase === "control" ||
               lastControlSnapshot.phase === "warmup")
           ) {
             const { a } = lastControlSnapshot;
             lines.push(`  b=[${B_BASE.join(",")}]  range=±${ANGLE_RANGE}`);
             lines.push(`  a=[${a.join(",")}]`);
-            lines.push(`  i ${ROBOT_JOINT_IDS.map((id, i) => id + " " + a[i]).join(" ")}`);
+            lines.push(
+              `  I ${ROBOT_JOINT_IDS.map((id, i) => id + " " + a[i]).join(" ")} (bin)`
+            );
           }
         } else {
-          lines.push(`Pose#${pi + 1}`);
-          if (!legal) lines.push("  " + t("poseIllegal").replace(/\n/g, " · "));
-          else lines.push("  hip center unavailable");
+          lines.push(`P#${person.trackId}`);
+          if (!legal) {
+            lines.push("  " + t("poseIllegal").replace(/\n/g, " · "));
+            if (isController) {
+              lines.push("  send: held (illegal pose)");
+              if (pi === 0 || (asg && asg.column === 0)) {
+                statControlEl.textContent =
+                  t("poseIllegal").split("\n")[0] + " · hold";
+              }
+            }
+          } else {
+            lines.push("  navel baseline unavailable");
+          }
         }
 
         drawJoint(le, LINE.drop, 12, "L-Elbow");
         drawJoint(re, LINE.drop, 12, "R-Elbow");
         drawJoint(lk, LINE.drop, 12, "L-Knee");
         drawJoint(rk, LINE.drop, 12, "R-Knee");
-
-        if (pi === 0) {
-          showHeadPrompt(pts, readyGate.prompt);
-          showBodyIpLabel(pts);
-        }
       }
 
-      if (!poses.length) {
-        showHeadPrompt(null, readyGate.prompt);
-        showBodyIpLabel(null);
-        coordTextEl.textContent = t("noBody");
-        if (readyGate.phase === READY_PHASE.WAITING) {
-          latestAngles = null;
-        }
-      } else {
-        coordTextEl.textContent = lines.join("\n");
-      }
+      showReadyPrompts(controlLayout.assignments);
+      showBodyIpLabels(controlLayout.assignments);
+      coordTextEl.textContent = lines.join("\n");
 
-      statPoseEl.textContent = String(poses.length);
+      statPoseEl.textContent = String(visiblePeople.length);
       statElbowsEl.textContent = String(elbowCount);
       statKneesEl.textContent = String(kneeCount);
     }
@@ -3470,7 +4748,10 @@
         applyCameraRotation();
         lastVideoTime = -1;
         rafId = requestAnimationFrame(tick);
-        addConsoleMessage(`Camera started — move limbs to expand pct min/max (map to b±${ANGLE_RANGE}°)`, "good");
+        addConsoleMessage(
+          `Camera started — stretch at READY locks elbows→a_min / knees→a_max (b±${ANGLE_RANGE}°)`,
+          "good"
+        );
       } catch (e) {
         btnStart.disabled = false;
         showError(t("cameraError", { msg: e.message || e }));
@@ -3493,7 +4774,7 @@
       return PoseLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: POSE_MODEL, delegate },
         runningMode: "VIDEO",
-        numPoses: 1,
+        numPoses: MAX_POSES,
         minPoseDetectionConfidence: 0.5,
         minPosePresenceConfidence: 0.5,
         minTrackingConfidence: 0.5,
@@ -3609,6 +4890,15 @@
     loadStatusEl.textContent = t("loadingModel");
     coordTextEl.textContent = t("waitingDetect");
     applyI18n();
+    if (angleChartCanvas && angleChartCanvas.parentElement) {
+      resizeAngleChartCanvas();
+      if (typeof ResizeObserver !== "undefined") {
+        new ResizeObserver(() => resizeAngleChartCanvas()).observe(
+          angleChartCanvas.parentElement
+        );
+      }
+      window.addEventListener("resize", resizeAngleChartCanvas);
+    }
     if (!navigator.serial) {
       addConsoleMessage("Web Serial unsupported in this browser", "warn");
     } else {
@@ -3634,7 +4924,7 @@
       refreshConnectedUi();
     }
     addConsoleMessage(
-      `Gait map: LE,RE,RK,LK pct min/max → a in b±${ANGLE_RANGE}; raise→smaller angle; i 2..5`,
+      `Gait map: stretch calib elbows→a_min, knees→a_max; pct↑→a↓; I 2..5; b±${ANGLE_RANGE}`,
       "good"
     );
     initPose();
