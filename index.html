@@ -43,9 +43,10 @@
     .top-bar .bar-actions {
       display: flex;
       gap: 0.5rem;
-      align-items: center;
+      align-items: flex-start;
       flex-shrink: 0;
     }
+    #btnHelp,
     #btnResetCalib {
       font: inherit;
       font-size: 0.85rem;
@@ -57,22 +58,87 @@
       background: #21262d;
       color: #e6edf3;
       white-space: nowrap;
+      margin-top: 0.1rem;
     }
+    #btnHelp:hover,
     #btnResetCalib:hover { background: #30363d; }
+    .ip-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 10.5rem;
+      max-width: 16rem;
+    }
     #robotIpInput {
       font: inherit;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
       padding: 0.4rem 0.65rem;
-      width: 9.5rem;
-      border: 1px solid #30363d;
+      width: 100%;
+      border: 2px solid #FFE600;
       border-radius: 6px;
-      background: #0d1117;
-      color: #e6edf3;
+      background: #000;
+      color: #FFE600;
+      box-shadow: 0 0 0 1px #000, 0 0 8px rgba(255, 230, 0, 0.35);
+    }
+    #robotIpInput::placeholder {
+      color: #b89f00;
+      opacity: 1;
+      font-weight: 600;
     }
     #robotIpInput:focus {
       outline: none;
-      border-color: #58a6ff;
+      border-color: #FFF566;
+      color: #FFF566;
+      box-shadow: 0 0 0 1px #000, 0 0 12px rgba(255, 230, 0, 0.55);
+    }
+    .connected-ip-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #7ee787;
+      letter-spacing: 0.02em;
+    }
+    .connected-ip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      min-height: 1.1rem;
+    }
+    .connected-ip-list:empty::after {
+      content: attr(data-empty);
+      color: #6e7681;
+      font-size: 0.68rem;
+    }
+    .ip-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      padding: 0.12rem 0.35rem;
+      border-radius: 4px;
+      background: #033a16;
+      color: #56d364;
+      border: 1px solid #3fb950;
+    }
+    .ip-chip button {
+      font: inherit;
+      font-size: 0.75rem;
+      line-height: 1;
+      padding: 0;
+      margin: 0;
+      border: none;
+      background: transparent;
+      color: #ff7b72;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .ip-chip button:hover { color: #ffa198; }
+    #quickConnectBtn,
+    #langSelect {
+      margin-top: 0.1rem;
     }
     #quickConnectBtn {
       font: inherit;
@@ -218,6 +284,22 @@
     .dot-pose { background: #00F0FF; }
     .dot-base { background: #FFE600; }
 
+    .camera-stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      z-index: 1;
+      background: #000;
+      display: none;
+    }
+    body.camera-on .camera-stage { display: block; }
+    .camera-stage-inner {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform-origin: center center;
+      background: #000;
+    }
     #preview {
       position: absolute;
       inset: 0;
@@ -226,10 +308,9 @@
       object-fit: cover;
       background: #000;
       z-index: 1;
-      display: none;
-      transform: scaleX(-1);
+      display: block;
+      /* Mirror is applied on stage-inner together with rotation */
     }
-    body.camera-on #preview { display: block; }
     #overlay {
       position: absolute;
       inset: 0;
@@ -237,9 +318,135 @@
       height: 100%;
       z-index: 2;
       pointer-events: none;
-      display: none;
+      display: block;
     }
-    body.camera-on #overlay { display: block; }
+    /* Outside mirrored stage-inner so text is not flipped */
+    .head-prompt {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 4;
+      pointer-events: none;
+      display: none;
+      transform: translate(-50%, -100%);
+      padding: 0.2rem 0.55rem;
+      font: 800 56px system-ui, sans-serif;
+      color: #ffe600;
+      text-align: center;
+      text-shadow:
+        0 0 3px #000,
+        2px 0 0 #000,
+        -2px 0 0 #000,
+        0 2px 0 #000,
+        0 -2px 0 #000,
+        3px 3px 0 #000;
+      /* Only break on explicit \n — no free wrapping */
+      white-space: pre;
+      line-height: 1.12;
+    }
+    .head-prompt.long {
+      font-size: 36px;
+      font-weight: 700;
+    }
+    .head-prompt.countdown {
+      color: #ffe600;
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1.05;
+    }
+    .head-prompt.countdown .prompt-count {
+      display: block;
+      font-size: 96px;
+      font-weight: 900;
+      margin-top: 0.05em;
+    }
+    .head-prompt.ready {
+      color: #7cff6b;
+      font-size: 88px;
+      font-weight: 900;
+      text-shadow:
+        0 0 4px #000,
+        3px 0 0 #000,
+        -3px 0 0 #000,
+        0 3px 0 #000,
+        0 -3px 0 #000,
+        4px 4px 0 #000;
+    }
+    .head-prompt.illegal {
+      color: #ffe600;
+      font-size: 36px;
+      font-weight: 700;
+    }
+    .head-prompt.illegal .prompt-title {
+      display: block;
+      font-size: 80px;
+      font-weight: 900;
+      color: #ff1f1f;
+      line-height: 1.05;
+      margin-bottom: 0.08em;
+      -webkit-text-stroke: 4px #000;
+      paint-order: stroke fill;
+      text-shadow:
+        0 0 2px #000,
+        2px 0 0 #000,
+        -2px 0 0 #000,
+        0 2px 0 #000,
+        0 -2px 0 #000;
+    }
+    .head-prompt.illegal .prompt-body {
+      display: block;
+      font-size: 36px;
+      font-weight: 700;
+      color: #ffe600;
+      white-space: pre;
+    }
+    .head-prompt.visible {
+      display: block;
+    }
+    /* Flip under the shoulder line when there is not enough room above */
+    .head-prompt.below {
+      transform: translate(-50%, 0%);
+    }
+    /* Connected IP label at torso mid (between shoulders and hips) */
+    .body-ip-label {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 3;
+      pointer-events: none;
+      display: none;
+      transform: translate(-50%, -50%);
+      padding: 0.1rem 0.35rem;
+      font: 800 34px system-ui, sans-serif;
+      color: #00f0ff;
+      text-align: center;
+      text-shadow:
+        0 0 3px #000,
+        2px 0 0 #000,
+        -2px 0 0 #000,
+        0 2px 0 #000,
+        0 -2px 0 #000,
+        3px 3px 0 #000;
+      white-space: pre;
+      line-height: 1.15;
+    }
+    .body-ip-label.visible {
+      display: block;
+    }
+    #btnRotateCamera {
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.4rem 0.65rem;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #21262d;
+      color: #e6edf3;
+      white-space: nowrap;
+      margin-top: 0.1rem;
+    }
+    #btnRotateCamera:hover { background: #30363d; }
 
     .hud {
       position: absolute;
@@ -520,7 +727,7 @@
       border-radius: 8px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
       z-index: 1001;
-      width: min(360px, calc(100vw - 2rem));
+      width: min(420px, calc(100vw - 2rem));
       display: none;
     }
     .wifi-dialog.visible { display: block; }
@@ -528,10 +735,46 @@
       margin: 0 0 0.75rem;
       font-size: 1rem;
     }
+    .wifi-dialog .wifi-desc {
+      margin: 0 0 0.75rem;
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.45;
+      white-space: pre-line;
+    }
+    .wifi-dialog .wifi-section {
+      margin-top: 0.35rem;
+    }
+    .wifi-dialog .wifi-section + .wifi-section {
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid #e5e5e5;
+    }
+    .wifi-dialog .wifi-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin: 0.35rem 0 0.25rem;
+    }
+    .wifi-dialog .wifi-label-row label {
+      display: block;
+      font-size: 0.85rem;
+      margin: 0;
+    }
     .wifi-dialog label {
       display: block;
       font-size: 0.85rem;
       margin: 0.5rem 0 0.25rem;
+    }
+    .wifi-dialog .wifi-input-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0.45rem;
+    }
+    .wifi-dialog .wifi-input-row input {
+      flex: 1;
+      min-width: 0;
     }
     .wifi-dialog input {
       width: 100%;
@@ -539,6 +782,21 @@
       border: 1px solid #ccc;
       border-radius: 4px;
       font: inherit;
+      box-sizing: border-box;
+    }
+    .wifi-dialog .wifi-btn {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.75rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .wifi-dialog .wifi-btn-block {
+      width: 100%;
+      margin-top: 0.65rem;
     }
     .wifi-dialog .dialog-actions {
       display: flex;
@@ -556,6 +814,79 @@
     }
     .wifi-dialog .btn-cancel { background: #e9e9e9; color: #222; }
     .wifi-dialog .btn-ok { background: #007bff; color: #fff; }
+    .wifi-dialog .btn-secondary { background: #6c757d; color: #fff; }
+
+    .help-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      color: #222;
+      padding: 1.25rem 1.4rem 1rem;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      z-index: 1001;
+      width: min(560px, calc(100vw - 2rem));
+      max-height: min(80vh, 720px);
+      display: none;
+      flex-direction: column;
+    }
+    .help-dialog.visible { display: flex; }
+    .help-dialog h3 {
+      margin: 0 0 0.75rem;
+      font-size: 1.1rem;
+    }
+    .help-dialog .help-body {
+      overflow: auto;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: #333;
+      padding-right: 0.25rem;
+    }
+    .help-dialog .help-body h4 {
+      margin: 1rem 0 0.4rem;
+      font-size: 0.95rem;
+      color: #111;
+    }
+    .help-dialog .help-body h4:first-child { margin-top: 0; }
+    .help-dialog .help-body p,
+    .help-dialog .help-body ol,
+    .help-dialog .help-body ul {
+      margin: 0 0 0.55rem;
+      padding-left: 1.2rem;
+    }
+    .help-dialog .help-body li { margin: 0.2rem 0; }
+    .help-dialog .help-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.4rem 0 0.75rem;
+      font-size: 0.85rem;
+    }
+    .help-dialog .help-body th,
+    .help-dialog .help-body td {
+      border: 1px solid #ddd;
+      padding: 0.35rem 0.45rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    .help-dialog .help-body th { background: #f3f4f6; }
+    .help-dialog .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 0.85rem;
+      flex-shrink: 0;
+    }
+    .help-dialog .dialog-actions button {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.85rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+    }
 
     @media (max-width: 800px) {
       .main { flex-direction: column; }
@@ -577,17 +908,34 @@
     <header class="top-bar">
       <h1 data-i18n="appTitle">Camera · Elbow &amp; Knee Tracking</h1>
       <div class="bar-actions">
+        <button type="button" id="btnHelp" data-i18n="helpBtn" data-i18n-title="helpTitle">❓ Help</button>
         <button type="button" id="btnResetCalib" data-i18n="reset" data-i18n-title="resetTitle">Reset</button>
-        <input
-          type="text"
-          id="robotIpInput"
-          data-i18n-placeholder="robotIpPlaceholder"
-          data-i18n-title="robotIpTitle"
-          placeholder="Robot IP"
-          spellcheck="false"
-          autocomplete="off"
-          title="Robot IP — auto-updated; editable"
-        />
+        <button
+          type="button"
+          id="btnRotateCamera"
+          data-i18n="rotateCamera"
+          data-i18n-title="rotateCameraTitle"
+          title="Rotate camera view 90° counterclockwise"
+        >↺ 90°</button>
+        <div class="ip-block">
+          <input
+            type="text"
+            id="robotIpInput"
+            data-i18n-placeholder="robotIpPlaceholder"
+            data-i18n-title="robotIpTitle"
+            placeholder="Robot IP"
+            spellcheck="false"
+            autocomplete="off"
+            title="Robot IP — type and Quick Connect; supports multiple devices"
+          />
+          <div class="connected-ip-label" data-i18n="connectedIpsLabel">Connected</div>
+          <div
+            id="connectedIpList"
+            class="connected-ip-list"
+            data-i18n-empty="connectedIpsEmpty"
+            data-empty="None"
+          ></div>
+        </div>
         <button type="button" id="quickConnectBtn" data-i18n="quickConnect">Quick Connect</button>
         <select id="langSelect" aria-label="Language">
           <option value="en">🇺🇸 English</option>
@@ -621,8 +969,14 @@
           </div>
         </div>
 
-        <video id="preview" autoplay playsinline muted></video>
-        <canvas id="overlay" aria-hidden="true"></canvas>
+        <div class="camera-stage" id="cameraStage">
+          <div class="camera-stage-inner" id="cameraStageInner">
+            <video id="preview" autoplay playsinline muted></video>
+            <canvas id="overlay" aria-hidden="true"></canvas>
+          </div>
+          <div id="headPromptEl" class="head-prompt" aria-live="polite"></div>
+          <div id="bodyIpEl" class="body-ip-label" aria-hidden="true"></div>
+        </div>
 
         <aside class="hud hud-coords" id="hudCoords" data-i18n-aria="hudCoordsAria">
           <h2 data-i18n="hudCoordsTitle">Y offset / shoulder width %</h2>
@@ -679,22 +1033,42 @@
   </div>
 
   <div class="modal-overlay" id="wifiOverlay"></div>
+  <div class="modal-overlay" id="helpOverlay"></div>
+  <div class="help-dialog" id="helpDialog" role="dialog" aria-labelledby="helpDialogTitle" aria-modal="true">
+    <h3 id="helpDialogTitle" data-i18n="helpTitle">Help</h3>
+    <div class="help-body dark-scrollbar" id="helpBody" data-i18n-html="helpBodyHtml"></div>
+    <div class="dialog-actions">
+      <button type="button" id="helpClose" data-i18n="btnCloseHelp">Close</button>
+    </div>
+  </div>
   <div class="wifi-dialog" id="wifiDialog" role="dialog" aria-labelledby="wifiDialogTitle">
     <h3 id="wifiDialogTitle" data-i18n="wifiTitle">WiFi Connect</h3>
-    <p style="margin:0 0 0.5rem;font-size:0.85rem;color:#555;" data-i18n="wifiDesc">
-      Without serial, enter the robot IP for WebSocket. With serial, query IP or send SSID/password.
+    <p class="wifi-desc" data-i18n="wifiDesc">
+      Know the IP? Connect directly.
+      Or use serial to query IP / join WiFi with SSID and password.
     </p>
-    <label for="wifiDialogIp" data-i18n="labelIp">IP Address</label>
-    <input id="wifiDialogIp" type="text" placeholder="192.168.x.x" autocomplete="off" spellcheck="false" />
-    <label for="wifiSsid" data-i18n="labelSsid">SSID (optional, needs serial)</label>
-    <input id="wifiSsid" type="text" autocomplete="off" />
-    <label for="wifiPassword" data-i18n="labelPassword">Password (optional, needs serial)</label>
-    <input id="wifiPassword" type="password" autocomplete="off" />
+
+    <div class="wifi-section">
+      <div class="wifi-label-row">
+        <label for="wifiDialogIp" data-i18n="labelIp">IP Address</label>
+        <button type="button" class="wifi-btn btn-secondary" id="wifiQuery" data-i18n="btnQueryIp">Query IP</button>
+      </div>
+      <div class="wifi-input-row">
+        <input id="wifiDialogIp" type="text" placeholder="192.168.x.x" autocomplete="off" spellcheck="false" />
+        <button type="button" class="wifi-btn btn-ok" id="wifiConnectIp" data-i18n="btnConnectIp">Connect IP</button>
+      </div>
+    </div>
+
+    <div class="wifi-section">
+      <label for="wifiSsid" data-i18n="labelSsid">SSID (needs serial)</label>
+      <input id="wifiSsid" type="text" autocomplete="off" />
+      <label for="wifiPassword" data-i18n="labelPassword">Password (needs serial)</label>
+      <input id="wifiPassword" type="password" autocomplete="off" />
+      <button type="button" class="wifi-btn btn-ok wifi-btn-block" id="wifiConfirm" data-i18n="btnConnectWifi">Connect WiFi</button>
+    </div>
+
     <div class="dialog-actions">
       <button type="button" class="btn-cancel" id="wifiCancel" data-i18n="btnCancel">Cancel</button>
-      <button type="button" class="btn-ok" id="wifiConnectIp" data-i18n="btnConnectWifi">Connect WiFi</button>
-      <button type="button" class="btn-ok" id="wifiQuery" data-i18n="btnQueryIp">Query IP (w)</button>
-      <button type="button" class="btn-ok" id="wifiConfirm" data-i18n="btnSendConfig">Send Config</button>
     </div>
   </div>
 
@@ -708,11 +1082,60 @@
     const I18N = {
       en: {
         appTitle: "Camera · Elbow & Knee Tracking",
+        helpBtn: "❓ Help",
+        helpTitle: "Help",
+        btnCloseHelp: "Close",
+        helpBodyHtml:
+          "<h4>1. Connect the robot</h4>" +
+          "<ol>" +
+          "<li>Previously used IPs are restored from cache and auto-reconnect on refresh.</li>" +
+          "<li>Use <b>Quick Connect</b>, or open <b>WiFi Connect</b>:" +
+          "<ul>" +
+          "<li><b>Connect IP</b> — connect with a known address</li>" +
+          "<li><b>Query IP</b> — needs serial; fills IP and connects</li>" +
+          "<li><b>Connect WiFi</b> — send SSID/password over serial, then auto-connect when an IP appears</li>" +
+          "</ul></li>" +
+          "<li><b>Connected</b> lists online devices (duplicates removed). Click × to disconnect and forget that IP.</li>" +
+          "<li>The connected IP is shown on the camera view (center of the torso when possible).</li>" +
+          "</ol>" +
+          "<h4>2. What serial connection is for</h4>" +
+          "<p>Use <b>Connect</b> in the Serial Monitor (Web Serial, 115200) when the robot is plugged in by USB. Serial is mainly for setup — not required for everyday pose control once WiFi is working:</p>" +
+          "<ul>" +
+          "<li><b>Query the robot IP</b> (<code>w</code>) so you can fill <b>Connect IP</b> / Quick Connect</li>" +
+          "<li><b>Join a WiFi network</b> by sending SSID and password (<b>Connect WiFi</b>)</li>" +
+          "<li><b>Debug</b> with the Serial Monitor: see robot replies and send manual commands</li>" +
+          "</ul>" +
+          "<p>After the robot has WiFi and its IP is known, pose control runs over <b>WebSocket</b> (<code>ws://IP:81</code>). You can unplug USB and keep controlling wirelessly.</p>" +
+          "<h4>3. Get ready before control</h4>" +
+          "<p>Keep your full body in frame, then follow the on-screen prompts:</p>" +
+          "<table><thead><tr><th>You see</th><th>Do this</th></tr></thead><tbody>" +
+          "<tr><td><b>Invalid pose!</b></td><td>Stand or sit; show both elbows and knees</td></tr>" +
+          "<tr><td><b>Raise your arms…</b></td><td>Raise both arms above the shoulders</td></tr>" +
+          "<tr><td><b>Get Ready 3→2→1</b></td><td>Keep arms up</td></tr>" +
+          "<tr><td><b>READY!</b></td><td>Control starts; you may lower your arms</td></tr>" +
+          "</tbody></table>" +
+          "<ul>" +
+          "<li>If you drop your arms during countdown, preparation restarts.</li>" +
+          "<li>Invalid pose / leaving the frame for about 2 seconds also restarts preparation.</li>" +
+          "<li>Joint commands are sent only after <b>READY!</b>.</li>" +
+          "</ul>" +
+          "<h4>4. Suggested first run</h4>" +
+          "<ol>" +
+          "<li>Open the camera and stand/sit fully in frame</li>" +
+          "<li>(First time) Connect serial → Query IP or Connect WiFi → then Connect IP</li>" +
+          "<li>Or Quick Connect if the IP is already known / cached</li>" +
+          "<li>Raise arms → wait for 3, 2, 1, READY!</li>" +
+          "<li>Move elbows and knees to control the robot</li>" +
+          "</ol>",
         reset: "Reset",
         resetTitle: "Clear per-joint percentage min/max",
         resetHud: "Reset min/max",
+        rotateCamera: "↺ 90°",
+        rotateCameraTitle: "Rotate camera view 90° counterclockwise",
         robotIpPlaceholder: "Robot IP",
-        robotIpTitle: "Robot IP — auto-updated; editable",
+        robotIpTitle: "Robot IP — type an IP and Quick Connect; multiple devices supported",
+        connectedIpsLabel: "Connected",
+        connectedIpsEmpty: "None",
         quickConnect: "Quick Connect",
         setupDesc:
           "After camera access, track left/right elbows and knees on the left. Connect a Petoi robot on the right (Web Serial, 115200).",
@@ -742,6 +1165,11 @@
         mapReady: "Ready b±{range}",
         mapTracking: "Tracking {n}/4",
         expandMotion: "Move more to build min/max",
+        raiseArmsPrompt: "Raise your arms over shoulder\nto get ready",
+        getReadyN: "Get Ready\n{n}",
+        readyFlash: "READY!",
+        waitReady: "Waiting for ready",
+        poseIllegal: "Invalid pose!\nStand or sit — show all elbows and knees\nto get ready",
         notConnected: "Not connected",
         sendFailed: "Send failed",
         robotConsoleAria: "Robot console",
@@ -755,14 +1183,14 @@
         serialPlaceholder: "Enter content to send",
         wifiTitle: "WiFi Connect",
         wifiDesc:
-          "Without serial, enter the robot IP for WebSocket. With serial, query IP or send SSID/password.",
+          "Know the IP? Connect directly.\nOr use serial to query IP / join WiFi with SSID and password.",
         labelIp: "IP Address",
-        labelSsid: "SSID (optional, needs serial)",
-        labelPassword: "Password (optional, needs serial)",
+        labelSsid: "SSID (needs serial)",
+        labelPassword: "Password (needs serial)",
         btnCancel: "Cancel",
+        btnConnectIp: "Connect IP",
         btnConnectWifi: "Connect WiFi",
-        btnQueryIp: "Query IP (w)",
-        btnSendConfig: "Send Config",
+        btnQueryIp: "Query IP",
         resetDone: "Reset done\nDynamic pct min/max → b±{range}°",
         cameraError: "Cannot open camera: {msg}",
         mediapipeError:
@@ -770,11 +1198,60 @@
       },
       zh: {
         appTitle: "摄像头 · 手肘与膝盖追踪",
+        helpBtn: "❓ 帮助",
+        helpTitle: "帮助",
+        btnCloseHelp: "关闭",
+        helpBodyHtml:
+          "<h4>1. 连接机器人</h4>" +
+          "<ol>" +
+          "<li>刷新后会从缓存恢复曾经用过的 IP，并尝试自动重连。</li>" +
+          "<li>使用 <b>Quick Connect</b>，或打开 <b>WiFi Connect</b>：" +
+          "<ul>" +
+          "<li><b>Connect IP</b> — 用已知 IP 建立 WebSocket</li>" +
+          "<li><b>Query IP</b> — 需要串口；查询后填入 IP 并自动连接</li>" +
+          "<li><b>Connect WiFi</b> — 经串口发送 SSID/密码，收到 IP 后自动连接</li>" +
+          "</ul></li>" +
+          "<li><b>Connected</b> 显示在线设备（同一 IP 不重复）。点 × 可断开并忘记该 IP。</li>" +
+          "<li>已连接 IP 会显示在画面身体中部（肩与髋之间）。</li>" +
+          "</ol>" +
+          "<h4>2. 串口连接的作用</h4>" +
+          "<p>在右侧 <b>Serial Monitor</b> 点 <b>Connect</b>（Web Serial，115200）可通过 USB 连接机器人。串口主要用于初次配置，WiFi 就绪后日常姿态控制不必一直插着：</p>" +
+          "<ul>" +
+          "<li><b>查询机器人 IP</b>（命令 <code>w</code>），便于 <b>Connect IP</b> / Quick Connect</li>" +
+          "<li><b>配置 WiFi</b>：下发 SSID 与密码（<b>Connect WiFi</b>）</li>" +
+          "<li><b>调试</b>：在串口监视器查看回传、手动发送指令</li>" +
+          "</ul>" +
+          "<p>机器人连上 WiFi 并得知 IP 后，姿态控制走 <b>WebSocket</b>（<code>ws://IP:81</code>）。此后可拔掉 USB，继续无线控制。</p>" +
+          "<h4>3. 控制前的准备</h4>" +
+          "<p>请全身入镜，并按屏幕提示操作：</p>" +
+          "<table><thead><tr><th>看到</th><th>请做</th></tr></thead><tbody>" +
+          "<tr><td><b>Invalid pose!</b></td><td>站立或坐下，露出双手肘与双膝</td></tr>" +
+          "<tr><td><b>Raise your arms…</b></td><td>双臂举过肩膀</td></tr>" +
+          "<tr><td><b>Get Ready 3→2→1</b></td><td>保持举手</td></tr>" +
+          "<tr><td><b>READY!</b></td><td>开始控制，可放下手臂</td></tr>" +
+          "</tbody></table>" +
+          "<ul>" +
+          "<li>倒计时中放下双臂，准备流程会重来。</li>" +
+          "<li>非法姿态或离开画面约 2 秒，也会重新准备。</li>" +
+          "<li>只有出现 <b>READY!</b> 后才会发送关节控制指令。</li>" +
+          "</ul>" +
+          "<h4>4. 建议首次流程</h4>" +
+          "<ol>" +
+          "<li>打开摄像头，站立或坐下并保证全身入镜</li>" +
+          "<li>（首次）连接串口 → Query IP 或 Connect WiFi → 再 Connect IP</li>" +
+          "<li>若 IP 已知/已缓存，可直接 Quick Connect</li>" +
+          "<li>举手 → 等待 3、2、1、READY!</li>" +
+          "<li>用肘、膝动作控制机器人</li>" +
+          "</ol>",
         reset: "Reset",
         resetTitle: "清空各关节百分数 min/max",
         resetHud: "Reset 清空 min/max",
+        rotateCamera: "↺ 90°",
+        rotateCameraTitle: "摄像头视图逆时针旋转 90°",
         robotIpPlaceholder: "机器人 IP",
-        robotIpTitle: "机器人 IP，自动更新；也可手动输入",
+        robotIpTitle: "输入 IP 后 Quick Connect；支持多设备同时连接",
+        connectedIpsLabel: "已连接",
+        connectedIpsEmpty: "无",
         quickConnect: "Quick Connect",
         setupDesc:
           "允许摄像头后左侧实时追踪左右手肘与膝盖。右侧可连接 Petoi 机器人（Web Serial，115200）。",
@@ -804,6 +1281,11 @@
         mapReady: "就绪 b±{range}",
         mapTracking: "追踪 {n}/4",
         expandMotion: "扩大动作以建立 min/max",
+        raiseArmsPrompt: "双臂举过肩膀\n以准备",
+        getReadyN: "Get Ready\n{n}",
+        readyFlash: "READY!",
+        waitReady: "等待就绪",
+        poseIllegal: "姿态无效！\n请站立或坐下，露出双手肘与双膝\n以准备",
         notConnected: "未连接",
         sendFailed: "发送失败",
         robotConsoleAria: "机器人控制台",
@@ -817,14 +1299,14 @@
         serialPlaceholder: "输入要发送的内容",
         wifiTitle: "WiFi 连接",
         wifiDesc:
-          "无串口时输入机器人 IP 直接 WebSocket 连接。有串口时可查询 IP，或下发 SSID/密码。",
+          "已知 IP 可直接连接。\n或通过串口查询 IP / 用 SSID 与密码加入 WiFi。",
         labelIp: "IP 地址",
-        labelSsid: "SSID（可选，需串口）",
-        labelPassword: "密码（可选，需串口）",
+        labelSsid: "SSID（需串口）",
+        labelPassword: "密码（需串口）",
         btnCancel: "取消",
-        btnConnectWifi: "连接 WiFi",
-        btnQueryIp: "查询 IP (w)",
-        btnSendConfig: "发送配置",
+        btnConnectIp: "Connect IP",
+        btnConnectWifi: "Connect WiFi",
+        btnQueryIp: "Query IP",
         resetDone: "已 Reset\n动态追踪百分数 min/max → b±{range}°",
         cameraError: "无法打开摄像头：{msg}",
         mediapipeError:
@@ -874,6 +1356,10 @@
         const key = el.getAttribute("data-i18n-aria");
         if (key) el.setAttribute("aria-label", t(key));
       });
+      document.querySelectorAll("[data-i18n-empty]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-empty");
+        if (key) el.setAttribute("data-empty", t(key));
+      });
       const langSelect = document.getElementById("langSelect");
       if (langSelect) langSelect.value = currentLang;
       // Keep dynamic fields in sync when language changes
@@ -893,14 +1379,29 @@
     const B_BASE = [0, 0, 25, 25];
     const ROBOT_JOINT_IDS = [2, 3, 4, 5];
     /** Usable angle range around baseline: [b - RANGE, b + RANGE]. */
-    const ANGLE_RANGE = 25;
+    const ANGLE_RANGE = 30;
     /** Minimum pct span before mapping is considered valid. */
     const MIN_PCT_SPAN = 3;
     /** Sliding window for dynamic min/max (discard samples older than this). */
     const RANGE_WINDOW_MS = 5000;
-    const SEND_MIN_INTERVAL_MS = 100;
+    /** Max wait for robot 'i' / WS completed before allowing next send. */
+    const CMD_ACK_TIMEOUT_MS = 2500;
+    /** Restart ready flow after this long of illegal / missing pose. */
+    const ILLEGAL_RESET_MS = 2000;
+    const COUNTDOWN_START = 3;
+    const COUNTDOWN_STEP_MS = 1000;
+    const READY_FLASH_MS = 900;
+
+    const READY_PHASE = {
+      WAITING: "waiting",
+      RAISE_ARMS: "raise_arms",
+      COUNTDOWN: "countdown",
+      READY_FLASH: "ready_flash",
+      CONTROLLING: "controlling",
+    };
 
     const POSE = {
+      NOSE: 0,
       LEFT_SHOULDER: 11,
       RIGHT_SHOULDER: 12,
       LEFT_ELBOW: 13,
@@ -957,10 +1458,17 @@
     ];
 
     const cameraPane = document.getElementById("cameraPane");
+    const cameraStage = document.getElementById("cameraStage");
+    const cameraStageInner = document.getElementById("cameraStageInner");
+    const headPromptEl = document.getElementById("headPromptEl");
+    const bodyIpEl = document.getElementById("bodyIpEl");
+    /** Last ready-prompt box in camera-stage coordinates (for stacking IP below). */
+    let promptOverlayBox = null;
     const video = document.getElementById("preview");
     const overlay = document.getElementById("overlay");
     const ctx = overlay.getContext("2d");
     const btnStart = document.getElementById("btnStart");
+    const btnRotateCamera = document.getElementById("btnRotateCamera");
     const errEl = document.getElementById("err");
     const loadStatusEl = document.getElementById("loadStatus");
     const coordTextEl = document.getElementById("coordText");
@@ -986,12 +1494,14 @@
     const btnConsoleTime = document.getElementById("btnConsoleTime");
     const quickConnectBtn = document.getElementById("quickConnectBtn");
     const robotIpInput = document.getElementById("robotIpInput");
+    const connectedIpListEl = document.getElementById("connectedIpList");
     const divider = document.getElementById("consoleSerialDivider");
     const wifiOverlay = document.getElementById("wifiOverlay");
     const wifiDialog = document.getElementById("wifiDialog");
     const wifiDialogIp = document.getElementById("wifiDialogIp");
 
-    const IP_STORAGE_KEY = "camWalkingGame.robotIp";
+    const IP_STORAGE_KEY = "camWalkingGame.robotIps";
+    const IP_STORAGE_KEY_LEGACY = "camWalkingGame.robotIp";
 
     let poseLandmarker = null;
     let stream = null;
@@ -1001,11 +1511,384 @@
     let fpsLastMs = performance.now();
     let showConsoleTime = true;
     let showSerialTime = true;
-    let currentDeviceIP = "";
-    let lastSendMs = 0;
     let lastSentAngles = null;
-    let sendInFlight = false;
+    /** True while waiting for robot 'i' / WS completed ack. */
+    let cmdBusy = false;
+    /** Latest angles requested while busy — only the newest is sent after ack. */
+    let latestAngles = null;
     let lastControlSnapshot = null;
+    /** Display rotation in degrees CCW: 0, 90, 180, 270. */
+    let cameraRotation = 0;
+    /** Ready-gate: legal sit/stand → raise arms → countdown → READY → control. */
+    let readyGate = {
+      phase: READY_PHASE.WAITING,
+      count: COUNTDOWN_START,
+      stepStartedAt: 0,
+      illegalSince: null,
+      lastTickAt: 0,
+      prompt: "",
+      legal: false,
+    };
+
+    function resetReadyGate(reason) {
+      const wasPastWaiting = readyGate.phase !== READY_PHASE.WAITING;
+      readyGate.phase = READY_PHASE.WAITING;
+      readyGate.count = COUNTDOWN_START;
+      readyGate.stepStartedAt = 0;
+      readyGate.illegalSince = null;
+      readyGate.lastTickAt = 0;
+      readyGate.prompt = "";
+      readyGate.legal = false;
+      latestAngles = null;
+      if (wasPastWaiting && reason) {
+        addConsoleMessage("Ready gate reset: " + reason, "warn");
+      }
+    }
+
+    /** True for upright sit/stand; false for lying, upside-down, or incomplete torso. */
+    function isLegalSitOrStand(pts) {
+      if (!pts) return false;
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      const lh = pts[POSE.LEFT_HIP];
+      const rh = pts[POSE.RIGHT_HIP];
+      const lk = pts[POSE.LEFT_KNEE];
+      const rk = pts[POSE.RIGHT_KNEE];
+      if (
+        !ls ||
+        !rs ||
+        !lh ||
+        !rh ||
+        ls.vis < VIS_MIN ||
+        rs.vis < VIS_MIN ||
+        lh.vis < VIS_MIN ||
+        rh.vis < VIS_MIN
+      ) {
+        return false;
+      }
+
+      const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+      const midHip = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+      const shoulderW = Math.hypot(ls.x - rs.x, ls.y - rs.y);
+      if (shoulderW < 12) return false;
+
+      const torsoDx = midShoulder.x - midHip.x;
+      const torsoDy = midHip.y - midShoulder.y; // >0 when hips below shoulders
+      const torsoLen = Math.hypot(torsoDx, torsoDy);
+      if (torsoLen < shoulderW * 0.35) return false;
+      if (torsoDy < shoulderW * 0.22) return false; // not upright enough
+
+      const leanRad = Math.abs(Math.atan2(torsoDx, torsoDy));
+      if (leanRad > (55 * Math.PI) / 180) return false; // lying / extreme lean
+
+      const knees = [lk, rk].filter((k) => k && k.vis >= VIS_MIN);
+      if (!knees.length) return false;
+      // Knees should not sit above the torso (filters wild flips)
+      if (!knees.some((k) => k.y > midHip.y - shoulderW * 0.2)) return false;
+
+      return true;
+    }
+
+    /** Both arms raised above the shoulder line (wrists preferred, elbows fallback). */
+    function armsOverShoulders(pts) {
+      if (!pts) return false;
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      const lw = pts[POSE.LEFT_WRIST];
+      const rw = pts[POSE.RIGHT_WRIST];
+      const le = pts[POSE.LEFT_ELBOW];
+      const re = pts[POSE.RIGHT_ELBOW];
+      if (!ls || !rs || ls.vis < VIS_MIN || rs.vis < VIS_MIN) return false;
+      const shoulderLineY = Math.min(ls.y, rs.y);
+      const leftUp =
+        (lw && lw.vis >= VIS_MIN && lw.y < shoulderLineY) ||
+        (le && le.vis >= VIS_MIN && le.y < shoulderLineY);
+      const rightUp =
+        (rw && rw.vis >= VIS_MIN && rw.y < shoulderLineY) ||
+        (re && re.vis >= VIS_MIN && re.y < shoulderLineY);
+      return !!(leftUp && rightUp);
+    }
+
+    /** Midpoint between mid-shoulder and mid-hip (torso center for IP label). */
+    function torsoMidAnchor(pts) {
+      if (!pts) return null;
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      const lh = pts[POSE.LEFT_HIP];
+      const rh = pts[POSE.RIGHT_HIP];
+      const shoulders =
+        ls && rs && ls.vis >= VIS_MIN && rs.vis >= VIS_MIN
+          ? { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 }
+          : ls && ls.vis >= VIS_MIN
+            ? { x: ls.x, y: ls.y }
+            : rs && rs.vis >= VIS_MIN
+              ? { x: rs.x, y: rs.y }
+              : null;
+      const hips =
+        lh && rh && lh.vis >= VIS_MIN && rh.vis >= VIS_MIN
+          ? { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 }
+          : lh && lh.vis >= VIS_MIN
+            ? { x: lh.x, y: lh.y }
+            : rh && rh.vis >= VIS_MIN
+              ? { x: rh.x, y: rh.y }
+              : null;
+      if (shoulders && hips) {
+        return {
+          x: (shoulders.x + hips.x) / 2,
+          y: (shoulders.y + hips.y) / 2,
+          vis: 1,
+        };
+      }
+      if (hips) return { x: hips.x, y: hips.y, vis: 1 };
+      if (shoulders) {
+        // No hips: sit one text line below the shoulder line (not on it)
+        const shoulderW =
+          ls && rs && ls.vis >= VIS_MIN && rs.vis >= VIS_MIN
+            ? Math.hypot(ls.x - rs.x, ls.y - rs.y)
+            : 80;
+        const lineDown = Math.max(36, Math.min(56, shoulderW * 0.28));
+        return { x: shoulders.x, y: shoulders.y + lineDown, vis: 1 };
+      }
+      return null;
+    }
+
+    function connectedIpsForOverlay() {
+      const ips = [];
+      if (typeof petoiPool !== "undefined" && petoiPool) {
+        for (const ip of petoiPool.list()) {
+          const n = normalizeIp(ip);
+          if (isValidIp(n) && !ips.includes(n)) ips.push(n);
+        }
+      }
+      if (!ips.length && robotIpInput) {
+        const typed = normalizeIp(robotIpInput.value);
+        if (isValidIp(typed)) ips.push(typed);
+      }
+      return ips;
+    }
+
+    function showBodyIpLabel(pts) {
+      if (!bodyIpEl) return;
+      const ips = connectedIpsForOverlay();
+      if (!ips.length) {
+        bodyIpEl.classList.remove("visible");
+        bodyIpEl.textContent = "";
+        return;
+      }
+      const { w: pw, h: ph } = paneSize();
+      const anchor = torsoMidAnchor(pts);
+      let x = pw / 2;
+      let y = ph * 0.45;
+      if (anchor) {
+        const preferred = stageLocalToScreen(anchor.x, anchor.y);
+        x = preferred.x;
+        y = preferred.y;
+      }
+
+      // Keep IP below the ready prompt so they never overlap
+      if (promptOverlayBox && headPromptEl && headPromptEl.classList.contains("visible")) {
+        bodyIpEl.textContent = ips.join("\n");
+        bodyIpEl.classList.add("visible");
+        bodyIpEl.style.left = x + "px";
+        bodyIpEl.style.top = y + "px";
+        const ipH = bodyIpEl.offsetHeight || 40;
+        const gap = 14;
+        const minCenterY = promptOverlayBox.bottom + gap + ipH / 2;
+        if (y < minCenterY) y = minCenterY;
+        x = promptOverlayBox.left + promptOverlayBox.width / 2;
+      }
+
+      x = Math.max(24, Math.min(pw - 24, x));
+      y = Math.max(24, Math.min(ph - 24, y));
+      bodyIpEl.textContent = ips.join("\n");
+      bodyIpEl.style.left = x + "px";
+      bodyIpEl.style.top = y + "px";
+      bodyIpEl.classList.add("visible");
+    }
+
+    /**
+     * Ready flow state machine.
+     * Illegal / missing pose for > ILLEGAL_RESET_MS restarts preparation.
+     */
+    function updateReadyGate(pts, now) {
+      const legal = isLegalSitOrStand(pts);
+      readyGate.legal = legal;
+
+      if (!legal) {
+        latestAngles = null;
+        if (readyGate.illegalSince == null) readyGate.illegalSince = now;
+        // Freeze countdown / ready-flash clock while briefly illegal
+        if (
+          readyGate.lastTickAt &&
+          (readyGate.phase === READY_PHASE.COUNTDOWN ||
+            readyGate.phase === READY_PHASE.READY_FLASH)
+        ) {
+          readyGate.stepStartedAt += now - readyGate.lastTickAt;
+        }
+        readyGate.lastTickAt = now;
+
+        if (
+          readyGate.phase !== READY_PHASE.WAITING &&
+          now - readyGate.illegalSince >= ILLEGAL_RESET_MS
+        ) {
+          resetReadyGate("illegal pose > 2s");
+        }
+        if (readyGate.phase === READY_PHASE.WAITING) {
+          // Show even when no person is detected
+          readyGate.prompt = t("poseIllegal");
+        }
+        return readyGate;
+      }
+
+      readyGate.illegalSince = null;
+      readyGate.lastTickAt = now;
+
+      if (readyGate.phase === READY_PHASE.WAITING) {
+        readyGate.phase = READY_PHASE.RAISE_ARMS;
+        readyGate.prompt = t("raiseArmsPrompt");
+      }
+
+      if (readyGate.phase === READY_PHASE.RAISE_ARMS) {
+        readyGate.prompt = t("raiseArmsPrompt");
+        if (armsOverShoulders(pts)) {
+          readyGate.phase = READY_PHASE.COUNTDOWN;
+          readyGate.count = COUNTDOWN_START;
+          readyGate.stepStartedAt = now;
+          readyGate.prompt = t("getReadyN", { n: readyGate.count });
+        }
+      } else if (readyGate.phase === READY_PHASE.COUNTDOWN) {
+        // Arms must stay up through countdown; dropping resets preparation
+        if (!armsOverShoulders(pts)) {
+          readyGate.phase = READY_PHASE.RAISE_ARMS;
+          readyGate.count = COUNTDOWN_START;
+          readyGate.stepStartedAt = 0;
+          readyGate.prompt = t("raiseArmsPrompt");
+        } else if (now - readyGate.stepStartedAt >= COUNTDOWN_STEP_MS) {
+          readyGate.stepStartedAt = now;
+          // 3→2→1→READY (skip showing 0)
+          if (readyGate.count > 1) {
+            readyGate.count -= 1;
+            readyGate.prompt = t("getReadyN", { n: readyGate.count });
+          } else {
+            readyGate.phase = READY_PHASE.READY_FLASH;
+            readyGate.prompt = t("readyFlash");
+            addConsoleMessage("READY!", "good");
+          }
+        } else {
+          readyGate.prompt = t("getReadyN", { n: readyGate.count });
+        }
+      } else if (readyGate.phase === READY_PHASE.READY_FLASH) {
+        readyGate.prompt = t("readyFlash");
+        if (now - readyGate.stepStartedAt >= READY_FLASH_MS) {
+          readyGate.phase = READY_PHASE.CONTROLLING;
+          readyGate.prompt = "";
+          addConsoleMessage("Control enabled", "good");
+        }
+      } else if (readyGate.phase === READY_PHASE.CONTROLLING) {
+        readyGate.prompt = "";
+      }
+
+      if (readyGate.phase !== READY_PHASE.CONTROLLING) {
+        latestAngles = null;
+      }
+
+      return readyGate;
+    }
+
+    /** Map a point in stage-inner (pre-CSS-transform) space to camera-stage pixels. */
+    function stageLocalToScreen(lx, ly) {
+      const { w, h } = stageSize();
+      const { w: pw, h: ph } = paneSize();
+      // Matches CSS: rotate(-deg) scaleX(-1) with transform-origin center
+      let dx = lx - w / 2;
+      let dy = ly - h / 2;
+      dx = -dx; // scaleX(-1)
+      const rad = (-cameraRotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const rx = dx * cos - dy * sin;
+      const ry = dx * sin + dy * cos;
+      return { x: pw / 2 + rx, y: ph / 2 + ry };
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function updatePromptOverlayBox() {
+      if (!headPromptEl || !cameraStage || !headPromptEl.classList.contains("visible")) {
+        promptOverlayBox = null;
+        return;
+      }
+      const stageRect = cameraStage.getBoundingClientRect();
+      const r = headPromptEl.getBoundingClientRect();
+      promptOverlayBox = {
+        left: r.left - stageRect.left,
+        top: r.top - stageRect.top,
+        width: r.width,
+        height: r.height,
+        bottom: r.bottom - stageRect.top,
+      };
+    }
+
+    function fillHeadPromptContent(text) {
+      const phase = readyGate.phase;
+      if (phase === READY_PHASE.READY_FLASH) {
+        headPromptEl.classList.add("ready");
+        headPromptEl.textContent = text;
+      } else if (phase === READY_PHASE.COUNTDOWN) {
+        headPromptEl.classList.add("countdown");
+        const parts = text.split("\n");
+        const label = escapeHtml(parts[0] || "Get Ready");
+        const num = escapeHtml(parts[1] != null ? parts[1] : "");
+        headPromptEl.innerHTML =
+          label + (num !== "" ? '\n<span class="prompt-count">' + num + "</span>" : "");
+      } else if (phase === READY_PHASE.WAITING) {
+        headPromptEl.classList.add("illegal");
+        const nl = text.indexOf("\n");
+        const title = nl >= 0 ? text.slice(0, nl) : text;
+        const body = nl >= 0 ? text.slice(nl + 1) : "";
+        headPromptEl.innerHTML =
+          '<span class="prompt-title">' +
+          escapeHtml(title) +
+          "</span>" +
+          (body
+            ? '\n<span class="prompt-body">' + escapeHtml(body) + "</span>"
+            : "");
+      } else {
+        headPromptEl.classList.toggle("long", text.includes("\n"));
+        headPromptEl.textContent = text;
+      }
+    }
+
+    /** Ready prompts stay fixed at the top-center of the screen. */
+    function placeHeadPromptTop() {
+      const { w: pw } = paneSize();
+      headPromptEl.classList.add("below");
+      headPromptEl.style.left = pw / 2 + "px";
+      headPromptEl.style.top = "16px";
+    }
+
+    function showHeadPrompt(pts, text) {
+      if (!headPromptEl) return;
+      const clearClasses = ["visible", "long", "countdown", "ready", "illegal", "below"];
+      if (!text) {
+        headPromptEl.classList.remove(...clearClasses);
+        headPromptEl.textContent = "";
+        promptOverlayBox = null;
+        return;
+      }
+
+      headPromptEl.classList.remove(...clearClasses);
+      fillHeadPromptContent(text);
+      placeHeadPromptTop();
+      headPromptEl.classList.add("visible");
+      updatePromptOverlayBox();
+    }
 
     // ——— Console ———
     function addConsoleMessage(message, type = "") {
@@ -1083,9 +1966,21 @@
       }
     }
 
+    /** Strip trailing dots / junk so "192.168.2.123." → "192.168.2.123". */
+    function normalizeIp(ip) {
+      if (!ip || typeof ip !== "string") return "";
+      let s = ip.trim();
+      // Prefer a clean IPv4 match if present
+      const m = s.match(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/);
+      if (m) return m[1];
+      while (s.endsWith(".")) s = s.slice(0, -1);
+      return s.trim();
+    }
+
     function isValidIp(ip) {
-      if (!ip || typeof ip !== "string") return false;
-      const parts = ip.trim().split(".");
+      const normalized = normalizeIp(ip);
+      if (!normalized) return false;
+      const parts = normalized.split(".");
       if (parts.length !== 4) return false;
       return parts.every((p) => {
         if (!/^\d{1,3}$/.test(p)) return false;
@@ -1094,21 +1989,57 @@
       });
     }
 
-    function loadSavedIp() {
+    function loadSavedIps() {
       try {
-        return localStorage.getItem(IP_STORAGE_KEY) || "";
-      } catch {
-        return "";
-      }
-    }
-
-    function saveIp(ip) {
-      try {
-        if (ip) localStorage.setItem(IP_STORAGE_KEY, ip);
-        else localStorage.removeItem(IP_STORAGE_KEY);
+        const raw = localStorage.getItem(IP_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            return [
+              ...new Set(
+                parsed.map((ip) => normalizeIp(ip)).filter((ip) => isValidIp(ip))
+              ),
+            ];
+          }
+        }
+        const legacy = localStorage.getItem(IP_STORAGE_KEY_LEGACY);
+        const legacyIp = normalizeIp(legacy || "");
+        if (isValidIp(legacyIp)) return [legacyIp];
       } catch {
         /* ignore */
       }
+      return [];
+    }
+
+    function saveIpList(ips) {
+      try {
+        const list = [
+          ...new Set(
+            (ips || []).map((ip) => normalizeIp(ip)).filter((ip) => isValidIp(ip))
+          ),
+        ];
+        if (list.length) localStorage.setItem(IP_STORAGE_KEY, JSON.stringify(list));
+        else localStorage.removeItem(IP_STORAGE_KEY);
+        localStorage.removeItem(IP_STORAGE_KEY_LEGACY);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    /** Remember IP in localStorage (survives refresh / failed reconnect). */
+    function rememberIp(ip) {
+      const next = normalizeIp(ip);
+      if (!isValidIp(next)) return;
+      const list = loadSavedIps().filter((x) => x !== next);
+      list.push(next);
+      saveIpList(list);
+    }
+
+    /** Remove IP from cache (only on explicit user dismiss). */
+    function forgetIp(ip) {
+      const next = (ip || "").trim();
+      if (!next) return;
+      saveIpList(loadSavedIps().filter((x) => x !== next));
     }
 
     function setConnectedUi(connected) {
@@ -1116,43 +2047,96 @@
       else delete quickConnectBtn.dataset.connected;
     }
 
-    function refreshConnectedUi() {
-      const serialOk = typeof transport !== "undefined" && transport && transport.isConnected();
-      const wifiOk = typeof petoiWs !== "undefined" && petoiWs && petoiWs.isConnected();
-      setConnectedUi(!!(serialOk || wifiOk));
-    }
-
-    /** Update IP box (+ optional persist / WS). */
-    function setDeviceIp(ip, { save = true, connectWs = true, log = true } = {}) {
-      const next = (ip || "").trim();
-      currentDeviceIP = next;
-      robotIpInput.value = next;
-      if (save) saveIp(next);
-      if (next) {
-        if (log) addConsoleMessage("Robot IP: " + next, "good");
-        if (connectWs) ensureWifiSocket(next);
-        else refreshConnectedUi();
-      } else {
-        refreshConnectedUi();
+    function renderConnectedIps() {
+      if (!connectedIpListEl || typeof petoiPool === "undefined") return;
+      // Dedupe by normalized IP (avoid "192.168.x.x" / "192.168.x.x." chips)
+      const seen = new Set();
+      const ips = [];
+      for (const raw of petoiPool.list()) {
+        const ip = normalizeIp(raw);
+        if (!isValidIp(ip) || seen.has(ip)) continue;
+        seen.add(ip);
+        ips.push(ip);
+      }
+      connectedIpListEl.innerHTML = "";
+      for (const ip of ips) {
+        const chip = document.createElement("span");
+        chip.className = "ip-chip";
+        chip.title = ip;
+        const label = document.createElement("span");
+        label.textContent = ip;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("aria-label", "Disconnect " + ip);
+        btn.textContent = "×";
+        btn.addEventListener("click", () => {
+          petoiPool.disconnect(ip, { silent: true });
+          forgetIp(ip);
+          refreshConnectedUi();
+          addConsoleMessage("Disconnected WiFi: " + ip, "warn");
+        });
+        chip.appendChild(label);
+        chip.appendChild(btn);
+        connectedIpListEl.appendChild(chip);
       }
     }
 
-    function clearDeviceIp(reason) {
-      currentDeviceIP = "";
-      robotIpInput.value = "";
-      saveIp("");
-      if (typeof petoiWs !== "undefined" && petoiWs) petoiWs.disconnect();
+    function refreshConnectedUi() {
+      const serialOk = typeof transport !== "undefined" && transport && transport.isConnected();
+      const wifiOk = typeof petoiPool !== "undefined" && petoiPool && petoiPool.hasAny();
+      setConnectedUi(!!(serialOk || wifiOk));
+      renderConnectedIps();
+    }
+
+    /** Add/update a device IP (multi-device). */
+    function setDeviceIp(ip, { connectWs = true, log = true } = {}) {
+      const next = normalizeIp(ip);
+      if (!next) {
+        refreshConnectedUi();
+        return;
+      }
+      robotIpInput.value = next;
+      if (log) addConsoleMessage("Robot IP: " + next, "good");
+      if (connectWs) ensureWifiSocket(next);
+      else refreshConnectedUi();
+    }
+
+    function clearDeviceIp(ipOrReason, maybeReason) {
+      // clearDeviceIp(reason) or clearDeviceIp(ip, reason)
+      // Disconnects socket only — does NOT forget IP from localStorage cache.
+      let ip = "";
+      let reason = "";
+      if (maybeReason != null) {
+        ip = ipOrReason || "";
+        reason = maybeReason;
+      } else {
+        reason = ipOrReason || "";
+      }
+      if (ip && typeof petoiPool !== "undefined") {
+        petoiPool.disconnect(ip, { silent: true });
+      } else if (
+        !ip &&
+        typeof petoiPool !== "undefined" &&
+        !(typeof transport !== "undefined" && transport && transport.isConnected())
+      ) {
+        // No specific IP and no serial: clear all wifi links
+        petoiPool.disconnectAll({ silent: true });
+      }
       refreshConnectedUi();
       if (reason) addConsoleMessage(reason, "warn");
     }
 
     function updateQuickConnectButton(ip) {
-      if (ip) setDeviceIp(ip, { save: true, connectWs: true, log: true });
-      else clearDeviceIp();
+      if (ip) setDeviceIp(ip, { connectWs: true, log: true });
+      else refreshConnectedUi();
     }
 
     function showWifiDialog() {
-      const hint = robotIpInput.value.trim() || loadSavedIp() || currentDeviceIP;
+      const hint =
+        robotIpInput.value.trim() ||
+        (typeof petoiPool !== "undefined" ? petoiPool.list()[0] : "") ||
+        loadSavedIps()[0] ||
+        "";
       wifiDialogIp.value = hint;
       wifiOverlay.classList.add("visible");
       wifiDialog.classList.add("visible");
@@ -1165,14 +2149,13 @@
     }
 
     async function connectWifiByIp(ip) {
-      const target = (ip || "").trim();
+      const target = normalizeIp(ip);
       if (!isValidIp(target)) throw new Error("Invalid IP: " + target);
-      await petoiWs.connect(target);
-      currentDeviceIP = target;
+      rememberIp(target);
+      await petoiPool.connect(target);
       robotIpInput.value = target;
-      saveIp(target);
       refreshConnectedUi();
-      addConsoleMessage("WiFi connected: " + target, "good");
+      addConsoleMessage("WiFi connected: " + target + " (devices: " + petoiPool.list().length + ")", "good");
     }
 
     /** Petoi lowercase/uppercase command encoder (from WebCoding). */
@@ -1262,30 +2245,82 @@
       trackers.forEach((t) => t.reset());
       lastSentAngles = null;
       lastControlSnapshot = null;
-      sendInFlight = false;
-      lastSendMs = 0;
+      cmdBusy = false;
+      latestAngles = null;
+      lastSentAngles = null;
+      resetReadyGate("manual reset");
       statCalibEl.textContent = t("tracking");
       statControlEl.textContent = t("idle");
       coordTextEl.textContent = t("resetDone", { range: ANGLE_RANGE });
       addConsoleMessage(`Reset: cleared pct min/max; remapping to b±${ANGLE_RANGE}°`, "warn");
     }
 
-    /** Lightweight WebSocket client for Petoi ws://IP:81 */
-    class SimplePetoiWs {
+    /**
+     * Multi-device WebSocket pool for Petoi ws://IP:81.
+     * Waits for per-task {status:"completed"} after each command (firmware finishWebCommand).
+     */
+    class PetoiWsPool {
       constructor() {
-        this.ws = null;
-        this.ip = "";
+        this.clients = new Map(); // ip -> { ws, ip }
+        this.pending = new Map(); // taskId -> { resolve, reject, timer }
       }
 
-      isConnected() {
-        return !!(this.ws && this.ws.readyState === WebSocket.OPEN);
+      list() {
+        const seen = new Set();
+        const out = [];
+        for (const raw of this.clients.keys()) {
+          const c = this.clients.get(raw);
+          if (!(c && c.ws && c.ws.readyState === WebSocket.OPEN)) continue;
+          const ip = normalizeIp(raw);
+          if (!isValidIp(ip) || seen.has(ip)) continue;
+          seen.add(ip);
+          out.push(ip);
+        }
+        return out;
+      }
+
+      hasAny() {
+        return this.list().length > 0;
+      }
+
+      isConnected(ip) {
+        const target = normalizeIp(ip);
+        if (!target) return false;
+        for (const [raw, c] of this.clients) {
+          if (normalizeIp(raw) !== target) continue;
+          if (c && c.ws && c.ws.readyState === WebSocket.OPEN) return true;
+        }
+        return false;
+      }
+
+      _handleMessage(ip, text) {
+        if (text && text.length < 240) appendSerialLine("WS[" + ip + "] " + text, false);
+        const clean = (text || "").replace(/[\r\n\t\f\v]/g, " ").trim();
+        if (!clean || clean.startsWith("<")) return;
+        let msg;
+        try {
+          msg = JSON.parse(clean);
+        } catch {
+          return;
+        }
+        if (!msg.taskId || !this.pending.has(msg.taskId)) return;
+        const entry = this.pending.get(msg.taskId);
+        if (msg.status === "running") return;
+        clearTimeout(entry.timer);
+        this.pending.delete(msg.taskId);
+        if (msg.status === "completed") entry.resolve(msg);
+        else entry.reject(new Error(msg.error || "WS task error"));
       }
 
       connect(ip) {
-        if (!ip) return Promise.reject(new Error("No IP"));
-        if (this.isConnected() && this.ip === ip) return Promise.resolve();
-        this.disconnect();
-        this.ip = ip;
+        const clean = normalizeIp(ip);
+        if (!clean || !isValidIp(clean)) return Promise.reject(new Error("No IP"));
+        ip = clean;
+        if (this.isConnected(ip)) return Promise.resolve();
+        // Drop any alias keys for the same IP before opening a new socket
+        for (const raw of [...this.clients.keys()]) {
+          if (normalizeIp(raw) === ip) this.disconnect(raw, { silent: true });
+        }
         return new Promise((resolve, reject) => {
           let settled = false;
           const url = `ws://${ip}:81`;
@@ -1296,7 +2331,7 @@
             reject(e);
             return;
           }
-          this.ws = ws;
+          this.clients.set(ip, { ws, ip });
           const timer = setTimeout(() => {
             if (!settled) {
               settled = true;
@@ -1305,6 +2340,7 @@
               } catch {
                 /* ignore */
               }
+              if (this.clients.get(ip)?.ws === ws) this.clients.delete(ip);
               reject(new Error("WebSocket timeout"));
             }
           }, 4000);
@@ -1312,89 +2348,209 @@
             if (settled) return;
             settled = true;
             clearTimeout(timer);
+            rememberIp(ip);
             addConsoleMessage("WebSocket connected: " + url, "good");
+            refreshConnectedUi();
             resolve();
           };
           ws.onerror = () => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
+            if (this.clients.get(ip)?.ws === ws) this.clients.delete(ip);
             reject(new Error("WebSocket error"));
           };
           ws.onclose = () => {
-            if (this.ws === ws) this.ws = null;
+            // Drop live socket only; keep IP in localStorage for next refresh
+            if (this.clients.get(ip)?.ws === ws) {
+              this.clients.delete(ip);
+              refreshConnectedUi();
+            }
           };
           ws.onmessage = (ev) => {
             const text = typeof ev.data === "string" ? ev.data : "";
-            if (text && text.length < 200) appendSerialLine("WS " + text, false);
+            this._handleMessage(ip, text);
           };
         });
       }
 
-      disconnect() {
-        if (this.ws) {
+      disconnect(ip, { silent = false } = {}) {
+        const target = normalizeIp(ip) || ip;
+        const keys = [...this.clients.keys()].filter(
+          (raw) => raw === ip || normalizeIp(raw) === target
+        );
+        if (!keys.length) return;
+        for (const key of keys) {
+          const c = this.clients.get(key);
+          if (!c) continue;
           try {
-            this.ws.close();
+            c.ws.onclose = null;
+            c.ws.close();
           } catch {
             /* ignore */
           }
+          this.clients.delete(key);
         }
-        this.ws = null;
+        if (!silent) refreshConnectedUi();
       }
 
-      sendCommand(command) {
-        if (!this.isConnected()) throw new Error("WebSocket not connected");
+      disconnectAll({ silent = false } = {}) {
+        for (const ip of [...this.clients.keys()]) {
+          this.disconnect(ip, { silent: true });
+        }
+        for (const [, entry] of this.pending) {
+          clearTimeout(entry.timer);
+          entry.reject(new Error("disconnected"));
+        }
+        this.pending.clear();
+        if (!silent) refreshConnectedUi();
+      }
+
+      sendAndWait(ip, command, timeoutMs = CMD_ACK_TIMEOUT_MS) {
+        const c = this.clients.get(ip);
+        if (!c || !c.ws || c.ws.readyState !== WebSocket.OPEN) {
+          return Promise.reject(new Error("WS not open: " + ip));
+        }
+        const taskId = Date.now() + "-" + ip + "-" + Math.random().toString(36).slice(2, 7);
         const message = {
           type: "command",
-          taskId: String(Date.now()),
+          taskId,
           commands: [command],
           timestamp: Date.now(),
         };
-        this.ws.send(JSON.stringify(message));
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            this.pending.delete(taskId);
+            reject(new Error("WS ack timeout: " + ip));
+          }, timeoutMs);
+          this.pending.set(taskId, { resolve, reject, timer });
+          try {
+            c.ws.send(JSON.stringify(message));
+          } catch (e) {
+            clearTimeout(timer);
+            this.pending.delete(taskId);
+            reject(e);
+          }
+        });
+      }
+
+      /** Broadcast and wait for each device's completed response. */
+      async broadcastAndWait(command, timeoutMs = CMD_ACK_TIMEOUT_MS) {
+        const ips = this.list();
+        if (!ips.length) return 0;
+        await Promise.all(ips.map((ip) => this.sendAndWait(ip, command, timeoutMs)));
+        return ips.length;
       }
     }
 
-    const petoiWs = new SimplePetoiWs();
+    const petoiPool = new PetoiWsPool();
 
     async function ensureWifiSocket(ip) {
       if (!ip) return;
-      if (petoiWs.isConnected() && petoiWs.ip === ip) {
+      rememberIp(ip);
+      if (petoiPool.isConnected(ip)) {
         refreshConnectedUi();
         return;
       }
       try {
-        await petoiWs.connect(ip);
+        await petoiPool.connect(ip);
         refreshConnectedUi();
       } catch (e) {
-        // Keep IP if serial is still usable; clear only when WiFi is the sole link.
         if (transport.isConnected()) {
-          addConsoleMessage("WebSocket connect failed (serial still active): " + (e.message || e), "warn");
+          addConsoleMessage(
+            "WebSocket connect failed for " + ip + " (serial still active): " + (e.message || e),
+            "warn"
+          );
           refreshConnectedUi();
         } else {
-          clearDeviceIp("WiFi connect failed, cleared IP: " + (e.message || e));
+          clearDeviceIp(ip, "WiFi connect failed for " + ip + " (kept in cache): " + (e.message || e));
         }
       }
     }
 
-    async function sendRobotCommand(command, { logConsole = false } = {}) {
+    /**
+     * Send command and wait for firmware ack:
+     * - Serial: lone line token (e.g. 'i') via printToAllPorts
+     * - WebSocket: {type:response, status:completed} via finishWebCommand
+     */
+    async function sendRobotCommandAwaitAck(command, { token = "i", timeoutMs = CMD_ACK_TIMEOUT_MS } = {}) {
+      const waits = [];
+      const vias = [];
+
       if (transport.isConnected()) {
-        await transport.send(command, { addNewline: true, logConsole });
-        return "serial";
+        const from = transport.serialBuffer.length;
+        waits.push(
+          transport
+            .send(command, { addNewline: true, logConsole: false })
+            .then(() => transport.waitForToken(token, timeoutMs, from))
+            .then(() => {
+              vias.push("serial");
+            })
+        );
       }
-      if (petoiWs.isConnected()) {
-        petoiWs.sendCommand(command);
-        appendSerialLine(command, true);
-        if (logConsole) addConsoleMessage("WS Sent: " + command, "sent");
-        return "websocket";
+      if (petoiPool.hasAny()) {
+        waits.push(
+          petoiPool.broadcastAndWait(command, timeoutMs).then((n) => {
+            vias.push("ws×" + n);
+          })
+        );
       }
-      throw new Error("No serial / WebSocket connection");
+      if (!waits.length) throw new Error("No serial / WebSocket connection");
+
+      // If only WiFi (no serial send path), show outbound command in monitor
+      if (!transport.isConnected() && petoiPool.hasAny()) {
+        appendSerialLine(command + "  [wait " + token + " / WS]", true);
+      }
+      await Promise.all(waits);
+      return vias.join("+") || "ok";
+    }
+
+    async function flushCommandQueue() {
+      if (cmdBusy) return;
+      if (!latestAngles) return;
+      if (!(transport.isConnected() || petoiPool.hasAny())) {
+        statControlEl.textContent = t("notConnected") + " a=[" + latestAngles.join(",") + "]";
+        return;
+      }
+
+      const angles = latestAngles;
+      latestAngles = null;
+      if (lastSentAngles && angles.every((v, i) => v === lastSentAngles[i])) {
+        statControlEl.textContent = "a=[" + angles.join(",") + "]";
+        return;
+      }
+
+      const params = [];
+      for (let i = 0; i < 4; i++) {
+        params.push(ROBOT_JOINT_IDS[i], angles[i]);
+      }
+      const command = encodeCommand("i", params);
+
+      cmdBusy = true;
+      try {
+        const via = await sendRobotCommandAwaitAck(command, { token: "i" });
+        lastSentAngles = angles.slice();
+        statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
+      } catch (e) {
+        statControlEl.textContent = t("sendFailed") + ": " + (e.message || e);
+        // Do not keep lastSentAngles stuck — allow retry of same pose after timeout
+      } finally {
+        cmdBusy = false;
+        if (latestAngles) {
+          // Send only the newest pose accumulated while waiting for ack
+          queueMicrotask(() => flushCommandQueue());
+        }
+      }
     }
 
     /**
      * Dynamic min/max of pct → linear map to [b-R, b+R] (raise → smaller a).
-     * Send encodeCommand('i', [2,a0, 3,a1, 4,a2, 5,a3])
+     * Sends encodeCommand('i', ...) only after ready-gate + previous 'i' ack.
+     * @param {number[]} pcts
+     * @param {{ allowSend?: boolean }} [opts]
      */
-    async function updateGaitControl(pcts) {
+    function updateGaitControl(pcts, opts) {
+      const allowSend = !!(opts && opts.allowSend);
       const a = [null, null, null, null];
       const ranges = [];
       let readyCount = 0;
@@ -1422,51 +2578,42 @@
 
       const angles = a.map((v, i) => (v == null ? B_BASE[i] : v));
       lastControlSnapshot = {
-        phase: readyCount === 4 ? "control" : "warmup",
+        phase: !allowSend
+          ? "gated"
+          : readyCount === 4
+            ? "control"
+            : "warmup",
         pcts,
         a: angles,
         ranges,
+        cmdBusy,
+        readyPhase: readyGate.phase,
       };
+
+      if (!allowSend) {
+        latestAngles = null;
+        statControlEl.textContent = t("waitReady") + " · " + (readyGate.prompt || readyGate.phase);
+        return null;
+      }
 
       if (readyCount < 4) {
         statControlEl.textContent = t("expandMotion");
         return null;
       }
 
-      const linked = transport.isConnected() || petoiWs.isConnected();
-      const now = performance.now();
-      const changed =
-        !lastSentAngles ||
-        angles.some((v, i) => Math.abs(v - lastSentAngles[i]) >= 1);
-
-      if (!linked) {
+      if (!(transport.isConnected() || petoiPool.hasAny())) {
         statControlEl.textContent = t("notConnected") + " a=[" + angles.join(",") + "]";
         return { a: angles, sent: false };
       }
-      if (!changed || sendInFlight || now - lastSendMs < SEND_MIN_INTERVAL_MS) {
-        statControlEl.textContent = "a=[" + angles.join(",") + "]";
-        return { a: angles, sent: false };
-      }
 
-      const params = [];
-      for (let i = 0; i < 4; i++) {
-        params.push(ROBOT_JOINT_IDS[i], angles[i]);
+      // Keep only the newest target; send after previous 'i' is acknowledged.
+      latestAngles = angles.slice();
+      if (cmdBusy) {
+        statControlEl.textContent = "a=[" + angles.join(",") + "] (wait ack)";
+        return { a: angles, sent: false, queued: true };
       }
-      const command = encodeCommand("i", params);
-
-      sendInFlight = true;
-      lastSendMs = now;
-      lastSentAngles = angles.slice();
-      try {
-        const via = await sendRobotCommand(command, { logConsole: false });
-        statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
-        return { a: angles, sent: true, command, via };
-      } catch (e) {
-        statControlEl.textContent = t("sendFailed");
-        return { a: angles, sent: false, error: e.message || String(e) };
-      } finally {
-        sendInFlight = false;
-      }
+      flushCommandQueue();
+      return { a: angles, sent: true };
     }
 
     // ——— Serial transport (adapted from PetoiWebCoding ComposerTransport) ———
@@ -1621,8 +2768,8 @@
               for (const line of parts) {
                 if (line.length) appendSerialLine(line, false);
                 if (this.onLine) this.onLine(line);
-                const ipMatch = line.match(/IP Address:\s*([0-9.]+)/i);
-                if (ipMatch) updateQuickConnectButton(ipMatch[1]);
+                const ipMatch = line.match(/IP Address:\s*(\d{1,3}(?:\.\d{1,3}){3})/i);
+                if (ipMatch) updateQuickConnectButton(normalizeIp(ipMatch[1]));
               }
             } catch {
               break;
@@ -1662,20 +2809,29 @@
         throw new Error("Token timeout: " + token);
       }
 
-      async queryWifiIp(timeoutMs = 3000) {
-        const from = this.serialBuffer.length;
-        await this.send("w", { logConsole: true });
+      /** Listen for "IP Address: x.x.x.x" in serial buffer from fromIndex (no send). */
+      async waitForWifiIp(timeoutMs = 8000, fromIndex) {
+        const from =
+          typeof fromIndex === "number" ? fromIndex : this.serialBuffer.length;
         const start = Date.now();
         while (Date.now() - start < timeoutMs) {
           const fragment = this.serialBuffer.slice(from);
-          const m = fragment.match(/IP Address:\s*([0-9.]+)/i);
+          const m = fragment.match(/IP Address:\s*(\d{1,3}(?:\.\d{1,3}){3})/i);
           if (m) {
-            updateQuickConnectButton(m[1]);
-            return m[1];
+            const ip = normalizeIp(m[1]);
+            if (isValidIp(ip)) return ip;
           }
           await new Promise((r) => setTimeout(r, 50));
         }
         return null;
+      }
+
+      async queryWifiIp(timeoutMs = 3000) {
+        const from = this.serialBuffer.length;
+        await this.send("w", { logConsole: true });
+        const ip = await this.waitForWifiIp(timeoutMs, from);
+        if (ip) updateQuickConnectButton(ip);
+        return ip;
       }
 
       async disconnect() {
@@ -1745,10 +2901,10 @@
     }
 
     /**
-     * Quick Connect:
-     * - Serial connected → query IP via `w`, update IP box
-     * - No serial + saved/typed IP → WebSocket connect; fail → clear IP + WiFi dialog
-     * - No serial + no IP → WiFi dialog
+     * Quick Connect (multi-device):
+     * - Serial → query IP via `w` and add WiFi link (keeps existing devices)
+     * - Typed/saved IP → add WebSocket connection (does not drop others)
+     * - Fail on a specific IP → remove that IP only
      */
     async function quickConnect() {
       quickConnectBtn.disabled = true;
@@ -1757,7 +2913,7 @@
           addConsoleMessage("Quick Connect: serial active, querying IP (w)…");
           const ip = await transport.queryWifiIp(3500);
           if (ip) {
-            setDeviceIp(ip, { save: true, connectWs: true, log: false });
+            setDeviceIp(ip, { connectWs: true, log: false });
             addConsoleMessage("Quick Connect OK (serial): " + ip, "good");
             refreshConnectedUi();
           } else {
@@ -1767,20 +2923,31 @@
           return;
         }
 
-        const ip = (robotIpInput.value.trim() || loadSavedIp() || "").trim();
-        if (ip) {
-          addConsoleMessage("Quick Connect: no serial, connecting WiFi " + ip + "…");
-          try {
-            await connectWifiByIp(ip);
-            return;
-          } catch (e) {
-            clearDeviceIp("WiFi connect failed, cleared IP: " + (e.message || e));
-            showWifiDialog();
-            return;
-          }
+        const typed = robotIpInput.value.trim();
+        if (typed && isValidIp(typed)) rememberIp(typed);
+        const candidates = [];
+        if (typed) candidates.push(typed);
+        for (const ip of loadSavedIps()) {
+          if (!candidates.includes(ip)) candidates.push(ip);
         }
 
-        addConsoleMessage("Quick Connect: no serial / no saved IP — open WiFi dialog", "warn");
+        if (candidates.length) {
+          addConsoleMessage("Quick Connect: connecting WiFi device(s)…");
+          let anyOk = false;
+          for (const ip of candidates) {
+            try {
+              await connectWifiByIp(ip);
+              anyOk = true;
+            } catch (e) {
+              clearDeviceIp(ip, "WiFi connect failed for " + ip + " (kept in cache): " + (e.message || e));
+            }
+          }
+          if (anyOk) return;
+          showWifiDialog();
+          return;
+        }
+
+        addConsoleMessage("Quick Connect: no serial / no IP — open WiFi dialog", "warn");
         showWifiDialog();
       } catch (e) {
         addConsoleMessage("Quick Connect failed: " + (e.message || e), "error");
@@ -1791,36 +2958,84 @@
     }
 
     async function connectWifiFromDialog() {
-      const ip = wifiDialogIp.value.trim();
+      const ip = normalizeIp(wifiDialogIp.value);
       if (!isValidIp(ip)) {
         addConsoleMessage("Enter a valid IP address", "error");
         return;
       }
+      wifiDialogIp.value = ip;
       try {
         await connectWifiByIp(ip);
         hideWifiDialog();
       } catch (e) {
-        clearDeviceIp("WiFi connect failed, cleared IP: " + (e.message || e));
+        clearDeviceIp(ip, "WiFi connect failed for " + ip + " (kept in cache): " + (e.message || e));
       }
     }
 
-    async function confirmWifiSettings() {
+    async function applyDiscoveredIp(ip, { connect = true, hideDialog = true } = {}) {
+      const clean = normalizeIp(ip);
+      if (!clean || !isValidIp(clean)) return false;
+      wifiDialogIp.value = clean;
+      robotIpInput.value = clean;
+      rememberIp(clean);
+      ip = clean;
+      if (connect) {
+        try {
+          await connectWifiByIp(ip);
+          if (hideDialog) hideWifiDialog();
+          return true;
+        } catch (e) {
+          clearDeviceIp(ip, "WiFi connect failed for " + ip + " (kept in cache): " + (e.message || e));
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /** Query IP via serial `w`, fill IP field, auto Connect IP. */
+    async function queryIpFromDialog() {
+      if (!transport.isConnected()) {
+        addConsoleMessage("Query IP needs serial connection", "warn");
+        return;
+      }
+      addConsoleMessage("Querying IP (w)…");
+      const ip = await transport.queryWifiIp(3500);
+      if (!ip) {
+        addConsoleMessage("No IP reported", "warn");
+        return;
+      }
+      await applyDiscoveredIp(ip);
+    }
+
+    /**
+     * Connect WiFi: send w%ssid%password over serial, listen for IP,
+     * then autofill IP area and auto WebSocket connect.
+     */
+    async function connectWifiWithCredentials() {
       const ssid = document.getElementById("wifiSsid").value.trim();
       const password = document.getElementById("wifiPassword").value;
       if (!ssid) {
-        addConsoleMessage("SSID is required for Send Config", "error");
+        addConsoleMessage("SSID is required for Connect WiFi", "error");
         return;
       }
       if (!transport.isConnected()) {
-        addConsoleMessage("Send Config needs serial — use Connect WiFi with IP instead", "error");
+        addConsoleMessage("Connect WiFi needs serial — use Connect IP with a known address", "error");
         return;
       }
       try {
+        const from = transport.serialBuffer.length;
         await transport.send(`w%${ssid}%${password}`);
-        addConsoleMessage("WiFi config sent, querying IP…");
-        hideWifiDialog();
-        const ip = await transport.queryWifiIp(8000);
-        if (!ip) addConsoleMessage("WiFi config sent; IP not reported yet", "warn");
+        addConsoleMessage("WiFi config sent, waiting for IP…");
+        let ip = await transport.waitForWifiIp(8000, from);
+        if (!ip) {
+          addConsoleMessage("No IP in config reply — querying with w…", "warn");
+          ip = await transport.queryWifiIp(5000);
+        }
+        if (!ip) {
+          addConsoleMessage("WiFi config sent; IP not reported yet", "warn");
+          return;
+        }
+        await applyDiscoveredIp(ip);
       } catch (e) {
         addConsoleMessage("WiFi config failed: " + (e.message || e), "error");
       }
@@ -1877,9 +3092,37 @@
       };
     }
 
+    /** Drawing surface size (pre-CSS-rotation). Swaps when view is on its side. */
+    function stageSize() {
+      const { w, h } = paneSize();
+      if (cameraRotation % 180 !== 0) return { w: h, h: w };
+      return { w, h };
+    }
+
+    function applyCameraRotation() {
+      const { w, h } = stageSize();
+      cameraStageInner.style.width = w + "px";
+      cameraStageInner.style.height = h + "px";
+      cameraStageInner.style.marginLeft = -w / 2 + "px";
+      cameraStageInner.style.marginTop = -h / 2 + "px";
+      // Mirror first, then rotate CCW (CSS applies right-to-left)
+      cameraStageInner.style.transform =
+        "rotate(" + -cameraRotation + "deg) scaleX(-1)";
+      resizeOverlay();
+      if (btnRotateCamera) {
+        btnRotateCamera.title = t("rotateCameraTitle") + " (" + cameraRotation + "°)";
+      }
+    }
+
+    function rotateCameraView() {
+      cameraRotation = (cameraRotation + 90) % 360;
+      applyCameraRotation();
+      addConsoleMessage("Camera view rotated CCW to " + cameraRotation + "°", "good");
+    }
+
     function resizeOverlay() {
       const dpr = window.devicePixelRatio || 1;
-      const { w, h } = paneSize();
+      const { w, h } = stageSize();
       overlay.width = Math.round(w * dpr);
       overlay.height = Math.round(h * dpr);
       overlay.style.width = w + "px";
@@ -1887,24 +3130,24 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    window.addEventListener("resize", resizeOverlay);
+    window.addEventListener("resize", applyCameraRotation);
     if (typeof ResizeObserver !== "undefined") {
-      new ResizeObserver(resizeOverlay).observe(cameraPane);
+      new ResizeObserver(applyCameraRotation).observe(cameraPane);
     }
 
     function landmarkToClient(lm) {
       const vw = video.videoWidth;
       const vh = video.videoHeight;
-      const { w: cw, h: ch } = paneSize();
+      const { w: cw, h: ch } = stageSize();
       if (!vw || !vh) return { x: 0, y: 0, vis: 0 };
       const scale = Math.max(cw / vw, ch / vh);
       const dispW = vw * scale;
       const dispH = vh * scale;
       const ox = (cw - dispW) / 2;
       const oy = (ch - dispH) / 2;
-      const nx = 1 - lm.x;
+      // Mirror is applied on the stage; landmarks stay in camera space (no 1-x here).
       return {
-        x: ox + nx * vw * scale,
+        x: ox + lm.x * vw * scale,
         y: oy + lm.y * vh * scale,
         vis: lm.visibility ?? lm.presence ?? 1,
       };
@@ -1940,21 +3183,17 @@
       ctx.stroke();
     }
 
-    /** Torso center = midpoint of mid-shoulder and mid-hip. */
-    function torsoCenter(pts) {
-      const ls = pts[POSE.LEFT_SHOULDER];
-      const rs = pts[POSE.RIGHT_SHOULDER];
+    /** Hip center (0,0) = midpoint of left and right hip joints. */
+    function hipCenter(pts) {
       const lh = pts[POSE.LEFT_HIP];
       const rh = pts[POSE.RIGHT_HIP];
-      const parts = [ls, rs, lh, rh].filter((p) => p && p.vis >= VIS_MIN);
-      if (parts.length < 2) return null;
-      let sx = 0;
-      let sy = 0;
-      for (const p of parts) {
-        sx += p.x;
-        sy += p.y;
+      if (!lh || !rh || lh.vis < VIS_MIN || rh.vis < VIS_MIN) {
+        // Fallback to whichever hip is visible
+        if (lh && lh.vis >= VIS_MIN) return { x: lh.x, y: lh.y, vis: 1 };
+        if (rh && rh.vis >= VIS_MIN) return { x: rh.x, y: rh.y, vis: 1 };
+        return null;
       }
-      return { x: sx / parts.length, y: sy / parts.length, vis: 1 };
+      return { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2, vis: 1 };
     }
 
     function shoulderWidthPx(pts) {
@@ -1967,8 +3206,8 @@
     }
 
     /**
-     * Y offset relative to torso center (0,0), UP positive (screen Y is down).
-     * Raising a limb → pct increases → s = pct - mid increases → a = b - s decreases.
+     * Y offset relative to hip center (0,0), UP positive (screen Y is down).
+     * Raising a limb → pct increases → maps to smaller joint angle.
      */
     function jointYOffsetPct(joint, center, shoulderW) {
       if (!joint || joint.vis < VIS_MIN || !center || shoulderW < 1) return null;
@@ -2049,17 +3288,23 @@
     }
 
     function render(poseResult) {
-      const { w: cw, h: ch } = paneSize();
+      const { w: cw, h: ch } = stageSize();
       ctx.clearRect(0, 0, cw, ch);
 
       const poses = poseResult?.landmarks || [];
       let elbowCount = 0;
       let kneeCount = 0;
       const lines = [];
+      const now = performance.now();
+
+      // Ready-gate uses primary pose only; missing body counts as illegal
+      const primaryPts = poses.length ? poses[0].map(landmarkToClient) : null;
+      updateReadyGate(primaryPts, now);
 
       for (let pi = 0; pi < poses.length; pi++) {
-        const pts = poses[pi].map(landmarkToClient);
-        const center = torsoCenter(pts);
+        const pts = pi === 0 ? primaryPts : poses[pi].map(landmarkToClient);
+        const legal = pi === 0 ? readyGate.legal : isLegalSitOrStand(pts);
+        const center = hipCenter(pts);
         const shoulderW = shoulderWidthPx(pts);
 
         for (const [i, j] of POSE_CONNECTIONS) {
@@ -2092,7 +3337,8 @@
         if (lk.vis >= VIS_MIN) kneeCount++;
         if (rk.vis >= VIS_MIN) kneeCount++;
 
-        if (center) {
+        // Filter non sit/stand poses from baseline / control mapping
+        if (center && legal) {
           drawHorizontalThroughCenter(center, cw);
 
           // Channel order 1..4 → LE, RE, RK, LK → robot joints 2,3,4,5
@@ -2108,11 +3354,16 @@
             return off ? off.pct : null;
           });
 
-          // Only drive robot from primary pose
-          if (pi === 0) updateGaitControl(pcts);
+          // Primary pose: map always (when legal); send only after READY
+          if (pi === 0) {
+            updateGaitControl(pcts, {
+              allowSend: readyGate.phase === READY_PHASE.CONTROLLING,
+            });
+          }
 
           lines.push(`Pose#${pi + 1}  shoulderW=${shoulderW.toFixed(0)}px`);
-          lines.push(`  center (0,0) @ ${Math.round(center.x)}, ${Math.round(center.y)}`);
+          lines.push(`  hip center (0,0) @ ${Math.round(center.x)}, ${Math.round(center.y)}`);
+          lines.push(`  ready: ${readyGate.phase}` + (readyGate.prompt ? ` — ${readyGate.prompt}` : ""));
           lines.push(`  map: pct[min..max] → a[b+${ANGLE_RANGE}..b-${ANGLE_RANGE}]`);
 
           for (let ti = 0; ti < targets.length; ti++) {
@@ -2143,17 +3394,28 @@
           }
         } else {
           lines.push(`Pose#${pi + 1}`);
-          lines.push("  torso center unavailable");
+          if (!legal) lines.push("  " + t("poseIllegal").replace(/\n/g, " · "));
+          else lines.push("  hip center unavailable");
         }
 
         drawJoint(le, LINE.drop, 12, "L-Elbow");
         drawJoint(re, LINE.drop, 12, "R-Elbow");
         drawJoint(lk, LINE.drop, 12, "L-Knee");
         drawJoint(rk, LINE.drop, 12, "R-Knee");
+
+        if (pi === 0) {
+          showHeadPrompt(pts, readyGate.prompt);
+          showBodyIpLabel(pts);
+        }
       }
 
       if (!poses.length) {
+        showHeadPrompt(null, readyGate.prompt);
+        showBodyIpLabel(null);
         coordTextEl.textContent = t("noBody");
+        if (readyGate.phase === READY_PHASE.WAITING) {
+          latestAngles = null;
+        }
       } else {
         coordTextEl.textContent = lines.join("\n");
       }
@@ -2205,7 +3467,7 @@
         video.srcObject = stream;
         await video.play();
         document.body.classList.add("camera-on");
-        resizeOverlay();
+        applyCameraRotation();
         lastVideoTime = -1;
         rafId = requestAnimationFrame(tick);
         addConsoleMessage(`Camera started — move limbs to expand pct min/max (map to b±${ANGLE_RANGE}°)`, "good");
@@ -2282,8 +3544,21 @@
       showSerialTime = !showSerialTime;
       btnSerialTime.classList.toggle("active", showSerialTime);
     });
+    function showHelpDialog() {
+      document.getElementById("helpOverlay").classList.add("visible");
+      document.getElementById("helpDialog").classList.add("visible");
+    }
+    function hideHelpDialog() {
+      document.getElementById("helpOverlay").classList.remove("visible");
+      document.getElementById("helpDialog").classList.remove("visible");
+    }
+    document.getElementById("btnHelp").addEventListener("click", showHelpDialog);
+    document.getElementById("helpClose").addEventListener("click", hideHelpDialog);
+    document.getElementById("helpOverlay").addEventListener("click", hideHelpDialog);
+
     btnResetCalib.addEventListener("click", resetCalibration);
     document.getElementById("btnResetCalibHud").addEventListener("click", resetCalibration);
+    btnRotateCamera.addEventListener("click", rotateCameraView);
     document.getElementById("langSelect").addEventListener("change", (e) => {
       currentLang = e.target.value === "zh" ? "zh" : "en";
       try {
@@ -2298,10 +3573,10 @@
       if (e.key === "Enter") quickConnect();
     });
     robotIpInput.addEventListener("change", () => {
-      const ip = robotIpInput.value.trim();
+      const ip = normalizeIp(robotIpInput.value);
       if (ip && isValidIp(ip)) {
-        currentDeviceIP = ip;
-        saveIp(ip);
+        robotIpInput.value = ip;
+        rememberIp(ip);
       }
     });
     document.getElementById("wifiCancel").addEventListener("click", hideWifiDialog);
@@ -2310,29 +3585,24 @@
     wifiDialogIp.addEventListener("keydown", (e) => {
       if (e.key === "Enter") connectWifiFromDialog();
     });
-    document.getElementById("wifiQuery").addEventListener("click", async () => {
-      if (!transport.isConnected()) {
-        addConsoleMessage("Query IP needs serial connection", "warn");
-        return;
-      }
-      hideWifiDialog();
-      const ip = await transport.queryWifiIp(3500);
-      if (!ip) {
-        addConsoleMessage("No IP reported", "warn");
-        showWifiDialog();
-      }
+    document.getElementById("wifiQuery").addEventListener("click", queryIpFromDialog);
+    document.getElementById("wifiConfirm").addEventListener("click", connectWifiWithCredentials);
+    document.getElementById("wifiSsid").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") connectWifiWithCredentials();
     });
-    document.getElementById("wifiConfirm").addEventListener("click", confirmWifiSettings);
+    document.getElementById("wifiPassword").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") connectWifiWithCredentials();
+    });
 
     window.addEventListener("pagehide", () => {
       stopCamera();
       transport.disconnect();
-      petoiWs.disconnect();
+      petoiPool.disconnectAll();
     });
     window.addEventListener("beforeunload", () => {
       stopCamera();
       transport.disconnect();
-      petoiWs.disconnect();
+      petoiPool.disconnectAll();
     });
 
     loadStatusEl.dataset.i18nKey = "loadingModel";
@@ -2344,11 +3614,24 @@
     } else {
       addConsoleMessage("Ready. Use Quick Connect or Connect Serial Port.", "good");
     }
-    const savedIp = loadSavedIp();
-    if (savedIp) {
-      robotIpInput.value = savedIp;
-      currentDeviceIP = savedIp;
-      addConsoleMessage("Loaded saved IP: " + savedIp, "good");
+    const savedIps = loadSavedIps();
+    if (savedIps.length) {
+      robotIpInput.value = savedIps[savedIps.length - 1];
+      addConsoleMessage("Restored IPs from cache: " + savedIps.join(", "), "good");
+      // Reconnect cached devices; keep cache even if some are offline
+      (async () => {
+        for (const ip of savedIps) {
+          try {
+            await petoiPool.connect(ip);
+            addConsoleMessage("Auto-reconnect OK: " + ip, "good");
+          } catch (e) {
+            addConsoleMessage("Auto-reconnect failed for " + ip + ": " + (e.message || e), "warn");
+          }
+        }
+        refreshConnectedUi();
+      })();
+    } else {
+      refreshConnectedUi();
     }
     addConsoleMessage(
       `Gait map: LE,RE,RK,LK pct min/max → a in b±${ANGLE_RANGE}; raise→smaller angle; i 2..5`,
