@@ -245,6 +245,24 @@
     }
     .btn-start:hover { background: #2ea043; }
     .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      font: inherit;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      border: 1px solid #484f58;
+      cursor: pointer;
+      font-weight: 500;
+      background: #21262d;
+      color: #e6edf3;
+    }
+    .btn-secondary:hover { background: #30363d; }
+    .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary.active {
+      background: #1f6feb;
+      border-color: #1f6feb;
+      color: #fff;
+    }
+    .btn-secondary.active:hover { background: #388bfd; }
     .hint {
       margin-top: 0.75rem;
       font-size: 0.8rem;
@@ -1068,6 +1086,8 @@
             </p>
             <div class="controls">
               <button type="button" class="btn-start" id="btnStart" data-i18n="openCamera" disabled>Open Camera</button>
+              <button type="button" class="btn-secondary" id="btnUpdateModel" data-i18n="updateModel" data-i18n-title="updateModelTitle" title="Download latest pose model from CDN when online. Offline keeps using the bundled local model.">Update model</button>
+              <button type="button" class="btn-secondary" id="btnUseLocalModel" data-i18n="useLocalModel" data-i18n-title="useLocalModelTitle" title="Clear the downloaded model cache and use the bundled local file.">Use local</button>
             </div>
             <p id="loadStatus">Loading MediaPipe model…</p>
             <p id="err" class="error" role="alert"></p>
@@ -1131,6 +1151,7 @@
               <span class="area-title" data-i18n="console">Console</span>
               <div class="button-group">
                 <button type="button" class="toggle-button active" id="btnConsoleTime" data-i18n="btnTime">🕐 Time</button>
+                <button type="button" class="toggle-button" id="btnVerbose" data-i18n="btnVerbose" data-i18n-title="btnVerboseTitle" title="Show detailed sent commands and WebSocket responses">📋 Verbose</button>
                 <button type="button" class="clear-button" id="btnClearConsole" data-i18n="btnClear">🗑️ Clear</button>
               </div>
             </div>
@@ -1209,7 +1230,7 @@
     import {
       FilesetResolver,
       PoseLandmarker,
-    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/+esm";
+    } from "./vendor/mediapipe/tasks-vision/vision_bundle.mjs";
 
     const LANG_STORAGE_KEY = "camWalkingGame.lang";
     const I18N = {
@@ -1283,6 +1304,20 @@
         setupDesc:
           "After camera access, track left/right elbows and knees on the left. Connect a Petoi robot on the right (Web Serial, 115200).",
         openCamera: "Open Camera",
+        updateModel: "Update model",
+        updateModelTitle:
+          "Download the latest pose model from CDN (needs internet). Already using a download? Click again to refresh it.",
+        useDownloadedModel: "Use downloaded",
+        useDownloadedModelTitle:
+          "Switch back to the pose model already downloaded in this browser (no network).",
+        useLocalModel: "Use local",
+        useLocalModelTitle:
+          "Use the bundled local model. Keeps any downloaded copy so you can switch back.",
+        updatingModel: "Updating pose model from CDN…",
+        modelUpdated: "Model updated from CDN. Ready.",
+        modelUpdateFailed: "Model update failed: {msg}",
+        modelSourceLocal: "Model ready (local bundle). You can open the camera.",
+        modelSourceCache: "Model ready (downloaded update). You can open the camera.",
         loadingModel: "Loading MediaPipe model…",
         loadingPose: "Loading pose model…",
         loadingCpu: "GPU unavailable, loading on CPU…",
@@ -1326,6 +1361,8 @@
         console: "Console",
         serialMonitor: "Serial Monitor",
         btnTime: "🕐 Time",
+        btnVerbose: "📋 Verbose",
+        btnVerboseTitle: "Show detailed sent commands and WebSocket responses",
         btnClear: "🗑️ Clear",
         btnConnect: "🔌 Connect",
         btnClose: "❌ Close",
@@ -1416,6 +1453,17 @@
         setupDesc:
           "允许摄像头后左侧实时追踪左右手肘与膝盖。右侧可连接 Petoi 机器人（Web Serial，115200）。",
         openCamera: "打开摄像头",
+        updateModel: "更新模型",
+        updateModelTitle: "有外网时从 CDN 下载最新姿态模型。若已在使用下载版，再点一次会重新下载刷新。",
+        useDownloadedModel: "用已下载",
+        useDownloadedModelTitle: "切回本浏览器已下载的姿态模型（不联网）。",
+        useLocalModel: "用本地模型",
+        useLocalModelTitle: "使用自带本地模型；保留已下载副本，方便再切回去。",
+        updatingModel: "正在从 CDN 更新姿态模型…",
+        modelUpdated: "已从 CDN 更新模型，可以使用。",
+        modelUpdateFailed: "模型更新失败：{msg}",
+        modelSourceLocal: "模型已就绪（本地）。可以打开摄像头。",
+        modelSourceCache: "模型已就绪（已下载更新）。可以打开摄像头。",
         loadingModel: "正在加载 MediaPipe 模型…",
         loadingPose: "正在加载姿态模型…",
         loadingCpu: "GPU 不可用，改用 CPU 加载模型…",
@@ -1459,6 +1507,8 @@
         console: "控制台",
         serialMonitor: "串口监视器",
         btnTime: "🕐 时间",
+        btnVerbose: "📋 详细",
+        btnVerboseTitle: "显示发送的指令与 WebSocket 回包等详细信息",
         btnClear: "🗑️ 清空",
         btnConnect: "🔌 连接",
         btnClose: "❌ 关闭",
@@ -1537,11 +1587,21 @@
         coordTextEl.textContent = t("waitingDetect");
       }
       if (typeof refreshConnectedUi === "function") refreshConnectedUi();
+      if (typeof refreshModelSourceButtons === "function") refreshModelSourceButtons();
     }
 
-    const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm";
-    const POSE_MODEL =
+    // Prefer local vendor (offline / exhibition). "Update model" can cache a CDN copy in the browser.
+    const WASM_URL = new URL("./vendor/mediapipe/tasks-vision/wasm", import.meta.url).href;
+    const LOCAL_POSE_MODEL = new URL(
+      "./vendor/mediapipe/models/pose_landmarker_lite.task",
+      import.meta.url
+    ).href;
+    const CDN_POSE_MODEL =
       "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+    const MP_MODEL_CACHE = "camWalkingGame.mediapipe.model.v1";
+    const USE_CACHED_MODEL_KEY = "camWalkingGame.useCachedPoseModel";
+    let poseModelObjectUrl = null;
+    let poseModelSource = "local"; // "local" | "cache"
     const BAUD = 115200;
     /** Robot joints 2..5 map to LE, RE, RK, LK (a[0..3]). */
     const B_BASE = [5, 5, 25, 25];
@@ -1556,8 +1616,13 @@
      * (avoids "harder and harder" after reaching a new extreme).
      */
     const STRETCH_PCT_SPAN = 50;
-    /** Max wait for robot 'I' / WS completed; 100ms ≈ 10 cmd/s while keeping UI responsive. */
+    /** Max wait for non-stream commands that await firmware ack. */
     const CMD_ACK_TIMEOUT_MS = 100;
+    /**
+     * Streaming joint `I`: wait for ack, but while waiting only refresh a single
+     * latestAngles slot (no growing queue). After ack, send that freshest sample.
+     */
+    const STREAM_I_ACK_TIMEOUT_MS = 100;
     /** Skip send when every joint |Δa| vs last sent is below this (degrees). */
     const ANGLE_SEND_MIN_DELTA = 3;
     /** Auto-reconnect after unexpected WebSocket close (exponential backoff). */
@@ -1646,6 +1711,8 @@
     const overlay = document.getElementById("overlay");
     const ctx = overlay.getContext("2d");
     const btnStart = document.getElementById("btnStart");
+    const btnUpdateModel = document.getElementById("btnUpdateModel");
+    const btnUseLocalModel = document.getElementById("btnUseLocalModel");
     const btnRotateCamera = document.getElementById("btnRotateCamera");
     const errEl = document.getElementById("err");
     const loadStatusEl = document.getElementById("loadStatus");
@@ -1674,6 +1741,7 @@
     const btnSendSerial = document.getElementById("btnSendSerial");
     const btnClearConsole = document.getElementById("btnClearConsole");
     const btnConsoleTime = document.getElementById("btnConsoleTime");
+    const btnVerbose = document.getElementById("btnVerbose");
     const quickConnectBtn = document.getElementById("quickConnectBtn");
     const robotIpInput = document.getElementById("robotIpInput");
     const connectedIpLabelEl = document.getElementById("connectedIpLabel");
@@ -1700,6 +1768,8 @@
     let fpsLastMs = performance.now();
     let showConsoleTime = true;
     let showSerialTime = true;
+    /** PetoiWebCoding-style Verbose: log WS/command details when on (default off). */
+    let showVerbose = false;
     let lastControlSnapshot = null;
     /** Display rotation in degrees CCW: 0, 90, 180, 270. */
     let cameraRotation = 0;
@@ -3295,7 +3365,10 @@
       }
 
       _handleMessage(ip, text) {
-        if (text && text.length < 240) appendSerialLine("WS[" + ip + "] " + text, false);
+        // Verbose off (default): skip DOM logging — streaming `I` makes it costly.
+        if (showVerbose && text && text.length < 240) {
+          addConsoleMessage("WS[" + ip + "] " + text, "sent");
+        }
         const clean = (text || "").replace(/[\r\n\t\f\v]/g, " ").trim();
         if (!clean || clean.startsWith("<")) return;
         let msg;
@@ -3511,6 +3584,7 @@
      * Send command and wait for firmware ack on selected robots.
      * - Serial: raw bytes for "bytes:[...]" (no newline); else ASCII + newline
      * - WebSocket: binary commands converted to b64:; wait finishWebCommand
+     * Streaming gait uses this with a single latestAngles slot (see flushCommandQueue).
      * @param {string} command
      * @param {{ token?: string, timeoutMs?: number, robotIds?: string[]|null }} [opts]
      *        robotIds null/undefined → sync all connected (legacy broadcast)
@@ -3562,16 +3636,34 @@
 
       if (!waits.length) throw new Error("No serial / WebSocket connection");
 
-      if (!transport.isConnected() && wsIps.length) {
-        appendSerialLine(
+      // Echo sent commands only when Verbose is on (or non-stream tokens).
+      if (
+        showVerbose &&
+        !transport.isConnected() &&
+        wsIps.length
+      ) {
+        addConsoleMessage(
           formatCommandForLog(command) + "  [wait " + token + " / WS]",
-          true
+          "sent"
         );
       }
       await Promise.all(waits);
       return vias.join("+") || "ok";
     }
 
+    function anglesWithinSendDeadband(angles, lastSent) {
+      return (
+        !!lastSent &&
+        angles.every(
+          (v, i) => Math.abs(v - lastSent[i]) < ANGLE_SEND_MIN_DELTA
+        )
+      );
+    }
+
+    /**
+     * Streaming `I`: await each ack, but never grow a queue — while in-flight,
+     * pose frames only overwrite latestAngles; after ack, send that freshest sample.
+     */
     async function flushCommandQueue(queueKey, robotIds) {
       const q = getCmdQueue(queueKey);
       if (q.busy) return;
@@ -3582,36 +3674,43 @@
         return;
       }
 
-      const angles = q.latestAngles;
-      q.latestAngles = null;
-      // Deadband: if all joints moved < ANGLE_SEND_MIN_DELTA° since last send, skip
-      if (
-        q.lastSentAngles &&
-        angles.every(
-          (v, i) => Math.abs(v - q.lastSentAngles[i]) < ANGLE_SEND_MIN_DELTA
-        )
-      ) {
-        statControlEl.textContent = "a=[" + angles.join(",") + "]";
-        return;
-      }
-
-      const params = [];
-      for (let i = 0; i < 4; i++) {
-        params.push(ROBOT_JOINT_IDS[i], angles[i]);
-      }
-      // 'I' = T_INDEXED_SIMULTANEOUS_BIN (binary over socket via b64:)
-      const command = encodeCommand("I", params);
-
       q.busy = true;
+      const ids = robotIds == null ? null : robotIds;
       try {
-        const via = await sendRobotCommandAwaitAck(command, {
-          token: "I",
-          robotIds: robotIds == null ? null : robotIds,
-        });
-        q.lastSentAngles = angles.slice();
-        statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
-      } catch (e) {
-        statControlEl.textContent = t("sendFailed") + ": " + (e.message || e);
+        while (q.latestAngles) {
+          const angles = q.latestAngles;
+          q.latestAngles = null;
+
+          if (anglesWithinSendDeadband(angles, q.lastSentAngles)) {
+            statControlEl.textContent = "a=[" + angles.join(",") + "]";
+            continue;
+          }
+
+          const params = [];
+          for (let i = 0; i < 4; i++) {
+            params.push(ROBOT_JOINT_IDS[i], angles[i]);
+          }
+          // 'I' = T_INDEXED_SIMULTANEOUS_BIN (binary over socket via b64:)
+          const command = encodeCommand("I", params);
+
+          try {
+            const via = await sendRobotCommandAwaitAck(command, {
+              token: "I",
+              timeoutMs: STREAM_I_ACK_TIMEOUT_MS,
+              robotIds: ids,
+            });
+            q.lastSentAngles = angles.slice();
+            statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
+            // Loop: if frames refreshed latestAngles during ack wait, send that next.
+          } catch (e) {
+            // Keep freshest target (or this sample) for a later attempt; stop the
+            // tight loop so ack-timeout cannot stampede the robot queue.
+            if (!q.latestAngles) q.latestAngles = angles.slice();
+            statControlEl.textContent =
+              t("sendFailed") + ": " + (e.message || e);
+            break;
+          }
+        }
       } finally {
         q.busy = false;
         if (q.latestAngles) {
@@ -3713,7 +3812,9 @@
       q.latestAngles = angles.slice();
       if (q.busy) {
         if (updateHud) {
-          statControlEl.textContent = "a=[" + angles.join(",") + "] (wait ack)";
+          // In-flight ack: slot already holds the freshest angles (not a growing queue).
+          statControlEl.textContent =
+            "a=[" + angles.join(",") + "] (wait ack · next refreshed)";
         }
         return { a: angles, sent: false, queued: true };
       }
@@ -4770,9 +4871,79 @@
       document.body.classList.remove("camera-on");
     }
 
-    async function createPoseLandmarker(vision, delegate) {
+    function preferCachedPoseModel() {
+      try {
+        return localStorage.getItem(USE_CACHED_MODEL_KEY) === "1";
+      } catch {
+        return false;
+      }
+    }
+
+    function setPreferCachedPoseModel(on) {
+      try {
+        if (on) localStorage.setItem(USE_CACHED_MODEL_KEY, "1");
+        else localStorage.removeItem(USE_CACHED_MODEL_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    async function hasCachedPoseModel() {
+      if (typeof caches === "undefined") return false;
+      try {
+        const cache = await caches.open(MP_MODEL_CACHE);
+        const hit = await cache.match(CDN_POSE_MODEL);
+        return !!(hit && hit.ok);
+      } catch {
+        return false;
+      }
+    }
+
+    async function refreshModelSourceButtons() {
+      const usingCache = poseModelSource === "cache";
+      const hasCache = usingCache || (await hasCachedPoseModel());
+      btnUseLocalModel.classList.toggle("active", !usingCache);
+      btnUpdateModel.classList.toggle("active", usingCache);
+      btnUseLocalModel.setAttribute("aria-pressed", usingCache ? "false" : "true");
+      btnUpdateModel.setAttribute("aria-pressed", usingCache ? "true" : "false");
+      // Local + existing download → "Use downloaded" (switch only). Otherwise "Update model".
+      const switchOnly = !usingCache && hasCache;
+      const labelKey = switchOnly ? "useDownloadedModel" : "updateModel";
+      const titleKey = switchOnly ? "useDownloadedModelTitle" : "updateModelTitle";
+      btnUpdateModel.dataset.i18n = labelKey;
+      btnUpdateModel.dataset.i18nTitle = titleKey;
+      btnUpdateModel.textContent = t(labelKey);
+      btnUpdateModel.title = t(titleKey);
+    }
+
+    async function resolvePoseModelPath() {
+      if (poseModelObjectUrl) {
+        URL.revokeObjectURL(poseModelObjectUrl);
+        poseModelObjectUrl = null;
+      }
+      if (preferCachedPoseModel() && typeof caches !== "undefined") {
+        try {
+          const cache = await caches.open(MP_MODEL_CACHE);
+          const hit = await cache.match(CDN_POSE_MODEL);
+          if (hit && hit.ok) {
+            const blob = await hit.blob();
+            if (blob && blob.size > 0) {
+              poseModelObjectUrl = URL.createObjectURL(blob);
+              poseModelSource = "cache";
+              return poseModelObjectUrl;
+            }
+          }
+        } catch (e) {
+          console.warn("Cached pose model unavailable, using local", e);
+        }
+      }
+      poseModelSource = "local";
+      return LOCAL_POSE_MODEL;
+    }
+
+    async function createPoseLandmarker(vision, delegate, modelAssetPath) {
       return PoseLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: POSE_MODEL, delegate },
+        baseOptions: { modelAssetPath, delegate },
         runningMode: "VIDEO",
         numPoses: MAX_POSES,
         minPoseDetectionConfidence: 0.5,
@@ -4783,32 +4954,121 @@
 
     async function initPose() {
       try {
+        if (poseLandmarker) {
+          try {
+            poseLandmarker.close();
+          } catch {
+            /* ignore */
+          }
+          poseLandmarker = null;
+        }
         const vision = await FilesetResolver.forVisionTasks(WASM_URL);
         loadStatusEl.dataset.i18nKey = "loadingPose";
         loadStatusEl.textContent = t("loadingPose");
+        const modelPath = await resolvePoseModelPath();
         try {
-          poseLandmarker = await createPoseLandmarker(vision, "GPU");
+          poseLandmarker = await createPoseLandmarker(vision, "GPU", modelPath);
         } catch (gpuErr) {
           console.warn("GPU delegate failed, falling back to CPU", gpuErr);
           loadStatusEl.dataset.i18nKey = "loadingCpu";
           loadStatusEl.textContent = t("loadingCpu");
-          poseLandmarker = await createPoseLandmarker(vision, "CPU");
+          poseLandmarker = await createPoseLandmarker(vision, "CPU", modelPath);
         }
-        loadStatusEl.dataset.i18nKey = "modelReady";
-        loadStatusEl.textContent = t("modelReady");
+        const readyKey = poseModelSource === "cache" ? "modelSourceCache" : "modelSourceLocal";
+        loadStatusEl.dataset.i18nKey = readyKey;
+        loadStatusEl.textContent = t(readyKey);
         btnStart.disabled = false;
-        addConsoleMessage("Pose model ready", "good");
+        refreshModelSourceButtons();
+        addConsoleMessage(
+          "Pose model ready (" + (poseModelSource === "cache" ? "CDN cache" : "local bundle") + ")",
+          "good"
+        );
       } catch (e) {
         console.error(e);
         loadStatusEl.dataset.i18nKey = "modelFailed";
         loadStatusEl.textContent = t("modelFailed");
         showError(t("mediapipeError", { msg: e.message || e }));
         addConsoleMessage("Pose model failed: " + (e.message || e), "error");
+        refreshModelSourceButtons();
+      }
+    }
+
+    async function updatePoseModelFromCdn() {
+      if (!navigator.onLine) {
+        showError(t("modelUpdateFailed", { msg: "offline" }));
+        addConsoleMessage("Model update skipped: offline", "warn");
+        return;
+      }
+      if (typeof caches === "undefined") {
+        showError(t("modelUpdateFailed", { msg: "Cache API unavailable" }));
+        return;
+      }
+      btnUpdateModel.disabled = true;
+      btnUseLocalModel.disabled = true;
+      btnStart.disabled = true;
+      loadStatusEl.dataset.i18nKey = "updatingModel";
+      loadStatusEl.textContent = t("updatingModel");
+      try {
+        const res = await fetch(CDN_POSE_MODEL, { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const cache = await caches.open(MP_MODEL_CACHE);
+        await cache.put(CDN_POSE_MODEL, res.clone());
+        setPreferCachedPoseModel(true);
+        await initPose();
+        loadStatusEl.dataset.i18nKey = "modelUpdated";
+        loadStatusEl.textContent = t("modelUpdated");
+        addConsoleMessage("Pose model updated from CDN and cached in browser", "good");
+      } catch (e) {
+        console.error(e);
+        showError(t("modelUpdateFailed", { msg: e.message || e }));
+        addConsoleMessage("Model update failed: " + (e.message || e), "error");
+        setPreferCachedPoseModel(false);
+        await initPose();
+      } finally {
+        btnUpdateModel.disabled = false;
+        btnUseLocalModel.disabled = false;
+      }
+    }
+
+    /** Switch to cached download if present; only hit CDN when needed / refreshing. */
+    async function onUpdateModelClick() {
+      const hasCache = await hasCachedPoseModel();
+      if (poseModelSource !== "cache" && hasCache) {
+        btnUpdateModel.disabled = true;
+        btnUseLocalModel.disabled = true;
+        btnStart.disabled = true;
+        try {
+          setPreferCachedPoseModel(true);
+          await initPose();
+          addConsoleMessage("Switched to downloaded pose model (no re-download)", "good");
+        } finally {
+          btnUpdateModel.disabled = false;
+          btnUseLocalModel.disabled = false;
+        }
+        return;
+      }
+      await updatePoseModelFromCdn();
+    }
+
+    async function useLocalPoseModel() {
+      btnUpdateModel.disabled = true;
+      btnUseLocalModel.disabled = true;
+      btnStart.disabled = true;
+      try {
+        // Keep Cache API copy so "Use downloaded" can switch back without CDN.
+        setPreferCachedPoseModel(false);
+        await initPose();
+        addConsoleMessage("Using bundled local pose model", "good");
+      } finally {
+        btnUpdateModel.disabled = false;
+        btnUseLocalModel.disabled = false;
       }
     }
 
     // Events
     btnStart.addEventListener("click", startCamera);
+    btnUpdateModel.addEventListener("click", onUpdateModelClick);
+    btnUseLocalModel.addEventListener("click", useLocalPoseModel);
     openSerialBtn.addEventListener("click", openSerialPort);
     closeSerialBtn.addEventListener("click", closeSerialPort);
     clearSerialBtn.addEventListener("click", clearSerialOutput);
@@ -4820,6 +5080,14 @@
     btnConsoleTime.addEventListener("click", () => {
       showConsoleTime = !showConsoleTime;
       btnConsoleTime.classList.toggle("active", showConsoleTime);
+    });
+    btnVerbose.addEventListener("click", () => {
+      showVerbose = !showVerbose;
+      btnVerbose.classList.toggle("active", showVerbose);
+      addConsoleMessage(
+        showVerbose ? "Verbose on — logging WS / commands" : "Verbose off",
+        showVerbose ? "good" : "warn"
+      );
     });
     btnSerialTime.addEventListener("click", () => {
       showSerialTime = !showSerialTime;
@@ -4890,6 +5158,7 @@
     loadStatusEl.textContent = t("loadingModel");
     coordTextEl.textContent = t("waitingDetect");
     applyI18n();
+    refreshModelSourceButtons();
     if (angleChartCanvas && angleChartCanvas.parentElement) {
       resizeAngleChartCanvas();
       if (typeof ResizeObserver !== "undefined") {
