@@ -1097,8 +1097,8 @@
             </p>
             <p class="legend">
               <i class="dot-pose"></i><span data-i18n="legendSkeleton">Skeleton</span>
-              &nbsp;&nbsp;<i class="dot-base"></i><span data-i18n="legendBaseline">Baseline</span>
-              &nbsp;&nbsp;<i class="dot-elbow"></i><span data-i18n="legendDrop">Drops / joints</span>
+              &nbsp;&nbsp;<i class="dot-base"></i><span data-i18n="legendBaseline">Pitch 0° (torso down)</span>
+              &nbsp;&nbsp;<i class="dot-elbow"></i><span data-i18n="legendDrop">Limb pitch</span>
             </p>
           </div>
         </div>
@@ -1114,7 +1114,7 @@
         </div>
 
         <aside class="hud hud-coords" id="hudCoords" data-i18n-aria="hudCoordsAria">
-          <h2 data-i18n="hudCoordsTitle">Y offset / shoulder width %</h2>
+          <h2 data-i18n="hudCoordsTitle">Sagittal pitch °</h2>
           <div id="coordText">Waiting for detection…</div>
         </aside>
         <div class="hud hud-stats" id="hudStats">
@@ -1271,8 +1271,9 @@
           "<ul>" +
           "<li>If you drop your arms during countdown, preparation restarts.</li>" +
           "<li>Invalid pose / leaving the frame for about <b>5 seconds</b> restarts preparation. During that illegal wait, <b>no joint commands are sent</b>.</li>" +
-          "<li>At <b>READY!</b>, stretch pose locks calibration: average elbows → shoulder <b>min</b> angle; average knees → hip <b>max</b> angle. The other end is a <b>fixed</b> pct span (not expanded later).</li>" +
-          "<li>The yellow baseline (0,0) is at approximate <b>navel</b> height (2/3 from mid-shoulder toward mid-hip).</li>" +
+          "<li>At <b>READY!</b>, stretch pose locks calibration: average elbow pitch → shoulder <b>min</b> angle; average knee pitch → hip <b>max</b> angle. The other end is a <b>fixed</b> pitch span (not expanded later).</li>" +
+          "<li>Limb command uses <b>sagittal pitch</b> from MediaPipe 3D world landmarks (body frame: up = hip→shoulder, forward = chest). 0° = hanging / extended down; 180° = straight up. This is not the 2D drop to a screen-horizontal line, so camera perspective and body yaw affect it much less.</li>" +
+          "<li>The yellow axis is the torso-down direction (pitch 0°), through approximate <b>navel</b> height.</li>" +
           "<li>Joint angles are 1€-filtered for smoothness while keeping fast direction changes.</li>" +
           "</ul>" +
           "<h4>4. Multi-player / multi-robot (max 2 people)</h4>" +
@@ -1326,10 +1327,10 @@
         setupHint:
           'Requires HTTPS or <code>localhost</code>. Use a Chromium browser for serial. Example: <code>python3 -m http.server 8765</code>',
         legendSkeleton: "Skeleton",
-        legendBaseline: "Baseline",
-        legendDrop: "Drops / joints",
-        hudCoordsAria: "Joint offsets",
-        hudCoordsTitle: "Y offset / shoulder width %",
+        legendBaseline: "Pitch 0° (torso down)",
+        legendDrop: "Limb pitch",
+        hudCoordsAria: "Joint pitch",
+        hudCoordsTitle: "Sagittal pitch °",
         waitingDetect: "Waiting for detection…",
         noBody: "No person detected\nKeep your full body in frame",
         statFps: "FPS:",
@@ -1420,8 +1421,9 @@
           "<ul>" +
           "<li>倒计时中放下双臂，准备流程会重来。</li>" +
           "<li>非法姿态或离开画面约 <b>5 秒</b> 会重新准备；在非法等待期间<strong>不发送</strong>关节指令。</li>" +
-          "<li>出现 <b>READY!</b> 时锁定舒展标定：双肘平均位置 → 肩关节<strong>最小角</strong>；双膝平均位置 → 髋关节<strong>最大角</strong>；另一端为<strong>固定</strong>百分数跨度（之后不再动态扩大）。</li>" +
-          "<li>黄色基准线（0,0）在近似<strong>肚脐</strong>高度（肩中点→髋中点的 2/3 处）。</li>" +
+          "<li>出现 <b>READY!</b> 时锁定舒展标定：双肘平均 pitch → 肩关节<strong>最小角</strong>；双膝平均 pitch → 髋关节<strong>最大角</strong>；另一端为<strong>固定</strong> pitch 跨度（之后不再动态扩大）。</li>" +
+          "<li>肢体指令用 MediaPipe <b>三维世界坐标</b>在身体坐标系里解<strong>矢状面 pitch</strong>（上：髋→肩，前：胸向）。0°=下垂/伸直，180°=朝上。不再用关节到屏幕横线的垂距，因此透视和身体左右转对角度的影响小得多。</li>" +
+          "<li>黄色轴为躯干朝下方向（pitch 0°），经过近似<strong>肚脐</strong>高度。</li>" +
           "<li>关节角经 1€ 滤波平滑，同时尽量保留快速转向拐点。</li>" +
           "</ul>" +
           "<h4>4. 多人 / 多机（最多 2 人）</h4>" +
@@ -1472,10 +1474,10 @@
         setupHint:
           "需 HTTPS 或 <code>localhost</code>。串口连接请使用 Chromium 系浏览器。本地服务示例：<code>python3 -m http.server 8765</code>",
         legendSkeleton: "骨架",
-        legendBaseline: "水平基准",
-        legendDrop: "垂线/关节",
-        hudCoordsAria: "关节偏移",
-        hudCoordsTitle: "Y 偏移 / 肩宽 %",
+        legendBaseline: "Pitch 0°（躯干朝下）",
+        legendDrop: "肢体 pitch",
+        hudCoordsAria: "关节 pitch",
+        hudCoordsTitle: "矢状面 pitch °",
         waitingDetect: "等待检测…",
         noBody: "未检测到人体\n请保证全身入镜",
         statFps: "FPS：",
@@ -1608,14 +1610,15 @@
     const ROBOT_JOINT_IDS = [2, 3, 4, 5];
     /** Usable angle range around baseline: [b - RANGE, b + RANGE]. */
     const ANGLE_RANGE = 25;
-    /** Minimum pct span before mapping is considered valid. */
+    /** Minimum pitch span (degrees) before mapping is considered valid. */
     const MIN_PCT_SPAN = 3;
     /**
-     * Fixed pct span locked at READY (shoulder-width %).
+     * Fixed sagittal-pitch span locked at READY (degrees from stretch).
      * Stretch anchors one end; the other end is stretch±this — never expands later
      * (avoids "harder and harder" after reaching a new extreme).
+     * ~70° of upper-arm/thigh rotation ≈ the old 50% shoulder-width travel.
      */
-    const STRETCH_PCT_SPAN = 50;
+    const STRETCH_PITCH_SPAN = 70;
     /** Max wait for non-stream commands that await firmware ack. */
     const CMD_ACK_TIMEOUT_MS = 100;
     /**
@@ -1677,8 +1680,8 @@
     /** High-contrast overlay colors by line type (dark camera background). */
     const LINE = {
       skeleton: "#00F0FF", // cyan — pose bones + shoulder width
-      baseline: "#FFE600", // yellow — navel-height horizontal 0-line
-      drop: "#FF3D9A", // magenta — joint vertical drops
+      baseline: "#FFE600", // yellow — torso-down axis (pitch 0°)
+      drop: "#FF3D9A", // magenta — limb pitch labels
       joint: "#FFFFFF",
     };
     const LINE_W = {
@@ -1820,6 +1823,7 @@
       if (!cmdQueues.has(key)) {
         cmdQueues.set(key, {
           busy: false,
+          held: false,
           latestAngles: null,
           lastSentAngles: null,
         });
@@ -1827,9 +1831,16 @@
       return cmdQueues.get(key);
     }
 
+    function holdCmdQueue(q) {
+      if (!q) return;
+      q.held = true;
+      q.latestAngles = null;
+    }
+
     function clearAllCmdQueues() {
       for (const q of cmdQueues.values()) {
         q.busy = false;
+        q.held = true;
         q.latestAngles = null;
         q.lastSentAngles = null;
       }
@@ -2304,7 +2315,10 @@
           );
           if (typeof onHardReset === "function") onHardReset();
         }
-        if (gate.phase === READY_PHASE.WAITING) {
+        if (
+          gate.phase === READY_PHASE.WAITING ||
+          gate.phase === READY_PHASE.CONTROLLING
+        ) {
           gate.prompt = t("poseIllegal");
         }
         return gate;
@@ -3112,8 +3126,8 @@
     const ANG_FILTER_DCUTOFF = 1.0;
 
     /**
-     * Stretch-calibrated fixed pct range → angle∈[b+R, b-R] (raise → smaller angle).
-     * At READY both ends lock: stretch anchors one end, the other is ±STRETCH_PCT_SPAN.
+     * Stretch-calibrated fixed pitch range → angle∈[b+R, b-R] (raise → smaller angle).
+     * At READY both ends lock: stretch anchors one end, the other is ±STRETCH_PITCH_SPAN.
      * Later motion only clamps inside that band — range never grows.
      * freeEnd "min": elbows — stretch → maxV (a_min), minV = stretch − span (a_max).
      * freeEnd "max": knees — stretch → minV (a_max), maxV = stretch + span (a_min).
@@ -3148,17 +3162,17 @@
       }
 
       /**
-       * Lock a fixed pct band from the stretch pose (no later expansion).
-       * Elbows: pct → maxV (b−R). Knees: pct → minV (b+R).
+       * Lock a fixed pitch band from the stretch pose (no later expansion).
+       * Elbows: pitch → maxV (b−R). Knees: pitch → minV (b+R).
        */
       lockStretch(pct) {
         if (pct == null || Number.isNaN(pct)) return;
         if (this.freeEnd === "min") {
           this.maxV = pct;
-          this.minV = pct - STRETCH_PCT_SPAN;
+          this.minV = pct - STRETCH_PITCH_SPAN;
         } else {
           this.minV = pct;
-          this.maxV = pct + STRETCH_PCT_SPAN;
+          this.maxV = pct + STRETCH_PITCH_SPAN;
         }
         this.stretchLocked = true;
         this.pctFilter.reset();
@@ -3208,7 +3222,7 @@
       );
     }
 
-    /** Average elbow pct → shoulder min angle; average knee pct → hip max angle. */
+    /** Average elbow pitch → shoulder min angle; average knee pitch → hip max angle. */
     function lockStretchCalibration(st, pcts) {
       if (!st || !st.trackers || !pcts || pcts.length < 4) return false;
       const elbowVals = [pcts[0], pcts[1]].filter(
@@ -3227,7 +3241,7 @@
       st.trackers[3].lockStretch(kneeAvg);
       st.calibLocked = true;
       addConsoleMessage(
-        `Stretch calib P#${st.trackId}: elbows@${elbowAvg.toFixed(0)}%→a_min, knees@${kneeAvg.toFixed(0)}%→a_max`,
+        `Stretch calib P#${st.trackId}: elbows@${elbowAvg.toFixed(0)}°→a_min, knees@${kneeAvg.toFixed(0)}°→a_max`,
         "good"
       );
       return true;
@@ -3250,8 +3264,10 @@
         controlLayout.mode === "sync"
           ? "__sync__"
           : (asg.robotIds && asg.robotIds[0]) || "__none__";
-      if (queueKey === "__none__") return;
-      getCmdQueue(queueKey).latestAngles = null;
+      if (queueKey !== "__none__") holdCmdQueue(getCmdQueue(queueKey));
+      if (asg.robotIds) {
+        for (const id of asg.robotIds) holdCmdQueue(cmdQueues.get(id));
+      }
     }
 
     // Patch player states created before trackers were available
@@ -3667,7 +3683,7 @@
     async function flushCommandQueue(queueKey, robotIds) {
       const q = getCmdQueue(queueKey);
       if (q.busy) return;
-      if (!q.latestAngles) return;
+      if (q.held || !q.latestAngles) return;
       if (!connectedRobotsOrdered().length) {
         statControlEl.textContent =
           t("notConnected") + " a=[" + q.latestAngles.join(",") + "]";
@@ -3677,9 +3693,10 @@
       q.busy = true;
       const ids = robotIds == null ? null : robotIds;
       try {
-        while (q.latestAngles) {
+        while (q.latestAngles && !q.held) {
           const angles = q.latestAngles;
           q.latestAngles = null;
+          if (q.held) break;
 
           if (anglesWithinSendDeadband(angles, q.lastSentAngles)) {
             statControlEl.textContent = "a=[" + angles.join(",") + "]";
@@ -3694,18 +3711,19 @@
           const command = encodeCommand("I", params);
 
           try {
+            if (q.held) break;
             const via = await sendRobotCommandAwaitAck(command, {
               token: "I",
               timeoutMs: STREAM_I_ACK_TIMEOUT_MS,
               robotIds: ids,
             });
+            if (q.held) break;
             q.lastSentAngles = angles.slice();
             statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
             // Loop: if frames refreshed latestAngles during ack wait, send that next.
           } catch (e) {
-            // Keep freshest target (or this sample) for a later attempt; stop the
-            // tight loop so ack-timeout cannot stampede the robot queue.
-            if (!q.latestAngles) q.latestAngles = angles.slice();
+            // Do not resurrect a held queue (illegal / left READY).
+            if (!q.held && !q.latestAngles) q.latestAngles = angles.slice();
             statControlEl.textContent =
               t("sendFailed") + ": " + (e.message || e);
             break;
@@ -3713,14 +3731,14 @@
         }
       } finally {
         q.busy = false;
-        if (q.latestAngles) {
+        if (!q.held && q.latestAngles) {
           queueMicrotask(() => flushCommandQueue(queueKey, robotIds));
         }
       }
     }
 
     /**
-     * Stretch-calib pct → [b-R, b+R], 1€-filtered, then send 'I'.
+     * Stretch-calib pitch° → [b-R, b+R], 1€-filtered, then send 'I'.
      * @param {number[]} pcts
      * @param {{ allowSend?: boolean, trackers?: PctRangeTracker[], angleFilters?: OneEuroFilter[], queueKey?: string, robotIds?: string[]|null, readyPhase?: string, statusHint?: string, updateHud?: boolean, now?: number }} [opts]
      */
@@ -3785,8 +3803,9 @@
         queueKey,
       };
 
+      if (allowSend) q.held = false;
       if (!allowSend) {
-        q.latestAngles = null;
+        holdCmdQueue(q);
         if (updateHud) {
           const hint =
             (opts && opts.statusHint) ||
@@ -4368,6 +4387,32 @@
       };
     }
 
+    function overlayLabelFontPx() {
+      const { w, h } = stageSize();
+      return Math.round(Math.max(32, Math.min(48, Math.min(w, h) * 0.048)));
+    }
+
+    /**
+     * Overlay lives under CSS scaleX(-1). Flip locally so glyphs stay
+     * readable; keep the anchor in camera space.
+     */
+    function drawUnmirroredText(x, y, text, fill, dy) {
+      const px = overlayLabelFontPx();
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(-1, 1);
+      ctx.font = "800 " + px + "px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.lineWidth = Math.max(6, Math.round(px / 5));
+      ctx.strokeStyle = "#000";
+      ctx.fillStyle = fill || "#fff";
+      const ty = dy != null ? dy : -10;
+      ctx.strokeText(text, 0, ty);
+      ctx.fillText(text, 0, ty);
+      ctx.restore();
+    }
+
     function drawJoint(pt, color, radius, label) {
       if (pt.vis < VIS_MIN) return;
       ctx.beginPath();
@@ -4377,14 +4422,7 @@
       ctx.lineWidth = 2;
       ctx.strokeStyle = "rgba(0,0,0,0.55)";
       ctx.stroke();
-      if (label) {
-        ctx.font = "600 12px system-ui, sans-serif";
-        ctx.fillStyle = "#fff";
-        ctx.strokeStyle = "rgba(0,0,0,0.75)";
-        ctx.lineWidth = 3;
-        ctx.strokeText(label, pt.x + radius + 4, pt.y - 4);
-        ctx.fillText(label, pt.x + radius + 4, pt.y - 4);
-      }
+      if (label) drawUnmirroredText(pt.x, pt.y, label, "#fff", -(radius + 6));
     }
 
     function drawSegment(a, b, color, width) {
@@ -4396,6 +4434,182 @@
       ctx.lineWidth = width;
       ctx.lineCap = "round";
       ctx.stroke();
+    }
+
+    function visOf(lm) {
+      if (!lm) return 0;
+      return lm.vis ?? lm.visibility ?? lm.presence ?? 1;
+    }
+
+    function vec3Sub(a, b) {
+      return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+    }
+
+    function vec3Scale(a, s) {
+      return { x: a.x * s, y: a.y * s, z: a.z * s };
+    }
+
+    function vec3Dot(a, b) {
+      return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
+    function vec3Cross(a, b) {
+      return {
+        x: a.y * b.z - a.z * b.y,
+        y: a.z * b.x - a.x * b.z,
+        z: a.x * b.y - a.y * b.x,
+      };
+    }
+
+    function vec3Len(a) {
+      return Math.hypot(a.x, a.y, a.z);
+    }
+
+    function vec3Norm(a) {
+      const L = vec3Len(a);
+      if (L < 1e-9) return null;
+      return vec3Scale(a, 1 / L);
+    }
+
+    function vec3Mid(a, b) {
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+    }
+
+    /**
+     * Body-local frame from MediaPipe world landmarks (meters, hip-centered).
+     * up: hip → shoulder; right: person's left hip → right hip (Gram-Schmidt);
+     * forward: chest (nose used to pick the sign, so Y-up vs Y-down world coords both work).
+     */
+    function bodyFrameFromWorld(world) {
+      if (!world) return null;
+      const ls = world[POSE.LEFT_SHOULDER];
+      const rs = world[POSE.RIGHT_SHOULDER];
+      const lh = world[POSE.LEFT_HIP];
+      const rh = world[POSE.RIGHT_HIP];
+      if (
+        visOf(ls) < VIS_MIN ||
+        visOf(rs) < VIS_MIN ||
+        visOf(lh) < VIS_MIN ||
+        visOf(rh) < VIS_MIN
+      ) {
+        return null;
+      }
+      const midS = vec3Mid(ls, rs);
+      const midH = vec3Mid(lh, rh);
+      const up = vec3Norm(vec3Sub(midS, midH));
+      if (!up) return null;
+      let rightRaw = vec3Sub(rh, lh);
+      const rightOnUp = vec3Dot(rightRaw, up);
+      rightRaw = {
+        x: rightRaw.x - up.x * rightOnUp,
+        y: rightRaw.y - up.y * rightOnUp,
+        z: rightRaw.z - up.z * rightOnUp,
+      };
+      let right = vec3Norm(rightRaw);
+      if (!right) {
+        rightRaw = vec3Sub(rs, ls);
+        const r2 = vec3Dot(rightRaw, up);
+        right = vec3Norm({
+          x: rightRaw.x - up.x * r2,
+          y: rightRaw.y - up.y * r2,
+          z: rightRaw.z - up.z * r2,
+        });
+      }
+      if (!right) return null;
+      let forward = vec3Norm(vec3Cross(up, right));
+      if (!forward) return null;
+      const nose = world[POSE.NOSE];
+      if (nose && visOf(nose) >= VIS_MIN) {
+        if (vec3Dot(vec3Sub(nose, midH), forward) < 0) {
+          forward = vec3Scale(forward, -1);
+        }
+      }
+      return { up, right, forward, midHip: midH, midShoulder: midS };
+    }
+
+    /**
+     * Sagittal pitch from hanging: 0° = along torso-down, 90° = horizontal
+     * (forward or back), 180° = straight up. Lateral abduction is ignored so
+     * a side-raise does not masquerade as a walk-pitch; if the bone is almost
+     * purely lateral, fall back to 3D polar elevation from down.
+     */
+    function sagittalRaiseDeg(bone, frame) {
+      const y = vec3Dot(bone, frame.up);
+      const z = vec3Dot(bone, frame.forward);
+      const x = vec3Dot(bone, frame.right);
+      const sag = Math.hypot(y, z);
+      const full = Math.hypot(x, y, z);
+      if (full < 1e-6) return null;
+      if (sag < full * 0.18) {
+        return (Math.atan2(Math.hypot(x, z), -y) * 180) / Math.PI;
+      }
+      return (Math.atan2(Math.abs(z), -y) * 180) / Math.PI;
+    }
+
+    function limbPitchFromWorld(world, proximalIdx, distalIdx, frameOpt) {
+      const frame = frameOpt || bodyFrameFromWorld(world);
+      if (!frame) return null;
+      const prox = world[proximalIdx];
+      const dist = world[distalIdx];
+      if (visOf(prox) < VIS_MIN || visOf(dist) < VIS_MIN) return null;
+      const bone = vec3Sub(dist, prox);
+      return sagittalRaiseDeg(bone, frame);
+    }
+
+    /** Image-plane angle from torso-down to the bone, folded to 0°..180°. Fallback only. */
+    function limbPitchFromImage(pts, proximalIdx, distalIdx) {
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      const lh = pts[POSE.LEFT_HIP];
+      const rh = pts[POSE.RIGHT_HIP];
+      const prox = pts[proximalIdx];
+      const dist = pts[distalIdx];
+      if (
+        visOf(ls) < VIS_MIN ||
+        visOf(rs) < VIS_MIN ||
+        visOf(lh) < VIS_MIN ||
+        visOf(rh) < VIS_MIN ||
+        visOf(prox) < VIS_MIN ||
+        visOf(dist) < VIS_MIN
+      ) {
+        return null;
+      }
+      const midS = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+      const midH = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+      const downX = midH.x - midS.x;
+      const downY = midH.y - midS.y;
+      const boneX = dist.x - prox.x;
+      const boneY = dist.y - prox.y;
+      const downLen = Math.hypot(downX, downY);
+      const boneLen = Math.hypot(boneX, boneY);
+      if (downLen < 1e-6 || boneLen < 1e-6) return null;
+      const dot = (downX * boneX + downY * boneY) / (downLen * boneLen);
+      const cross = (downX * boneY - downY * boneX) / (downLen * boneLen);
+      return (Math.abs(Math.atan2(cross, dot)) * 180) / Math.PI;
+    }
+
+    function limbPitchDeg(pts, proximalIdx, distalIdx, frameOpt) {
+      const fromWorld =
+        pts && pts.world
+          ? limbPitchFromWorld(pts.world, proximalIdx, distalIdx, frameOpt)
+          : null;
+      if (fromWorld != null && !Number.isNaN(fromWorld)) return fromWorld;
+      return limbPitchFromImage(pts, proximalIdx, distalIdx);
+    }
+
+    function torsoDown2D(pts) {
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      const midHip = hipCenter(pts);
+      if (
+        visOf(ls) < VIS_MIN ||
+        visOf(rs) < VIS_MIN ||
+        !midHip
+      ) {
+        return null;
+      }
+      const midS = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+      return { x: midHip.x - midS.x, y: midHip.y - midS.y, midS, midHip };
     }
 
     /** Hip midpoint (fallback / anatomy helper). */
@@ -4444,46 +4658,34 @@
       return null;
     }
 
-    function shoulderWidthPx(pts) {
-      const ls = pts[POSE.LEFT_SHOULDER];
-      const rs = pts[POSE.RIGHT_SHOULDER];
-      if (!ls || !rs || ls.vis < VIS_MIN || rs.vis < VIS_MIN) return 0;
-      const dx = ls.x - rs.x;
-      const dy = ls.y - rs.y;
-      return Math.hypot(dx, dy);
-    }
-
     /**
-     * Y offset relative to navel baseline (0,0), UP positive (screen Y is down).
-     * Raising a limb → pct increases → maps to smaller joint angle.
+     * Sagittal pitch 0°..180° (down → up). Raising a limb → value increases
+     * → maps to smaller robot joint angle (same polarity as the old Y-pct).
      */
-    function jointYOffsetPct(joint, center, shoulderW) {
-      if (!joint || joint.vis < VIS_MIN || !center || shoulderW < 1) return null;
-      const offsetY = center.y - joint.y;
-      return {
-        offsetY,
-        pct: (offsetY / shoulderW) * 100,
-      };
+    function fmtPitch(deg) {
+      if (deg == null || Number.isNaN(deg)) return "—";
+      return deg.toFixed(0) + "°";
     }
 
-    function fmtPct(pct) {
-      if (pct == null || Number.isNaN(pct)) return "—";
-      const sign = pct > 0 ? "+" : "";
-      return sign + pct.toFixed(0) + "%";
-    }
-
-    function drawHorizontalThroughCenter(center, cw) {
+    /** Yellow torso-down axis (pitch 0°) through navel. */
+    function drawTorsoPitchAxis(pts, center) {
+      const down = torsoDown2D(pts);
+      if (!down || !center) return;
+      const len = Math.hypot(down.x, down.y);
+      if (len < 8) return;
+      const ux = down.x / len;
+      const uy = down.y / len;
+      const half = Math.max(70, Math.min(160, len * 0.85));
       ctx.save();
       ctx.setLineDash([22, 14]);
       ctx.strokeStyle = LINE.baseline;
       ctx.lineWidth = LINE_W.baseline;
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(0, center.y);
-      ctx.lineTo(cw, center.y);
+      ctx.moveTo(center.x - ux * half * 0.35, center.y - uy * half * 0.35);
+      ctx.lineTo(center.x + ux * half, center.y + uy * half);
       ctx.stroke();
       ctx.setLineDash([]);
-      // Origin marker
       ctx.beginPath();
       ctx.arc(center.x, center.y, 11, 0, Math.PI * 2);
       ctx.fillStyle = LINE.baseline;
@@ -4491,48 +4693,42 @@
       ctx.lineWidth = 4;
       ctx.strokeStyle = "#000";
       ctx.stroke();
-      ctx.font = "800 16px system-ui, sans-serif";
-      ctx.fillStyle = LINE.baseline;
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = 5;
-      ctx.strokeText("0,0", center.x + 14, center.y - 12);
-      ctx.fillText("0,0", center.x + 14, center.y - 12);
       ctx.restore();
+      drawUnmirroredText(center.x, center.y, "0°", LINE.baseline, -16);
     }
 
-    /** Vertical drop from joint to the torso horizontal line; label % of shoulder width. */
-    function drawJointDropToCenter(joint, center, pct, label) {
-      if (!joint || joint.vis < VIS_MIN) return;
+    /**
+     * Dashed pitch-0° tick from the proximal joint along torso-down,
+     * plus the 3D sagittal pitch label at the distal joint.
+     */
+    function drawLimbPitch(proximal, distal, pitchDeg, label, down2d) {
+      if (!distal || distal.vis < VIS_MIN) return;
       ctx.save();
-      ctx.strokeStyle = LINE.drop;
-      ctx.lineWidth = LINE_W.drop;
-      ctx.lineCap = "round";
-      ctx.setLineDash([12, 8]);
-      ctx.beginPath();
-      ctx.moveTo(joint.x, joint.y);
-      ctx.lineTo(joint.x, center.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Foot on the horizontal line
-      ctx.beginPath();
-      ctx.arc(joint.x, center.y, 7, 0, Math.PI * 2);
-      ctx.fillStyle = LINE.drop;
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#000";
-      ctx.stroke();
-
-      const text = label + " " + fmtPct(pct);
-      const midY = (joint.y + center.y) / 2;
-      const textX = joint.x + 12;
-      ctx.font = "800 17px system-ui, sans-serif";
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = "#000";
-      ctx.fillStyle = LINE.drop;
-      ctx.strokeText(text, textX, midY);
-      ctx.fillText(text, textX, midY);
+      if (proximal && proximal.vis >= VIS_MIN && down2d) {
+        const dlen = Math.hypot(down2d.x, down2d.y);
+        if (dlen > 4) {
+          const tick = 42;
+          const nx = (down2d.x / dlen) * tick;
+          const ny = (down2d.y / dlen) * tick;
+          ctx.strokeStyle = LINE.baseline;
+          ctx.lineWidth = 4;
+          ctx.lineCap = "round";
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(proximal.x, proximal.y);
+          ctx.lineTo(proximal.x + nx, proximal.y + ny);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
       ctx.restore();
+      drawUnmirroredText(
+        distal.x,
+        distal.y,
+        label + " " + fmtPitch(pitchDeg),
+        LINE.drop,
+        -18
+      );
     }
 
     function render(poseResult) {
@@ -4540,12 +4736,30 @@
       ctx.clearRect(0, 0, cw, ch);
 
       const poses = poseResult?.landmarks || [];
+      const worlds = poseResult?.worldLandmarks || [];
       let elbowCount = 0;
       let kneeCount = 0;
       const lines = [];
       const now = performance.now();
 
-      const posePtsList = poses.map((lm) => lm.map(landmarkToClient));
+      const posePtsList = poses.map((lm, i) => {
+        const pts = lm.map(landmarkToClient);
+        const w = worlds[i];
+        pts.world = w
+          ? w.map((p, j) => ({
+              x: p.x,
+              y: p.y,
+              z: p.z,
+              vis:
+                p.visibility ??
+                p.presence ??
+                lm[j]?.visibility ??
+                lm[j]?.presence ??
+                1,
+            }))
+          : null;
+        return pts;
+      });
       // Cap to MAX_POSES (2): first-recognized tracks only
       const people = matchPersonTracks(posePtsList, now)
         .sort((a, b) => a.trackId - b.trackId)
@@ -4565,7 +4779,7 @@
         showReadyPrompts([], { emptyFramePrompt: t("poseIllegal") });
         showBodyIpLabels([]);
         coordTextEl.textContent = t("noBody");
-        for (const q of cmdQueues.values()) q.latestAngles = null;
+        for (const q of cmdQueues.values()) holdCmdQueue(q);
         syncColumnGuides(0);
         statPoseEl.textContent = "0";
         statElbowsEl.textContent = "0";
@@ -4628,7 +4842,6 @@
           holdPlayerCommands(asg);
         }
         const center = navelCenter(pts);
-        const shoulderW = shoulderWidthPx(pts);
 
         for (const [i, j] of POSE_CONNECTIONS) {
           drawSegment(pts[i], pts[j], LINE.skeleton, LINE_W.skeleton);
@@ -4660,19 +4873,49 @@
         if (rk.vis >= VIS_MIN) kneeCount++;
 
         if (center && legal) {
-          drawHorizontalThroughCenter(center, cw);
+          drawTorsoPitchAxis(pts, center);
+          const down2d = torsoDown2D(pts);
 
           const targets = [
-            { joint: le, tag: "LE", name: "L-Elbow" },
-            { joint: re, tag: "RE", name: "R-Elbow" },
-            { joint: rk, tag: "RK", name: "R-Knee" },
-            { joint: lk, tag: "LK", name: "L-Knee" },
+            {
+              joint: le,
+              proximal: pts[POSE.LEFT_SHOULDER],
+              tag: "LE",
+              name: "L-Elbow",
+              proximalIdx: POSE.LEFT_SHOULDER,
+              distalIdx: POSE.LEFT_ELBOW,
+            },
+            {
+              joint: re,
+              proximal: pts[POSE.RIGHT_SHOULDER],
+              tag: "RE",
+              name: "R-Elbow",
+              proximalIdx: POSE.RIGHT_SHOULDER,
+              distalIdx: POSE.RIGHT_ELBOW,
+            },
+            {
+              joint: rk,
+              proximal: pts[POSE.RIGHT_HIP],
+              tag: "RK",
+              name: "R-Knee",
+              proximalIdx: POSE.RIGHT_HIP,
+              distalIdx: POSE.RIGHT_KNEE,
+            },
+            {
+              joint: lk,
+              proximal: pts[POSE.LEFT_HIP],
+              tag: "LK",
+              name: "L-Knee",
+              proximalIdx: POSE.LEFT_HIP,
+              distalIdx: POSE.LEFT_KNEE,
+            },
           ];
 
-          const pcts = targets.map((tg) => {
-            const off = jointYOffsetPct(tg.joint, center, shoulderW);
-            return off ? off.pct : null;
-          });
+          const bodyFrame = pts.world ? bodyFrameFromWorld(pts.world) : null;
+          const pitches = targets.map((tg) =>
+            limbPitchDeg(pts, tg.proximalIdx, tg.distalIdx, bodyFrame)
+          );
+          const pitchSrc = bodyFrame ? "3D" : "2D";
 
           if (isController) {
             // At READY: lock stretch pose — elbow avg → a_min, knee avg → a_max
@@ -4681,7 +4924,7 @@
               (st.readyGate.phase === READY_PHASE.READY_FLASH ||
                 st.readyGate.phase === READY_PHASE.CONTROLLING)
             ) {
-              lockStretchCalibration(st, pcts);
+              lockStretchCalibration(st, pitches);
             }
 
             // Each controller is independent — one person's illegal / not-ready
@@ -4705,7 +4948,7 @@
               controlLayout.mode === "sync" ? null : asg.robotIds.slice();
 
             if (!st.angleFilters) st.angleFilters = createAngleFilters();
-            updateGaitControl(pcts, {
+            updateGaitControl(pitches, {
               allowSend: allowSend && queueKey !== "__none__",
               trackers: st.trackers,
               angleFilters: st.angleFilters,
@@ -4726,10 +4969,10 @@
                 : "ctrl→" + (asg.robots.map(robotLabel).join(",") || "—")
               : "spectator";
           lines.push(
-            `P#${person.trackId}  ${role}  shoulderW=${shoulderW.toFixed(0)}px`
+            `P#${person.trackId}  ${role}  pitch=${pitchSrc}`
           );
           lines.push(
-            `  navel baseline (0,0) @ ${Math.round(center.x)}, ${Math.round(center.y)}`
+            `  torso-down 0° @ navel ${Math.round(center.x)}, ${Math.round(center.y)}`
           );
           if (isController) {
             lines.push(
@@ -4737,20 +4980,20 @@
                 (st.readyGate.prompt ? ` — ${st.readyGate.prompt}` : "")
             );
             lines.push(
-              `  map: stretch calib pct[min..max] → a[b+${ANGLE_RANGE}..b-${ANGLE_RANGE}]` +
+              `  map: stretch calib pitch°[min..max] → a[b+${ANGLE_RANGE}..b-${ANGLE_RANGE}]` +
                 (st.calibLocked ? " (locked)" : " (pending)")
             );
           }
 
           for (let ti = 0; ti < targets.length; ti++) {
             const tg = targets[ti];
-            const pct = pcts[ti];
-            drawJointDropToCenter(tg.joint, center, pct, tg.tag);
+            const pitch = pitches[ti];
+            drawLimbPitch(tg.proximal, tg.joint, pitch, tg.tag, down2d);
             if (isController && st.trackers) {
               const tr = st.trackers[ti];
-              let extra = fmtPct(pct);
+              let extra = fmtPitch(pitch);
               if (tr.ready) {
-                const ang = tr.mapToAngle(pct, B_BASE[ti]);
+                const ang = tr.mapToAngle(pitch, B_BASE[ti]);
                 extra += `  [${tr.minV.toFixed(0)}..${tr.maxV.toFixed(0)}]→a=${ang}`;
               } else if (Number.isFinite(tr.minV)) {
                 extra += `  min=${tr.minV.toFixed(0)} max=${tr.maxV.toFixed(0)}`;
@@ -4785,14 +5028,14 @@
               }
             }
           } else {
-            lines.push("  navel baseline unavailable");
+            lines.push("  torso axis unavailable");
           }
         }
 
-        drawJoint(le, LINE.drop, 12, "L-Elbow");
-        drawJoint(re, LINE.drop, 12, "R-Elbow");
-        drawJoint(lk, LINE.drop, 12, "L-Knee");
-        drawJoint(rk, LINE.drop, 12, "R-Knee");
+        drawJoint(le, LINE.drop, 12);
+        drawJoint(re, LINE.drop, 12);
+        drawJoint(lk, LINE.drop, 12);
+        drawJoint(rk, LINE.drop, 12);
       }
 
       showReadyPrompts(controlLayout.assignments);
