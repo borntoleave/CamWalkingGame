@@ -2,7 +2,7 @@
 
 Browser webcam pose control for Quaddle / OpenCat (elbow & knee → joints).
 
-## Run (macOS / Windows)
+## Run (macOS / Windows / Linux)
 
 Web files live under **`app/`** so you do not double-click `index.html` by mistake.
 
@@ -10,6 +10,7 @@ Web files live under **`app/`** so you do not double-click `index.html` by mista
 |----|--------|
 | macOS | Double-click **`AutorunMac.command`** (uses built-in `python3`) |
 | Windows | Double-click **`AutorunWin.bat`** (calls `scripts\AutorunWin.ps1`, **no Python**) |
+| Linux | Run **`./AutorunLinux.sh`** (uses `python3`; opens Chrome/Edge/Chromium) |
 
 
 Uses **Chrome or Edge** (Web Serial). Keep the server window open while demoing.
