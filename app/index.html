@@ -3468,6 +3468,7 @@
             rememberIp(ip);
             addConsoleMessage("WebSocket connected: " + url, "good");
             refreshConnectedUi();
+            sendZ1OnConnect({ ip });
             resolve();
           };
           ws.onerror = () => {
@@ -3629,7 +3630,7 @@
         const from = transport.serialBuffer.length;
         waits.push(
           transport
-            .send(command, { addNewline: !isBinary, logConsole: false })
+            .send(command, { addNewline: !isBinary, logConsole: false, logSerial: false })
             .then(() => transport.waitForToken(token, timeoutMs, from))
             .then(() => {
               vias.push("serial");
@@ -3652,19 +3653,43 @@
 
       if (!waits.length) throw new Error("No serial / WebSocket connection");
 
-      // Echo sent commands only when Verbose is on (or non-stream tokens).
-      if (
-        showVerbose &&
-        !transport.isConnected() &&
-        wsIps.length
-      ) {
+      // Echo sent commands in Console only when Verbose is on.
+      if (showVerbose) {
         addConsoleMessage(
-          formatCommandForLog(command) + "  [wait " + token + " / WS]",
+          formatCommandForLog(command) + "  [wait " + token + "]",
           "sent"
         );
       }
       await Promise.all(waits);
       return vias.join("+") || "ok";
+    }
+
+    /** First connect and every reconnect: send ASCII `z1` to that robot. */
+    function sendZ1OnConnect({ ip = null, serial = false } = {}) {
+      const command = encodeCommand("z", ["1"]);
+      const timeoutMs = Math.max(CMD_ACK_TIMEOUT_MS, 800);
+      const sendP = serial
+        ? (async () => {
+            if (!transport.isConnected()) throw new Error("Serial not connected");
+            await transport.send(command, {
+              addNewline: true,
+              logConsole: false,
+              logSerial: false,
+            });
+            return "serial";
+          })()
+        : sendRobotCommandAwaitAck(command, {
+            token: "z",
+            timeoutMs,
+            robotIds: ip ? [ip] : null,
+          });
+      sendP
+        .then((via) => {
+          addConsoleMessage("Sent z1 → " + via, "good");
+        })
+        .catch((e) => {
+          addConsoleMessage("z1 failed: " + (e.message || e), "warn");
+        });
     }
 
     function anglesWithinSendDeadband(angles, lastSent) {
@@ -3971,6 +3996,7 @@
         setSerialConnectedUI(true, name);
         refreshConnectedUi();
         addConsoleMessage("Serial connected: " + name, "good");
+        sendZ1OnConnect({ serial: true });
         return name;
       }
 
@@ -4004,7 +4030,7 @@
         loop();
       }
 
-      async send(data, { addNewline = true, logConsole = true } = {}) {
+      async send(data, { addNewline = true, logConsole = true, logSerial = true } = {}) {
         if (!this.writer) throw new Error("Serial not connected");
         let bytes = bytesCommandToUint8Array(data);
         let display;
@@ -4018,7 +4044,7 @@
           display = payload.replace(/\n$/, "");
         }
         await this.writer.write(bytes);
-        appendSerialLine(display, true);
+        if (logSerial) appendSerialLine(display, true);
         if (logConsole) addConsoleMessage("Sent: " + display, "sent");
       }
 
