@@ -12,16 +12,38 @@ ROOT = Path(__file__).resolve().parent.parent
 APP = ROOT / "app"
 PICS = ROOT / "pics"
 EMAIL_RE = re.compile(r"^[^@\s/\\]+@[^@\s/\\]+\.[^@\s/\\]+$")
+SOCIAL_BAD = re.compile(r'[/\\:*?"<>|]|\.\.')
 MAX_BODY = 12_000_000
 MAX_EMAIL_COPIES = 10000
 
 
-def save_photo(email, blob):
-    """Write pics/{email}.jpg, or pics/{email} N.jpg when that name is taken."""
+def photo_base(email, social, email_photo, mention):
+    """Two Y/N flags (email the photo, then mention), then the filled values."""
+    if email and (not EMAIL_RE.match(email) or ".." in email):
+        raise ValueError("bad email")
+    if social and (len(social) > 64 or SOCIAL_BAD.search(social)):
+        raise ValueError("bad social tag")
+    if email_photo and not email:
+        raise ValueError("email required")
+    if mention and not social:
+        raise ValueError("social tag required")
+    if not email and not social:
+        raise ValueError("need email or social tag")
+    parts = ["Y" if email_photo else "N", "Y" if mention else "N"]
+    if email:
+        parts.append(email)
+    if social:
+        parts.append(social)
+    return " ".join(parts)
+
+
+def save_photo(email, social, blob, email_photo=False, mention=False):
+    """Write pics/{email Y|N} {mention Y|N} {email} {tag}.jpg."""
     PICS.mkdir(parents=True, exist_ok=True)
     pics = PICS.resolve()
+    base = photo_base(email, social, email_photo, mention)
     for n in range(MAX_EMAIL_COPIES):
-        stem = email if n == 0 else f"{email} {n}"
+        stem = base if n == 0 else f"{base} {n}"
         dest = (PICS / f"{stem}.jpg").resolve()
         if pics not in dest.parents:
             raise ValueError("bad path")
@@ -51,9 +73,10 @@ class DemoHandler(SimpleHTTPRequestHandler):
         try:
             body = json.loads(raw.decode("utf-8"))
             email = str(body.get("email", "")).strip()
+            social = str(body.get("social", "")).strip()
+            email_photo = body.get("emailPhoto") is True
+            mention = body.get("mention") is True
             data = str(body.get("image", ""))
-            if not EMAIL_RE.match(email) or ".." in email:
-                raise ValueError("bad email")
             if "," not in data or not data.startswith("data:image/"):
                 raise ValueError("bad image")
             blob = base64.b64decode(data.split(",", 1)[1], validate=True)
@@ -61,7 +84,7 @@ class DemoHandler(SimpleHTTPRequestHandler):
                 raise ValueError("bad image size")
             if not (blob.startswith(b"\xff\xd8") or blob.startswith(b"\x89PNG")):
                 raise ValueError("not a jpeg or png")
-            stem = save_photo(email, blob)
+            stem = save_photo(email, social, blob, email_photo, mention)
         except Exception as exc:
             self._json(400, {"ok": False, "error": str(exc)})
             return

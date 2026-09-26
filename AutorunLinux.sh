@@ -1,5 +1,6 @@
 #!/bin/bash
 # Run on Linux: serve app/ and open Chrome/Edge/Chromium.
+# Photos posted to /api/photo are saved under pics/ by scripts/demo_server.py.
 # Use 127.0.0.1 (not "localhost") for a consistent IPv4 bind.
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 if [[ ! -f "$ROOT/app/index.html" ]]; then
@@ -16,6 +17,12 @@ if ! command -v python3 >/dev/null 2>&1; then
   echo "[ERROR] python3 not found. Install it (e.g. sudo apt install python3) and retry."
   read -r _
   exit 1
+fi
+if [[ ! -f "$ROOT/app/vendor/mediapipe/models/hand_landmarker.task" ]]; then
+  echo "[WARN] Missing hand_landmarker.task. Finger tracking will not load."
+fi
+if [[ ! -f "$ROOT/app/vendor/mediapipe/models/pose_landmarker_lite.task" ]]; then
+  echo "[WARN] Missing pose_landmarker_lite.task. Elbow and knee tracking will not load."
 fi
 
 port_free() {

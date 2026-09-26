@@ -884,7 +884,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: min(440px, calc(100vw - 2rem));
+      width: min(560px, calc(100vw - 2rem));
       background: #fff;
       color: #222;
       padding: 0.75rem;
@@ -904,16 +904,18 @@
       background: #111;
       border-radius: 6px;
     }
+    .photo-dialog img[hidden] { display: none; }
     .photo-actions {
       display: flex;
       gap: 0.5rem;
     }
+    .photo-actions[hidden] { display: none; }
     .photo-actions button {
       flex: 1;
       font: inherit;
-      font-size: 0.85rem;
+      font-size: 1.15rem;
       font-weight: 600;
-      padding: 0.5rem 0.6rem;
+      padding: 0.7rem 0.85rem;
       border-radius: 6px;
       cursor: pointer;
     }
@@ -930,32 +932,80 @@
     }
     #photoLottery:hover { background: #2ea043; }
     .photo-enroll {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(280px, 86%);
+      width: 100%;
       display: flex;
       flex-direction: column;
       gap: 0.45rem;
-      padding: 0.85rem;
-      border-radius: 8px;
-      background: #fff;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
     }
     .photo-enroll[hidden] { display: none; }
-    .photo-enroll input {
+    .photo-enroll-row {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .photo-enroll input[type="email"],
+    .photo-enroll input[type="text"] {
+      flex: 1;
+      min-width: 0;
       font: inherit;
-      font-size: 0.9rem;
-      padding: 0.45rem 0.55rem;
+      font-size: 1.05rem;
+      padding: 0.5rem 0.6rem;
       border: 1px solid #ccc;
       border-radius: 4px;
     }
+    .photo-send-label {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      width: 13rem;
+      gap: 0.4rem;
+      font-size: 1.05rem;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .photo-send-label input {
+      width: 1.1rem;
+      height: 1.1rem;
+      margin: 0;
+    }
+    .photo-enroll.deleting .photo-send-label {
+      color: #cf222e;
+    }
+    .photo-enroll-submit {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .photo-delete-label {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      gap: 0.4rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .photo-delete-label input {
+      width: 1.1rem;
+      height: 1.1rem;
+      margin: 0;
+    }
+    .photo-enroll-submit button {
+      flex: 1;
+    }
+    #photoQuit {
+      flex: 0 0 auto;
+      border: 1px solid #d0d7de;
+      background: #f6f8fa;
+      color: #24292f;
+    }
+    #photoQuit:hover { background: #eaeef2; }
     .photo-enroll button {
       font: inherit;
-      font-size: 0.9rem;
+      font-size: 1.15rem;
       font-weight: 600;
-      padding: 0.45rem 0.7rem;
+      padding: 0.6rem 0.8rem;
       border: none;
       border-radius: 4px;
       cursor: pointer;
@@ -965,8 +1015,8 @@
     .photo-enroll button:disabled { opacity: 0.6; cursor: not-allowed; }
     .photo-enroll-err {
       margin: 0;
-      min-height: 1.1em;
-      font-size: 0.78rem;
+      min-height: 1.2em;
+      font-size: 0.95rem;
       color: #cf222e;
     }
     .wifi-dialog {
@@ -1321,14 +1371,34 @@
   </div>
   <div class="modal-overlay" id="photoOverlay"></div>
   <div class="photo-dialog" id="photoDialog" role="dialog" aria-modal="true" aria-labelledby="photoLottery">
-    <img id="photoPreview" alt="Countdown photo" />
-    <div class="photo-actions">
-      <button type="button" id="photoDelete">Delete the photo</button>
+    <div class="photo-actions" id="photoActions">
+      <button type="button" id="photoDelete">No thanks</button>
       <button type="button" id="photoLottery">Enter the lottery</button>
     </div>
+    <img id="photoPreview" alt="Countdown photo" hidden />
     <form id="photoEnroll" class="photo-enroll" hidden>
-      <input type="email" id="photoEmail" placeholder="Email address" autocomplete="email" spellcheck="false" />
-      <button type="submit" id="photoEnrollBtn">Enroll</button>
+      <div class="photo-enroll-row">
+        <input type="email" id="photoEmail" placeholder="Email address" autocomplete="email" spellcheck="false" />
+        <label class="photo-send-label" for="photoEmailMe">
+          <input type="checkbox" id="photoEmailMe" />
+          email me the photo
+        </label>
+      </div>
+      <div class="photo-enroll-row">
+        <input type="text" id="photoSocial" placeholder="Social tag" autocomplete="off" spellcheck="false" />
+        <label class="photo-send-label" for="photoMention">
+          <input type="checkbox" id="photoMention" />
+          mention me on social
+        </label>
+      </div>
+      <div class="photo-enroll-submit">
+        <label class="photo-delete-label" for="photoDiscard">
+          <input type="checkbox" id="photoDiscard" />
+          delete the photo
+        </label>
+        <button type="button" id="photoQuit">Quit</button>
+        <button type="submit" id="photoEnrollBtn">Enroll</button>
+      </div>
       <p id="photoEnrollErr" class="photo-enroll-err"></p>
     </form>
   </div>
@@ -1509,6 +1579,7 @@
         spectatorLabel: "Spectator",
         notConnected: "Not connected",
         sendFailed: "Send failed",
+        linkCheck: "Checking link…",
         robotConsoleAria: "Robot console",
         angleChartTitle: "Δa · time ↓",
         angleChartNoteBase: "│ yellow=base 0",
@@ -1675,6 +1746,7 @@
         spectatorLabel: "观战",
         notConnected: "未连接",
         sendFailed: "发送失败",
+        linkCheck: "正在检查连接…",
         robotConsoleAria: "机器人控制台",
         angleChartTitle: "Δa · 时间↓",
         angleChartNoteBase: "│ 黄线=base 0",
@@ -1809,10 +1881,18 @@
     /** Max wait for non-stream commands that await firmware ack. */
     const CMD_ACK_TIMEOUT_MS = 100;
     /**
-     * Streaming joint `I`: wait for ack, but while waiting only refresh a single
-     * latestAngles slot (no growing queue). After ack, send that freshest sample.
+     * OpenCatEsp32 `I` → transform(frame, 1, transformSpeed) with transformSpeed 2.
+     * Each step is ~2° and delay((16 DOF)/2) = 8ms, then the ack is printed.
+     * The next `I` is sent after this estimate, not after the ack, so commands
+     * do not pile up and the latest target is the one that goes out.
      */
-    const STREAM_I_ACK_TIMEOUT_MS = 100;
+    const JOINT_TRANSFORM_SPEED = 2;
+    const JOINT_TRANSFORM_STEP_MS = 8;
+    const JOINT_SEND_PAD_MS = 16;
+    /** How long an `I` ack observer stays registered (firmware may ack after the move). */
+    const JOINT_ACK_OBSERVE_MS = 1500;
+    /** No robot reply for this long → stop streaming and check the link. */
+    const STREAM_LINK_SILENCE_MS = 1000;
     /** Skip send when every joint |Δa| vs last sent is below this (degrees). */
     const ANGLE_SEND_MIN_DELTA = 3;
     /** Auto-reconnect after unexpected WebSocket close (exponential backoff). */
@@ -2021,6 +2101,8 @@
           held: false,
           latestAngles: null,
           lastSentAngles: null,
+          sendTimer: null,
+          robotIds: null,
         });
       }
       return cmdQueues.get(key);
@@ -2030,6 +2112,11 @@
       if (!q) return;
       q.held = true;
       q.latestAngles = null;
+      if (q.sendTimer) {
+        clearTimeout(q.sendTimer);
+        q.sendTimer = null;
+      }
+      q.busy = false;
     }
 
     function clearAllCmdQueues() {
@@ -2038,7 +2125,13 @@
         q.held = true;
         q.latestAngles = null;
         q.lastSentAngles = null;
+        q.robotIds = null;
+        if (q.sendTimer) {
+          clearTimeout(q.sendTimer);
+          q.sendTimer = null;
+        }
       }
+      clearStreamLinkWatch();
     }
 
     function ensurePlayerState(trackId) {
@@ -2575,6 +2668,7 @@
         if (now - gate.stepStartedAt >= READY_FLASH_MS) {
           gate.phase = READY_PHASE.CONTROLLING;
           gate.prompt = "";
+          if (!surpriseShotTimer) surpriseShotDue = true;
           addConsoleMessage(
             "Control enabled" + (label ? " (" + label + ")" : ""),
             "good"
@@ -3966,65 +4060,174 @@
       );
     }
 
+    /** Milliseconds the firmware spends interpolating this joint step. */
+    function estimateJointMoveMs(fromAngles, toAngles) {
+      let maxDiff = 0;
+      for (let i = 0; i < toAngles.length; i++) {
+        const prev = fromAngles ? fromAngles[i] : B_BASE[i];
+        maxDiff = Math.max(maxDiff, Math.abs(toAngles[i] - prev));
+      }
+      const steps = Math.round(maxDiff / JOINT_TRANSFORM_SPEED);
+      return (steps + 1) * JOINT_TRANSFORM_STEP_MS + JOINT_SEND_PAD_MS;
+    }
+
+    let streamLastAckAt = 0;
+    let streamSilenceTimer = null;
+    let streamLinkPaused = false;
+    let streamProbeRunning = false;
+
+    function clearStreamLinkWatch() {
+      if (streamSilenceTimer) {
+        clearTimeout(streamSilenceTimer);
+        streamSilenceTimer = null;
+      }
+      streamLinkPaused = false;
+      streamProbeRunning = false;
+    }
+
+    function jointStreamBusy() {
+      for (const q of cmdQueues.values()) {
+        if (q.busy || q.sendTimer) return true;
+      }
+      return false;
+    }
+
+    function noteStreamSent() {
+      if (streamLinkPaused || streamSilenceTimer) return;
+      const since = streamLastAckAt ? performance.now() - streamLastAckAt : 0;
+      const wait = streamLastAckAt
+        ? Math.max(0, STREAM_LINK_SILENCE_MS - since)
+        : STREAM_LINK_SILENCE_MS;
+      streamSilenceTimer = setTimeout(onStreamSilence, wait);
+    }
+
+    function noteStreamAck() {
+      streamLastAckAt = performance.now();
+      if (streamSilenceTimer) {
+        clearTimeout(streamSilenceTimer);
+        streamSilenceTimer = null;
+      }
+      const wasPaused = streamLinkPaused;
+      streamLinkPaused = false;
+      streamProbeRunning = false;
+      if (wasPaused) {
+        addConsoleMessage("Robot responded — resuming joint commands", "good");
+        for (const [key, q] of cmdQueues) {
+          if (!q.held && q.latestAngles && !q.busy) flushCommandQueue(key, q.robotIds);
+        }
+      }
+      if (jointStreamBusy()) noteStreamSent();
+    }
+
+    /** Stop streaming after 1s without a robot reply, then probe the link. */
+    function onStreamSilence() {
+      if (streamProbeRunning) return;
+      streamProbeRunning = true;
+      streamLinkPaused = true;
+      if (streamSilenceTimer) {
+        clearTimeout(streamSilenceTimer);
+        streamSilenceTimer = null;
+      }
+      for (const q of cmdQueues.values()) {
+        if (q.sendTimer) {
+          clearTimeout(q.sendTimer);
+          q.sendTimer = null;
+        }
+        q.busy = false;
+      }
+      if (!connectedRobotsOrdered().length) {
+        addConsoleMessage("No robot response for 1s — connection is down", "error");
+        statControlEl.textContent = t("notConnected");
+        streamProbeRunning = false;
+        streamSilenceTimer = setTimeout(onStreamSilence, STREAM_LINK_SILENCE_MS);
+        return;
+      }
+      addConsoleMessage("No robot response for 1s — checking connection", "warn");
+      statControlEl.textContent = t("linkCheck");
+      sendRobotCommandAwaitAck("?", { token: "?", timeoutMs: STREAM_LINK_SILENCE_MS })
+        .then(() => {
+          addConsoleMessage("Link check ok", "good");
+          streamProbeRunning = false;
+          noteStreamAck();
+        })
+        .catch((e) => {
+          addConsoleMessage("Link check failed: " + (e.message || e), "error");
+          statControlEl.textContent = t("sendFailed");
+          streamProbeRunning = false;
+          if (streamLinkPaused) {
+            streamSilenceTimer = setTimeout(onStreamSilence, STREAM_LINK_SILENCE_MS);
+          }
+        });
+    }
+
     /**
-     * Streaming `I`: await each ack, but never grow a queue — while in-flight,
-     * pose frames only overwrite latestAngles; after ack, send that freshest sample.
+     * Streaming `I`: one slot (latestAngles). Send immediately if idle, otherwise
+     * wait out the estimated servo move and send whatever the target is then.
+     * Ack is observed but does not gate the next send.
      */
-    async function flushCommandQueue(queueKey, robotIds) {
+    function flushCommandQueue(queueKey, robotIds) {
       const q = getCmdQueue(queueKey);
-      if (q.busy) return;
-      if (q.held || !q.latestAngles) return;
+      if (robotIds !== undefined) q.robotIds = robotIds;
+      if (q.busy || q.held || streamLinkPaused || !q.latestAngles) return;
       if (!connectedRobotsOrdered().length) {
         statControlEl.textContent =
           t("notConnected") + " a=[" + q.latestAngles.join(",") + "]";
         return;
       }
 
-      q.busy = true;
-      const ids = robotIds == null ? null : robotIds;
-      try {
-        while (q.latestAngles && !q.held) {
-          const angles = q.latestAngles;
-          q.latestAngles = null;
-          if (q.held) break;
-
-          if (anglesWithinSendDeadband(angles, q.lastSentAngles)) {
-            statControlEl.textContent = "a=[" + angles.join(",") + "]";
-            continue;
-          }
-
-          const params = [];
-          for (let i = 0; i < 4; i++) {
-            params.push(ROBOT_JOINT_IDS[i], angles[i]);
-          }
-          // 'I' = T_INDEXED_SIMULTANEOUS_BIN (binary over socket via b64:)
-          const command = encodeCommand("I", params);
-
-          try {
-            if (q.held) break;
-            const via = await sendRobotCommandAwaitAck(command, {
-              token: "I",
-              timeoutMs: STREAM_I_ACK_TIMEOUT_MS,
-              robotIds: ids,
-            });
-            if (q.held) break;
-            q.lastSentAngles = angles.slice();
-            statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
-            // Loop: if frames refreshed latestAngles during ack wait, send that next.
-          } catch (e) {
-            // Do not resurrect a held queue (illegal / left READY).
-            if (!q.held && !q.latestAngles) q.latestAngles = angles.slice();
-            statControlEl.textContent =
-              t("sendFailed") + ": " + (e.message || e);
-            break;
-          }
-        }
-      } finally {
-        q.busy = false;
-        if (!q.held && q.latestAngles) {
-          queueMicrotask(() => flushCommandQueue(queueKey, robotIds));
-        }
+      const angles = q.latestAngles.slice();
+      q.latestAngles = null;
+      if (q.held || streamLinkPaused) return;
+      if (anglesWithinSendDeadband(angles, q.lastSentAngles)) {
+        statControlEl.textContent = "a=[" + angles.join(",") + "]";
+        return;
       }
+
+      const waitMs = estimateJointMoveMs(q.lastSentAngles, angles);
+      q.lastSentAngles = angles.slice();
+      q.busy = true;
+
+      const params = [];
+      for (let i = 0; i < 4; i++) {
+        params.push(ROBOT_JOINT_IDS[i], angles[i]);
+      }
+      const command = encodeCommand("I", params);
+      scheduleSurprisePhoto();
+      const sentAt = performance.now();
+      const ids = q.robotIds == null ? null : q.robotIds;
+      sendRobotCommandAwaitAck(command, {
+        token: "I",
+        timeoutMs: JOINT_ACK_OBSERVE_MS,
+        robotIds: ids,
+      })
+        .then((via) => {
+          noteStreamAck();
+          if (!streamLinkPaused) {
+            statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
+          }
+        })
+        .catch((e) => {
+          const msg = String((e && e.message) || e);
+          if (streamLastAckAt >= sentAt) return;
+          if (
+            msg.includes("No serial") ||
+            msg.includes("not open") ||
+            msg.includes("not connected")
+          ) {
+            onStreamSilence();
+            return;
+          }
+          if (!streamLinkPaused) onStreamSilence();
+        });
+      noteStreamSent();
+      statControlEl.textContent = `a=[${angles.join(",")}] ~${waitMs}ms`;
+
+      q.sendTimer = setTimeout(() => {
+        q.sendTimer = null;
+        q.busy = false;
+        if (q.held || streamLinkPaused || !q.latestAngles) return;
+        flushCommandQueue(queueKey, q.robotIds);
+      }, waitMs);
     }
 
     /**
@@ -4119,11 +4322,16 @@
       }
 
       q.latestAngles = angles.slice();
+      q.robotIds = robotIds;
+      if (streamLinkPaused) {
+        if (updateHud) statControlEl.textContent = t("linkCheck");
+        return { a: angles, sent: false, queued: true };
+      }
       if (q.busy) {
         if (updateHud) {
-          // In-flight ack: slot already holds the freshest angles (not a growing queue).
+          // One move is in flight. Keep only this latest target for the next send.
           statControlEl.textContent =
-            "a=[" + angles.join(",") + "] (wait ack · next refreshed)";
+            "a=[" + angles.join(",") + "] (latest)";
         }
         return { a: angles, sent: false, queued: true };
       }
@@ -5730,11 +5938,30 @@
       statKneesEl.textContent = String(sample.middleCount);
     }
 
-    /** Latest page snapshot taken while the countdown shows 2. */
+    /** Latest page snapshot, taken 0.5s after the first post-READY joint command. */
     let roundPhotoDataUrl = "";
-    /** False while count stays on 2, so the shot is taken once per visit. */
-    let countdownShotArmed = true;
+    /** Set when control starts; cleared once that round's first `I` is sent. */
+    let surpriseShotDue = false;
+    let surpriseShotTimer = null;
+    const SURPRISE_PHOTO_DELAY_MS = 500;
     let photoDialogOpen = false;
+
+    /** One shot per ready cycle, 0.5s after the first motion command is sent. */
+    function scheduleSurprisePhoto() {
+      if (!surpriseShotDue || surpriseShotTimer || photoDialogOpen) return;
+      surpriseShotDue = false;
+      surpriseShotTimer = setTimeout(() => {
+        surpriseShotTimer = null;
+        if (photoDialogOpen) return;
+        try {
+          roundPhotoDataUrl = capturePageSnapshot();
+          addConsoleMessage("Page snapshot taken 0.5s after first move", "good");
+        } catch (e) {
+          console.error(e);
+          roundPhotoDataUrl = "";
+        }
+      }, SURPRISE_PHOTO_DELAY_MS);
+    }
 
     function paintChromeSubtree(ctx, appBox, root) {
       if (!root) return;
@@ -5829,43 +6056,30 @@
       return canvas.toDataURL("image/jpeg", 0.85);
     }
 
-    function maybeCaptureCountdownPhoto() {
-      if (photoDialogOpen) return;
-      let atTwo = false;
-      for (const st of playerStates.values()) {
-        const gate = st.readyGate;
-        if (gate && gate.phase === READY_PHASE.COUNTDOWN && gate.count === 2) {
-          atTwo = true;
-          break;
-        }
-      }
-      if (!atTwo) {
-        countdownShotArmed = true;
-        return;
-      }
-      if (!countdownShotArmed) return;
-      countdownShotArmed = false;
-      try {
-        roundPhotoDataUrl = capturePageSnapshot();
-        addConsoleMessage("Page snapshot taken at countdown 2", "good");
-      } catch (e) {
-        console.error(e);
-        roundPhotoDataUrl = "";
-      }
-    }
-
     function openPhotoDialog(dataUrl) {
       const dialog = document.getElementById("photoDialog");
       const overlay = document.getElementById("photoOverlay");
       const img = document.getElementById("photoPreview");
+      const actions = document.getElementById("photoActions");
       const form = document.getElementById("photoEnroll");
       const err = document.getElementById("photoEnrollErr");
       const email = document.getElementById("photoEmail");
       if (!dialog || !img || !dataUrl) return;
       img.src = dataUrl;
+      img.hidden = true;
+      if (actions) actions.hidden = false;
       if (form) form.hidden = true;
       if (err) err.textContent = "";
       if (email) email.value = "";
+      const social = document.getElementById("photoSocial");
+      if (social) social.value = "";
+      const emailMe = document.getElementById("photoEmailMe");
+      if (emailMe) emailMe.checked = false;
+      const mention = document.getElementById("photoMention");
+      if (mention) mention.checked = false;
+      const discard = document.getElementById("photoDiscard");
+      if (discard) discard.checked = false;
+      if (form) form.classList.remove("deleting");
       dialog.classList.add("visible");
       if (overlay) overlay.classList.add("visible");
       photoDialogOpen = true;
@@ -5874,16 +6088,19 @@
     function closePhotoDialog() {
       const dialog = document.getElementById("photoDialog");
       const overlay = document.getElementById("photoOverlay");
+      const img = document.getElementById("photoPreview");
+      const actions = document.getElementById("photoActions");
       const form = document.getElementById("photoEnroll");
       if (dialog) dialog.classList.remove("visible");
       if (overlay) overlay.classList.remove("visible");
+      if (img) img.hidden = true;
+      if (actions) actions.hidden = false;
       if (form) form.hidden = true;
       photoDialogOpen = false;
       roundPhotoDataUrl = "";
-      countdownShotArmed = true;
     }
 
-    /** Lost-target reset ends the round and offers the countdown-2 photo. */
+    /** Lost-target reset ends the round and offers the post-READY photo. */
     function finishRoundAfterLostTarget() {
       if (photoDialogOpen || !roundPhotoDataUrl) return;
       openPhotoDialog(roundPhotoDataUrl);
@@ -5910,8 +6127,6 @@
         console.error(e);
         return;
       }
-
-      maybeCaptureCountdownPhoto();
 
       fpsFrames++;
       if (now - fpsLastMs >= 1000) {
@@ -6272,15 +6487,34 @@
     btnStart.addEventListener("click", startCamera);
     document.getElementById("photoDelete").addEventListener("click", () => {
       closePhotoDialog();
-      addConsoleMessage("Countdown photo deleted", "warn");
+      addConsoleMessage("Photo discarded", "warn");
     });
     document.getElementById("photoLottery").addEventListener("click", () => {
+      const actions = document.getElementById("photoActions");
+      const img = document.getElementById("photoPreview");
       const form = document.getElementById("photoEnroll");
       const email = document.getElementById("photoEmail");
       const err = document.getElementById("photoEnrollErr");
       if (err) err.textContent = "";
+      if (actions) actions.hidden = true;
+      if (img) img.hidden = false;
       if (form) form.hidden = false;
       if (email) email.focus();
+    });
+    document.getElementById("photoDiscard").addEventListener("change", () => {
+      const form = document.getElementById("photoEnroll");
+      const discard = document.getElementById("photoDiscard");
+      const on = !!(discard && discard.checked);
+      if (form) form.classList.toggle("deleting", on);
+      if (!on) return;
+      const emailMe = document.getElementById("photoEmailMe");
+      const mention = document.getElementById("photoMention");
+      if (emailMe) emailMe.checked = false;
+      if (mention) mention.checked = false;
+    });
+    document.getElementById("photoQuit").addEventListener("click", () => {
+      closePhotoDialog();
+      addConsoleMessage("Photo discarded", "warn");
     });
     document.getElementById("photoEnroll").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -6288,15 +6522,44 @@
     });
 
     const PHOTO_EMAIL_RE = /^[^@\s/\\]+@[^@\s/\\]+\.[^@\s/\\]+$/;
+    const PHOTO_SOCIAL_BAD = /[/\\:*?"<>|]|\.\./;
 
     async function enrollCountdownPhoto() {
       const emailEl = document.getElementById("photoEmail");
+      const socialEl = document.getElementById("photoSocial");
       const errEl = document.getElementById("photoEnrollErr");
       const btn = document.getElementById("photoEnrollBtn");
       const img = document.getElementById("photoPreview");
+      const emailMeEl = document.getElementById("photoEmailMe");
+      const mentionEl = document.getElementById("photoMention");
       const email = (emailEl && emailEl.value ? emailEl.value : "").trim();
-      if (!PHOTO_EMAIL_RE.test(email)) {
+      const social = (socialEl && socialEl.value ? socialEl.value : "").trim();
+      const emailPhoto = !!(emailMeEl && emailMeEl.checked);
+      const mention = !!(mentionEl && mentionEl.checked);
+      const discardEl = document.getElementById("photoDiscard");
+      if (discardEl && discardEl.checked) {
+        closePhotoDialog();
+        addConsoleMessage("Photo discarded", "warn");
+        return;
+      }
+      if (!email && !social) {
+        if (errEl) errEl.textContent = "Enter an email or a social tag.";
+        return;
+      }
+      if (emailPhoto && !email) {
+        if (errEl) errEl.textContent = "Enter an email to send the photo.";
+        return;
+      }
+      if (mention && !social) {
+        if (errEl) errEl.textContent = "Enter a social tag to be mentioned.";
+        return;
+      }
+      if (email && !PHOTO_EMAIL_RE.test(email)) {
         if (errEl) errEl.textContent = "Enter a valid email address.";
+        return;
+      }
+      if (social && (social.length > 64 || PHOTO_SOCIAL_BAD.test(social))) {
+        if (errEl) errEl.textContent = "Social tag can't include \\ / : * ? \" < > |.";
         return;
       }
       const image = (img && img.src) || roundPhotoDataUrl;
@@ -6309,7 +6572,7 @@
         const res = await fetch("/api/photo", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, image }),
+          body: JSON.stringify({ email, social, image, emailPhoto, mention }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
