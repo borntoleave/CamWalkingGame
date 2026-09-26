@@ -64,6 +64,46 @@ try {
     $req = $ctx.Request
     $res = $ctx.Response
     try {
+      if ($req.HttpMethod -eq "POST") {
+        $res.ContentType = "application/json; charset=utf-8"
+        if ($req.Url.AbsolutePath -ne "/api/photo") {
+          $res.StatusCode = 404
+          $payload = '{"ok":false,"error":"not found"}'
+        } else {
+          $reader = New-Object System.IO.StreamReader($req.InputStream, $req.ContentEncoding)
+          $raw = $reader.ReadToEnd()
+          $reader.Close()
+          $body = $raw | ConvertFrom-Json
+          $email = [string]$body.email
+          $email = $email.Trim()
+          $image = [string]$body.image
+          $emailOk = $email -match '^[^@\s/\\]+@[^@\s/\\]+\.[^@\s/\\]+$' -and $email -notmatch '\.\.'
+          $comma = $image.IndexOf(",")
+          if (-not $emailOk -or $comma -lt 0 -or -not $image.StartsWith("data:image/")) {
+            $res.StatusCode = 400
+            $payload = '{"ok":false,"error":"bad email or image"}'
+          } else {
+            $b64 = $image.Substring($comma + 1)
+            $blob = [Convert]::FromBase64String($b64)
+            $pics = Join-Path (Split-Path -Parent $Root) "pics"
+            New-Item -ItemType Directory -Force -Path $pics | Out-Null
+            $stem = $email
+            $n = 0
+            while (Test-Path -LiteralPath (Join-Path $pics ($stem + ".jpg"))) {
+              $n++
+              if ($n -ge 10000) { throw "too many photos for this email" }
+              $stem = "$email $n"
+            }
+            $dest = Join-Path $pics ($stem + ".jpg")
+            [System.IO.File]::WriteAllBytes($dest, $blob)
+            $payload = '{"ok":true,"file":"pics/' + $stem + '.jpg"}'
+          }
+        }
+        $buf = [Text.Encoding]::UTF8.GetBytes($payload)
+        $res.ContentLength64 = $buf.LongLength
+        $res.OutputStream.Write($buf, 0, $buf.Length)
+        continue
+      }
       $rel = [Uri]::UnescapeDataString($req.Url.AbsolutePath.TrimStart("/"))
       if ([string]::IsNullOrWhiteSpace($rel)) { $rel = "index.html" }
       $full = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($Root, $rel.Replace("/", [IO.Path]::DirectorySeparatorChar)))

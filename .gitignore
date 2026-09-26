@@ -2,3 +2,5 @@
 .vscode/
 build/
 __pycache__/
+pics/*
+!pics/.gitkeep

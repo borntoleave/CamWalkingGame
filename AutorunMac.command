@@ -1,13 +1,14 @@
 #!/bin/bash
 # Double-click on macOS: serve app/ and open Chrome.
 # Use 127.0.0.1 (not "localhost") for a consistent IPv4 bind.
-cd "$(dirname "$0")/app" || {
-  echo "[ERROR] Missing app folder."
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+if [[ ! -f "$ROOT/app/index.html" ]]; then
+  echo "[ERROR] app/index.html not found."
   read -r _
   exit 1
-}
-if [[ ! -f index.html ]]; then
-  echo "[ERROR] app/index.html not found."
+fi
+if [[ ! -f "$ROOT/scripts/demo_server.py" ]]; then
+  echo "[ERROR] scripts/demo_server.py not found."
   read -r _
   exit 1
 fi
@@ -20,7 +21,8 @@ for p in 8080 8081 8082 8765; do
   fi
 done
 URL="http://127.0.0.1:$PORT/"
-echo "Serving $(pwd) at $URL"
+echo "Serving $ROOT/app at $URL"
+echo "Photos save under $ROOT/pics"
 echo "Keep this window open while demoing. Press Ctrl+C to stop."
 echo "Tip: use Chrome/Edge (Web Serial)."
 
@@ -37,4 +39,4 @@ open_demo() {
   fi
 }
 open_demo &
-exec python3 -m http.server "$PORT" --bind 127.0.0.1
+exec python3 "$ROOT/scripts/demo_server.py" --bind 127.0.0.1 --port "$PORT"

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Camera · Elbow &amp; Knee Tracking</title>
+  <title>Finger Tracking</title>
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -25,6 +25,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
       gap: 0.75rem;
       padding: 0.55rem 0.85rem;
       background: #161b22;
@@ -32,19 +33,49 @@
       flex-shrink: 0;
       z-index: 20;
     }
-    .top-bar h1 {
-      margin: 0;
-      font-size: 0.95rem;
+    .mode-dial {
+      display: inline-flex;
+      align-items: stretch;
+      gap: 3px;
+      padding: 3px;
+      border-radius: 999px;
+      background: #0d1117;
+      border: 1px solid #3d444d;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+    .mode-dial-btn {
+      font: inherit;
+      font-size: 0.78rem;
       font-weight: 600;
+      line-height: 1.2;
+      padding: 0.38rem 0.72rem;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      background: transparent;
+      color: #9da7b3;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    }
+    .mode-dial-btn:hover { color: #e6edf3; }
+    .mode-dial-btn.active {
+      background: linear-gradient(180deg, #2ea043 0%, #238636 100%);
+      color: #fff;
+      box-shadow: 0 0 0 1px #3fb950, 0 1px 2px rgba(0, 0, 0, 0.45);
+    }
+    .mode-dial-btn:focus-visible {
+      outline: 2px solid #58a6ff;
+      outline-offset: 1px;
     }
     .top-bar .bar-actions {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.5rem;
       align-items: flex-start;
-      flex-shrink: 0;
+      flex-shrink: 1;
+      min-width: 0;
+      max-width: 100%;
     }
     #btnHelp,
     #btnResetCalib {
@@ -848,6 +879,96 @@
       display: none;
     }
     .modal-overlay.visible { display: block; }
+    .photo-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(440px, calc(100vw - 2rem));
+      background: #fff;
+      color: #222;
+      padding: 0.75rem;
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      z-index: 1002;
+      display: none;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .photo-dialog.visible { display: flex; }
+    .photo-dialog img {
+      display: block;
+      width: 100%;
+      max-height: 48vh;
+      object-fit: contain;
+      background: #111;
+      border-radius: 6px;
+    }
+    .photo-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .photo-actions button {
+      flex: 1;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.5rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #photoDelete {
+      border: 1px solid #d0d7de;
+      background: #f6f8fa;
+      color: #24292f;
+    }
+    #photoDelete:hover { background: #eaeef2; }
+    #photoLottery {
+      border: none;
+      background: #238636;
+      color: #fff;
+    }
+    #photoLottery:hover { background: #2ea043; }
+    .photo-enroll {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(280px, 86%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      padding: 0.85rem;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+    .photo-enroll[hidden] { display: none; }
+    .photo-enroll input {
+      font: inherit;
+      font-size: 0.9rem;
+      padding: 0.45rem 0.55rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .photo-enroll button {
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.45rem 0.7rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+    }
+    .photo-enroll button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .photo-enroll-err {
+      margin: 0;
+      min-height: 1.1em;
+      font-size: 0.78rem;
+      color: #cf222e;
+    }
     .wifi-dialog {
       position: fixed;
       top: 50%;
@@ -1038,7 +1159,10 @@
 <body>
   <div class="app">
     <header class="top-bar">
-      <h1 data-i18n="appTitle">Camera · Elbow &amp; Knee Tracking</h1>
+      <div class="mode-dial" id="trackModeDial" role="radiogroup" data-i18n-aria="trackModeAria">
+        <button type="button" class="mode-dial-btn" id="modeElbow" role="radio" aria-checked="false" data-i18n="modeElbow">Elbow &amp; Knee Tracking</button>
+        <button type="button" class="mode-dial-btn active" id="modeFinger" role="radio" aria-checked="true" data-i18n="modeFinger">Finger Tracking</button>
+      </div>
       <div class="bar-actions">
         <button type="button" id="btnHelp" data-i18n="helpBtn" data-i18n-title="helpTitle">❓ Help</button>
         <button type="button" id="btnResetCalib" data-i18n="reset" data-i18n-title="resetTitle">Reset</button>
@@ -1114,14 +1238,14 @@
         </div>
 
         <aside class="hud hud-coords" id="hudCoords" data-i18n-aria="hudCoordsAria">
-          <h2 data-i18n="hudCoordsTitle">Sagittal pitch °</h2>
+          <h2 id="hudCoordsTitle" data-i18n="hudCoordsTitle">Sagittal pitch °</h2>
           <div id="coordText">Waiting for detection…</div>
         </aside>
         <div class="hud hud-stats" id="hudStats">
           <span data-i18n="statFps">FPS:</span> <span id="statFps">—</span><br />
           <span data-i18n="statPose">Pose:</span> <span id="statPose">0</span>
-          · <span data-i18n="statElbows">Elbows:</span> <span id="statElbows">0</span>
-          · <span data-i18n="statKnees">Knees:</span> <span id="statKnees">0</span><br />
+          · <span id="labelStatElbows" data-i18n="statElbows">Elbows:</span> <span id="statElbows">0</span>
+          · <span id="labelStatKnees" data-i18n="statKnees">Knees:</span> <span id="statKnees">0</span><br />
           <span data-i18n="statMap">Map:</span> <span id="statCalib">Tracking</span>
           · <span data-i18n="statControl">Control:</span> <span id="statControl">Idle</span><br />
           <button type="button" id="btnResetCalibHud" class="hud-reset-btn" data-i18n="resetHud">Reset min/max</button>
@@ -1142,7 +1266,7 @@
             <span><i style="background:#f778ba"></i>RE → +</span>
             <span><i style="background:#e3b341"></i>RK → +</span>
             <span style="color:#ffe600" data-i18n="angleChartNoteBase">│ yellow=base 0</span>
-            <span style="color:#8b949e" data-i18n="angleChartNoteCenter">center=−R (elbow stretch)</span>
+            <span id="angleChartNoteCenter" style="color:#8b949e" data-i18n="angleChartNoteCenter">center=−R (elbow stretch)</span>
           </div>
         </div>
         <div class="console-serial-stack">
@@ -1195,6 +1319,19 @@
       <button type="button" id="helpClose" data-i18n="btnCloseHelp">Close</button>
     </div>
   </div>
+  <div class="modal-overlay" id="photoOverlay"></div>
+  <div class="photo-dialog" id="photoDialog" role="dialog" aria-modal="true" aria-labelledby="photoLottery">
+    <img id="photoPreview" alt="Countdown photo" />
+    <div class="photo-actions">
+      <button type="button" id="photoDelete">Delete the photo</button>
+      <button type="button" id="photoLottery">Enter the lottery</button>
+    </div>
+    <form id="photoEnroll" class="photo-enroll" hidden>
+      <input type="email" id="photoEmail" placeholder="Email address" autocomplete="email" spellcheck="false" />
+      <button type="submit" id="photoEnrollBtn">Enroll</button>
+      <p id="photoEnrollErr" class="photo-enroll-err"></p>
+    </form>
+  </div>
   <div class="wifi-dialog" id="wifiDialog" role="dialog" aria-labelledby="wifiDialogTitle">
     <h3 id="wifiDialogTitle" data-i18n="wifiTitle">WiFi Connect</h3>
     <p class="wifi-desc" data-i18n="wifiDesc">
@@ -1229,6 +1366,7 @@
   <script type="module">
     import {
       FilesetResolver,
+      HandLandmarker,
       PoseLandmarker,
     } from "./vendor/mediapipe/tasks-vision/vision_bundle.mjs";
 
@@ -1236,6 +1374,9 @@
     const I18N = {
       en: {
         appTitle: "Camera · Elbow & Knee Tracking",
+        trackModeAria: "Tracking mode",
+        modeElbow: "Elbow & Knee Tracking",
+        modeFinger: "Finger Tracking",
         helpBtn: "❓ Help",
         helpTitle: "Help",
         btnCloseHelp: "Close",
@@ -1276,6 +1417,14 @@
           "<li>The yellow axis is the torso-down direction (pitch 0°), through approximate <b>navel</b> height.</li>" +
           "<li>Joint angles are 1€-filtered for smoothness while keeping fast direction changes.</li>" +
           "</ul>" +
+          "<h4>Finger tracking</h4>" +
+          "<p>The top-left dial switches to <b>Finger Tracking</b>. Both hands’ index and middle fingers drive the legs:</p>" +
+          "<ul>" +
+          "<li><b>Index</b> → front legs; <b>middle</b> → back legs. Your left/right hand maps to the left/right legs.</li>" +
+          "<li>The command uses the finger’s <b>3D bend</b> (MediaPipe world landmarks: knuckle + PIP + DIP). This is not the angle projected on the camera image. Index <b>15°–40°</b> and middle <b>18°–50°</b> each fill the full joint range (b±range). A smaller reading sits at the negative limit; a larger one at the positive limit.</li>" +
+          "<li>Get ready by holding <b>both</b> hands up so the index and middle fingers are visible and point generally upward. They do not have to be straight.</li>" +
+          "<li>Dropping the hands or turning the fingers away from upward during countdown restarts preparation. Losing the hands for about <b>2 seconds</b> restarts preparation, and <b>no joint commands</b> are sent during that wait.</li>" +
+          "</ul>" +
           "<h4>4. Multi-player / multi-robot (max 2 people)</h4>" +
           "<ul>" +
           "<li><b>1 person</b> ready → that person sync-controls <b>all</b> connected robots.</li>" +
@@ -1303,7 +1452,7 @@
         connectedIpsEmpty: "None",
         quickConnect: "Quick Connect",
         setupDesc:
-          "After camera access, track left/right elbows and knees on the left. Connect a Petoi robot on the right (Web Serial, 115200).",
+          "After camera access, track left/right elbows and knees on the left. Connect a Petoi robot on the right (Web Serial, 115200). Switch to finger tracking with the dial at the top left.",
         openCamera: "Open Camera",
         updateModel: "Update model",
         updateModelTitle:
@@ -1321,6 +1470,7 @@
         modelSourceCache: "Model ready (downloaded update). You can open the camera.",
         loadingModel: "Loading MediaPipe model…",
         loadingPose: "Loading pose model…",
+        loadingHand: "Loading hand model…",
         loadingCpu: "GPU unavailable, loading on CPU…",
         modelReady: "Model ready. You can open the camera.",
         modelFailed: "Model failed to load.",
@@ -1331,12 +1481,16 @@
         legendDrop: "Limb pitch",
         hudCoordsAria: "Joint pitch",
         hudCoordsTitle: "Sagittal pitch °",
+        hudCoordsTitleFinger: "Finger bend °",
         waitingDetect: "Waiting for detection…",
         noBody: "No person detected\nKeep your full body in frame",
+        noHands: "No hands detected\nKeep both hands in frame",
         statFps: "FPS:",
         statPose: "Pose:",
         statElbows: "Elbows:",
         statKnees: "Knees:",
+        statIndex: "Index:",
+        statMiddle: "Middle:",
         statMap: "Map:",
         statControl: "Control:",
         tracking: "Tracking",
@@ -1345,11 +1499,13 @@
         mapTracking: "Tracking {n}/4",
         expandMotion: "Waiting for stretch calibration",
         raiseArmsPrompt: "Fully extend arms and legs,\nraise elbows above shoulders",
+        peacePrompt: "Raise both hands\nIndex and middle pointing up",
         getReadyN: "Get Ready\n{n}",
         readyFlash: "READY!",
         waitReady: "Waiting for ready",
         waitAllReady: "Waiting for everyone",
         poseIllegal: "Invalid pose!\nStand or sit — keep both elbows and knees fully in frame",
+        handsIllegal: "Hands not recognized!\nKeep both index and middle fingers in frame",
         spectatorLabel: "Spectator",
         notConnected: "Not connected",
         sendFailed: "Send failed",
@@ -1357,6 +1513,7 @@
         angleChartTitle: "Δa · time ↓",
         angleChartNoteBase: "│ yellow=base 0",
         angleChartNoteCenter: "center=−R (elbow stretch)",
+        angleChartNoteCenterFinger: "center=−R (finger straight)",
         serialUnavailable:
           "Web Serial unavailable (use Chrome/Edge with HTTPS or localhost)",
         console: "Console",
@@ -1386,6 +1543,9 @@
       },
       zh: {
         appTitle: "摄像头 · 手肘与膝盖追踪",
+        trackModeAria: "追踪模式",
+        modeElbow: "肘膝追踪",
+        modeFinger: "手指追踪",
         helpBtn: "❓ 帮助",
         helpTitle: "帮助",
         btnCloseHelp: "关闭",
@@ -1426,6 +1586,14 @@
           "<li>黄色轴为躯干朝下方向（pitch 0°），经过近似<strong>肚脐</strong>高度。</li>" +
           "<li>关节角经 1€ 滤波平滑，同时尽量保留快速转向拐点。</li>" +
           "</ul>" +
+          "<h4>手指追踪</h4>" +
+          "<p>左上角拨动按钮可切到<b>手指追踪</b>。双手食指、中指分别驱动腿：</p>" +
+          "<ul>" +
+          "<li><b>食指</b> → 前腿；<b>中指</b> → 后腿。左手/右手对应左/右腿。</li>" +
+          "<li>指令用手指的<b>三维弯曲角</b>（MediaPipe 世界坐标：掌指关节 + PIP + DIP），不是画面上的投影角。食指 <b>15°–40°</b>、中指 <b>18°–50°</b> 各自铺满关节可动范围（b±range）。读数越小越靠近负角度极限，越大越靠近正角度极限。</li>" +
+          "<li>准备时只要<b>双手食指和中指</b>都入镜，且大方向朝上即可，不必伸直，并保持到倒计时结束。</li>" +
+          "<li>倒计时中放下双手或手指不再朝上会重新准备。丢失双手识别约 <b>2 秒</b>后重新准备，等待期间<strong>不发送</strong>关节指令。</li>" +
+          "</ul>" +
           "<h4>4. 多人 / 多机（最多 2 人）</h4>" +
           "<ul>" +
           "<li><b>1 人</b> ready → 同步控制所有已连接机器人。</li>" +
@@ -1453,7 +1621,7 @@
         connectedIpsEmpty: "无",
         quickConnect: "Quick Connect",
         setupDesc:
-          "允许摄像头后左侧实时追踪左右手肘与膝盖。右侧可连接 Petoi 机器人（Web Serial，115200）。",
+          "允许摄像头后左侧实时追踪左右手肘与膝盖。右侧可连接 Petoi 机器人（Web Serial，115200）。左上角拨动按钮可切换到手指追踪。",
         openCamera: "打开摄像头",
         updateModel: "更新模型",
         updateModelTitle: "有外网时从 CDN 下载最新姿态模型。若已在使用下载版，再点一次会重新下载刷新。",
@@ -1468,6 +1636,7 @@
         modelSourceCache: "模型已就绪（已下载更新）。可以打开摄像头。",
         loadingModel: "正在加载 MediaPipe 模型…",
         loadingPose: "正在加载姿态模型…",
+        loadingHand: "正在加载手部模型…",
         loadingCpu: "GPU 不可用，改用 CPU 加载模型…",
         modelReady: "模型已就绪，可以打开摄像头。",
         modelFailed: "模型加载失败。",
@@ -1478,12 +1647,16 @@
         legendDrop: "肢体 pitch",
         hudCoordsAria: "关节 pitch",
         hudCoordsTitle: "矢状面 pitch °",
+        hudCoordsTitleFinger: "手指弯曲 °",
         waitingDetect: "等待检测…",
         noBody: "未检测到人体\n请保证全身入镜",
+        noHands: "未检测到双手\n请将双手保持在画面中",
         statFps: "FPS：",
         statPose: "姿态：",
         statElbows: "肘：",
         statKnees: "膝：",
+        statIndex: "食指：",
+        statMiddle: "中指：",
         statMap: "映射：",
         statControl: "控制：",
         tracking: "追踪中",
@@ -1492,11 +1665,13 @@
         mapTracking: "追踪 {n}/4",
         expandMotion: "等待舒展标定",
         raiseArmsPrompt: "使双臂和双腿充分舒展，\n双肘抬过肩",
+        peacePrompt: "举起双手\n食指与中指朝上",
         getReadyN: "Get Ready\n{n}",
         readyFlash: "READY!",
         waitReady: "等待就绪",
         waitAllReady: "等待所有人就绪",
         poseIllegal: "姿态无效！\n请站立或坐下，使双肘和双膝完整入镜",
+        handsIllegal: "未识别双手！\n请让双手食指和中指完整入镜",
         spectatorLabel: "观战",
         notConnected: "未连接",
         sendFailed: "发送失败",
@@ -1504,6 +1679,7 @@
         angleChartTitle: "Δa · 时间↓",
         angleChartNoteBase: "│ 黄线=base 0",
         angleChartNoteCenter: "中线=−R（肘舒展）",
+        angleChartNoteCenterFinger: "中线=−R（手指伸直）",
         serialUnavailable:
           "Web Serial 不可用（请用 Chrome/Edge，且为 HTTPS 或 localhost）",
         console: "控制台",
@@ -1554,7 +1730,7 @@
 
     function applyI18n() {
       document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
-      document.title = t("appTitle");
+      document.title = t(trackMode === "finger" ? "modeFinger" : "modeElbow");
       document.querySelectorAll("[data-i18n]").forEach((el) => {
         const key = el.getAttribute("data-i18n");
         if (key) el.textContent = t(key);
@@ -1590,12 +1766,17 @@
       }
       if (typeof refreshConnectedUi === "function") refreshConnectedUi();
       if (typeof refreshModelSourceButtons === "function") refreshModelSourceButtons();
+      if (typeof applyTrackModeChrome === "function") applyTrackModeChrome();
     }
 
     // Prefer local vendor (offline / exhibition). "Update model" can cache a CDN copy in the browser.
     const WASM_URL = new URL("./vendor/mediapipe/tasks-vision/wasm", import.meta.url).href;
     const LOCAL_POSE_MODEL = new URL(
       "./vendor/mediapipe/models/pose_landmarker_lite.task",
+      import.meta.url
+    ).href;
+    const LOCAL_HAND_MODEL = new URL(
+      "./vendor/mediapipe/models/hand_landmarker.task",
       import.meta.url
     ).href;
     const CDN_POSE_MODEL =
@@ -1619,6 +1800,12 @@
      * ~70° of upper-arm/thigh rotation ≈ the old 50% shoulder-width travel.
      */
     const STRETCH_PITCH_SPAN = 70;
+    /**
+     * Observed 3D finger-bend degrees that fill the robot's full ±ANGLE_RANGE.
+     * Low end → b−RANGE (negative limit); high end → b+RANGE.
+     */
+    const FINGER_INDEX_BEND = { min: 15, max: 40 };
+    const FINGER_MIDDLE_BEND = { min: 18, max: 50 };
     /** Max wait for non-stream commands that await firmware ack. */
     const CMD_ACK_TIMEOUT_MS = 100;
     /**
@@ -1633,6 +1820,8 @@
     const WS_RECONNECT_MAX_MS = 15000;
     /** Restart ready flow after this long of illegal / missing pose. */
     const ILLEGAL_RESET_MS = 5000;
+    /** Finger demo ends a round sooner after the hands leave the frame. */
+    const FINGER_ILLEGAL_RESET_MS = 2000;
     const COUNTDOWN_START = 3;
     const COUNTDOWN_STEP_MS = 1000;
     const READY_FLASH_MS = 900;
@@ -1764,6 +1953,7 @@
     const SERIAL_ROBOT_ID = "serial";
 
     let poseLandmarker = null;
+    let handLandmarker = null;
     let stream = null;
     let rafId = 0;
     let lastVideoTime = -1;
@@ -1776,6 +1966,11 @@
     let lastControlSnapshot = null;
     /** Display rotation in degrees CCW: 0, 90, 180, 270. */
     let cameraRotation = 0;
+    /** "elbow" = body elbows/knees; "finger" = both hands' index & middle. */
+    /** Page opens in the finger demo; the dial can still switch for this visit. */
+    let trackMode = "finger";
+    /** Single controller while finger tracking (both hands of one person). */
+    const FINGER_TRACK_ID = 1;
 
     /** Per-destination command queues: robotId | "__sync__" → queue state. */
     const cmdQueues = new Map();
@@ -2288,9 +2483,21 @@
     /**
      * Ready flow state machine (per person).
      * Illegal / missing pose for > ILLEGAL_RESET_MS restarts preparation.
+     * isLegal / isArmed default to sit-stand + arms-up. Finger mode passes
+     * both-hands-visible and index/middle generally pointing up instead.
      */
-    function updateReadyGateState(gate, pts, now, { label = "", onHardReset } = {}) {
-      const legal = isLegalSitOrStand(pts);
+    function updateReadyGateState(gate, pts, now, {
+      label = "",
+      onHardReset,
+      isLegal = isLegalSitOrStand,
+      isArmed = armsOverShoulders,
+      illegalText,
+      armedText,
+      illegalResetMs = ILLEGAL_RESET_MS,
+    } = {}) {
+      const legal = isLegal(pts);
+      const illegalMsg = illegalText ? illegalText() : t("poseIllegal");
+      const armedMsg = armedText ? armedText() : t("raiseArmsPrompt");
       gate.legal = legal;
 
       if (!legal) {
@@ -2307,11 +2514,12 @@
 
         if (
           gate.phase !== READY_PHASE.WAITING &&
-          now - gate.illegalSince >= ILLEGAL_RESET_MS
+          now - gate.illegalSince >= illegalResetMs
         ) {
           resetReadyGateState(
             gate,
-            (label ? label + ": " : "") + "illegal pose > 5s"
+            (label ? label + ": " : "") +
+              "illegal pose > " + Math.round(illegalResetMs / 1000) + "s"
           );
           if (typeof onHardReset === "function") onHardReset();
         }
@@ -2319,7 +2527,7 @@
           gate.phase === READY_PHASE.WAITING ||
           gate.phase === READY_PHASE.CONTROLLING
         ) {
-          gate.prompt = t("poseIllegal");
+          gate.prompt = illegalMsg;
         }
         return gate;
       }
@@ -2329,23 +2537,23 @@
 
       if (gate.phase === READY_PHASE.WAITING) {
         gate.phase = READY_PHASE.RAISE_ARMS;
-        gate.prompt = t("raiseArmsPrompt");
+        gate.prompt = armedMsg;
       }
 
       if (gate.phase === READY_PHASE.RAISE_ARMS) {
-        gate.prompt = t("raiseArmsPrompt");
-        if (armsOverShoulders(pts)) {
+        gate.prompt = armedMsg;
+        if (isArmed(pts)) {
           gate.phase = READY_PHASE.COUNTDOWN;
           gate.count = COUNTDOWN_START;
           gate.stepStartedAt = now;
           gate.prompt = t("getReadyN", { n: gate.count });
         }
       } else if (gate.phase === READY_PHASE.COUNTDOWN) {
-        if (!armsOverShoulders(pts)) {
+        if (!isArmed(pts)) {
           gate.phase = READY_PHASE.RAISE_ARMS;
           gate.count = COUNTDOWN_START;
           gate.stepStartedAt = 0;
-          gate.prompt = t("raiseArmsPrompt");
+          gate.prompt = armedMsg;
         } else if (now - gate.stepStartedAt >= COUNTDOWN_STEP_MS) {
           gate.stepStartedAt = now;
           if (gate.count > 1) {
@@ -3131,11 +3339,14 @@
      * Later motion only clamps inside that band — range never grows.
      * freeEnd "min": elbows — stretch → maxV (a_min), minV = stretch − span (a_max).
      * freeEnd "max": knees — stretch → minV (a_max), maxV = stretch + span (a_min).
+     * freeEnd "flex": fingers — fixed bend band (index 15–40, middle 18–50)
+     *   fills b±RANGE. Smaller bend → negative limit.
      */
     class PctRangeTracker {
       constructor(name, freeEnd) {
         this.name = name;
-        this.freeEnd = freeEnd === "max" ? "max" : "min";
+        this.freeEnd =
+          freeEnd === "max" ? "max" : freeEnd === "flex" ? "flex" : "min";
         this.pctFilter = new OneEuroFilter(
           PCT_FILTER_MINCUTOFF,
           PCT_FILTER_BETA,
@@ -3167,7 +3378,10 @@
        */
       lockStretch(pct) {
         if (pct == null || Number.isNaN(pct)) return;
-        if (this.freeEnd === "min") {
+        if (this.freeEnd === "flex") {
+          this.minV = pct;
+          this.maxV = pct + STRETCH_PITCH_SPAN;
+        } else if (this.freeEnd === "min") {
           this.maxV = pct;
           this.minV = pct - STRETCH_PITCH_SPAN;
         } else {
@@ -3177,6 +3391,23 @@
         this.stretchLocked = true;
         this.pctFilter.reset();
         this.smoothed = this.pctFilter.filter(pct, performance.now());
+      }
+
+      /** Lock an absolute bend band. Used by finger mode (not the READY pose). */
+      lockBand(minV, maxV) {
+        if (
+          minV == null ||
+          maxV == null ||
+          Number.isNaN(minV) ||
+          Number.isNaN(maxV) ||
+          maxV - minV < MIN_PCT_SPAN
+        ) {
+          return;
+        }
+        this.minV = minV;
+        this.maxV = maxV;
+        this.stretchLocked = true;
+        this.pctFilter.reset();
       }
 
       push(pct, timestampMs) {
@@ -3189,13 +3420,19 @@
         return this.smoothed;
       }
 
-      /** Linear map: min→b+R, max→b-R (unchanged direction). Float until angle filter. */
+      /**
+       * Elbows/knees: min→b+R, max→b-R.
+       * Fingers (flex): min (straight)→b−R, max (bent)→b+R.
+       */
       mapToAngle(pct, b) {
         if (!this.ready || pct == null || Number.isNaN(pct)) return null;
         const span = this.maxV - this.minV;
         let t = (pct - this.minV) / span;
         t = Math.max(0, Math.min(1, t)); // clamp past stretch / past free end
-        const angle = b + ANGLE_RANGE - t * (2 * ANGLE_RANGE);
+        const angle =
+          this.freeEnd === "flex"
+            ? b - ANGLE_RANGE + t * (2 * ANGLE_RANGE)
+            : b + ANGLE_RANGE - t * (2 * ANGLE_RANGE);
         return clampToJointRange(angle, b, { round: false });
       }
     }
@@ -3206,8 +3443,12 @@
 
     function createJointTrackers(suffix) {
       const tag = suffix != null ? String(suffix) : "";
+      const ends =
+        trackMode === "finger"
+          ? ["flex", "flex", "flex", "flex"]
+          : JOINT_FREE_ENDS;
       return JOINT_NAMES.map(
-        (n, i) => new PctRangeTracker(tag ? n + "#" + tag : n, JOINT_FREE_ENDS[i])
+        (n, i) => new PctRangeTracker(tag ? n + "#" + tag : n, ends[i])
       );
     }
 
@@ -3232,6 +3473,20 @@
         (v) => v != null && !Number.isNaN(v)
       );
       if (elbowVals.length < 2 || kneeVals.length < 2) return false;
+      if (st.trackers[0].freeEnd === "flex") {
+        const index = FINGER_INDEX_BEND;
+        const middle = FINGER_MIDDLE_BEND;
+        st.trackers[0].lockBand(index.min, index.max);
+        st.trackers[1].lockBand(index.min, index.max);
+        st.trackers[2].lockBand(middle.min, middle.max);
+        st.trackers[3].lockBand(middle.min, middle.max);
+        st.calibLocked = true;
+        addConsoleMessage(
+          `Finger map P#${st.trackId}: index ${index.min}..${index.max}° and middle ${middle.min}..${middle.max}° → full b±${ANGLE_RANGE}`,
+          "good"
+        );
+        return true;
+      }
       const elbowAvg =
         elbowVals.reduce((s, v) => s + v, 0) / elbowVals.length;
       const kneeAvg = kneeVals.reduce((s, v) => s + v, 0) / kneeVals.length;
@@ -3468,7 +3723,7 @@
             rememberIp(ip);
             addConsoleMessage("WebSocket connected: " + url, "good");
             refreshConnectedUi();
-            sendZ1OnConnect({ ip });
+            sendConnectInitCmds({ ip });
             resolve();
           };
           ws.onerror = () => {
@@ -3664,32 +3919,42 @@
       return vias.join("+") || "ok";
     }
 
-    /** First connect and every reconnect: send ASCII `z1` to that robot. */
-    function sendZ1OnConnect({ ip = null, serial = false } = {}) {
-      const command = encodeCommand("z", ["1"]);
+    /**
+     * First connect and every reconnect: `z1` then `gb` (IMU balance off).
+     */
+    function sendConnectInitCmds({ ip = null, serial = false } = {}) {
       const timeoutMs = Math.max(CMD_ACK_TIMEOUT_MS, 800);
-      const sendP = serial
-        ? (async () => {
-            if (!transport.isConnected()) throw new Error("Serial not connected");
-            await transport.send(command, {
+      const cmds = [
+        { command: encodeCommand("z", ["1"]), token: "z", label: "z1" },
+        { command: encodeCommand("g", ["b"]), token: "g", label: "gb" },
+      ];
+      const sendOne = (item) => {
+        if (serial) {
+          if (!transport.isConnected()) return Promise.reject(new Error("Serial not connected"));
+          return transport
+            .send(item.command, {
               addNewline: true,
               logConsole: false,
               logSerial: false,
-            });
-            return "serial";
-          })()
-        : sendRobotCommandAwaitAck(command, {
-            token: "z",
-            timeoutMs,
-            robotIds: ip ? [ip] : null,
-          });
-      sendP
-        .then((via) => {
-          addConsoleMessage("Sent z1 → " + via, "good");
-        })
-        .catch((e) => {
-          addConsoleMessage("z1 failed: " + (e.message || e), "warn");
+            })
+            .then(() => "serial");
+        }
+        return sendRobotCommandAwaitAck(item.command, {
+          token: item.token,
+          timeoutMs,
+          robotIds: ip ? [ip] : null,
         });
+      };
+      (async () => {
+        for (const item of cmds) {
+          try {
+            const via = await sendOne(item);
+            addConsoleMessage("Sent " + item.label + " → " + via, "good");
+          } catch (e) {
+            addConsoleMessage(item.label + " failed: " + (e.message || e), "warn");
+          }
+        }
+      })();
     }
 
     function anglesWithinSendDeadband(angles, lastSent) {
@@ -3996,7 +4261,7 @@
         setSerialConnectedUI(true, name);
         refreshConnectedUi();
         addConsoleMessage("Serial connected: " + name, "good");
-        sendZ1OnConnect({ serial: true });
+        sendConnectInitCmds({ serial: true });
         return name;
       }
 
@@ -4830,6 +5095,7 @@
             onHardReset: () => {
               resetPlayerCalibration(st);
               holdPlayerCommands(asg);
+              finishRoundAfterLostTarget();
             },
           });
         } else {
@@ -5073,24 +5339,579 @@
       statKneesEl.textContent = String(kneeCount);
     }
 
+    /** MediaPipe hand topology used for index / middle control. */
+    const HAND = {
+      WRIST: 0,
+      INDEX_MCP: 5,
+      INDEX_PIP: 6,
+      INDEX_DIP: 7,
+      INDEX_TIP: 8,
+      MIDDLE_MCP: 9,
+      MIDDLE_PIP: 10,
+      MIDDLE_DIP: 11,
+      MIDDLE_TIP: 12,
+      RING_MCP: 13,
+      RING_PIP: 14,
+      RING_DIP: 15,
+      RING_TIP: 16,
+      PINKY_MCP: 17,
+      PINKY_PIP: 18,
+      PINKY_DIP: 19,
+      PINKY_TIP: 20,
+    };
+    /** Index/middle may lean this far from screen-up and still count as upward. */
+    const FINGER_UP_MAX_TILT_DEG = 60;
+    const HAND_INDEX_CHAIN = [
+      [0, 5],
+      [5, 6],
+      [6, 7],
+      [7, 8],
+    ];
+    const HAND_MIDDLE_CHAIN = [
+      [0, 9],
+      [9, 10],
+      [10, 11],
+      [11, 12],
+    ];
+    const HAND_OTHER_CHAIN = [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [0, 13],
+      [13, 14],
+      [14, 15],
+      [15, 16],
+      [0, 17],
+      [17, 18],
+      [18, 19],
+      [19, 20],
+      [5, 9],
+      [9, 13],
+      [13, 17],
+    ];
+
+    /**
+     * Interior flexion at joint b, in degrees, from 3D points.
+     * 0° when a-b-c is straight; increases as the chain bends.
+     * Uses x/y/z together so a bend that is only in depth (invisible in
+     * the image plane) still counts.
+     */
+    function jointFlexionDeg(a, b, c) {
+      if (!a || !b || !c) return null;
+      const ba = vec3Sub(a, b);
+      const bc = vec3Sub(c, b);
+      const la = vec3Len(ba);
+      const lc = vec3Len(bc);
+      if (la < 1e-6 || lc < 1e-6) return null;
+      let cos = vec3Dot(ba, bc) / (la * lc);
+      cos = Math.max(-1, Math.min(1, cos));
+      const interior = (Math.acos(cos) * 180) / Math.PI;
+      return 180 - interior;
+    }
+
+    /**
+     * Spatial finger bend: blend of MCP, PIP, and DIP flexion (degrees).
+     * Not the 2D angle of the finger on the camera image.
+     */
+    function fingerBendDeg(world, mcp, pip, dip, tip) {
+      const mcpF = jointFlexionDeg(world[HAND.WRIST], world[mcp], world[pip]);
+      const pipF = jointFlexionDeg(world[mcp], world[pip], world[dip]);
+      const dipF = jointFlexionDeg(world[pip], world[dip], world[tip]);
+      const parts = [
+        [0.45, mcpF],
+        [0.45, pipF],
+        [0.1, dipF],
+      ];
+      let wSum = 0;
+      let acc = 0;
+      for (const [w, v] of parts) {
+        if (v == null || Number.isNaN(v)) continue;
+        wSum += w;
+        acc += w * v;
+      }
+      if (wSum <= 0) return null;
+      return acc / wSum;
+    }
+
+    /** True when a screen-space segment points generally upward (not sideways or down). */
+    function segmentPointsUp(from, to) {
+      if (!from || !to) return false;
+      const s0 = stageLocalToScreen(from.x, from.y);
+      const s1 = stageLocalToScreen(to.x, to.y);
+      const dx = s1.x - s0.x;
+      const dy = s1.y - s0.y;
+      if (Math.hypot(dx, dy) < 12) return false;
+      const tilt = (Math.atan2(Math.abs(dx), -dy) * 180) / Math.PI;
+      return tilt <= FINGER_UP_MAX_TILT_DEG;
+    }
+
+    /**
+     * Ready pose: index and middle are tracked and their overall direction
+     * is upward. Curl is allowed; ring/pinky are ignored.
+     */
+    function handPointsUp(hand) {
+      if (!hand || !hand.pts || !hand.bend) return false;
+      const b = hand.bend;
+      if (b.index == null || Number.isNaN(b.index)) return false;
+      if (b.middle == null || Number.isNaN(b.middle)) return false;
+      const pts = hand.pts;
+      const wrist = pts[HAND.WRIST];
+      const iTip = pts[HAND.INDEX_TIP];
+      const mTip = pts[HAND.MIDDLE_TIP];
+      if (!wrist || !iTip || !mTip) return false;
+      const midTip = { x: (iTip.x + mTip.x) / 2, y: (iTip.y + mTip.y) / 2 };
+      return segmentPointsUp(wrist, midTip);
+    }
+
+    /**
+     * Person and robot face the same way, so the person's left hand drives
+     * the robot's left. The preview mirror is CSS-only and must not flip
+     * this mapping.
+     */
+    function anatomicalHandSide(categoryName) {
+      if (categoryName === "Left" || categoryName === "Right") return categoryName;
+      return "";
+    }
+
+    function parseDetectedHands(handResult) {
+      const found = { Left: null, Right: null };
+      const lms = handResult?.landmarks || [];
+      const worlds = handResult?.worldLandmarks || [];
+      const handed = handResult?.handedness || handResult?.handednesses || [];
+      for (let i = 0; i < lms.length; i++) {
+        const lm = lms[i];
+        const worldRaw = worlds[i];
+        if (!lm || !worldRaw || lm.length < 21 || worldRaw.length < 21) continue;
+        const cat = handed[i] && handed[i][0];
+        const side = anatomicalHandSide(cat?.categoryName || "");
+        const score = cat?.score ?? 0;
+        if ((side !== "Left" && side !== "Right") || score < 0.5) continue;
+        const world = [];
+        let worldOk = true;
+        for (let j = 0; j < 21; j++) {
+          const p = worldRaw[j];
+          if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z)) {
+            worldOk = false;
+            break;
+          }
+          world.push({ x: p.x, y: p.y, z: p.z, vis: 1 });
+        }
+        if (!worldOk) continue;
+        const pts = lm.map((p) => {
+          const c = landmarkToClient(p);
+          c.vis = 1;
+          return c;
+        });
+        const bend = {
+          index: fingerBendDeg(
+            world,
+            HAND.INDEX_MCP,
+            HAND.INDEX_PIP,
+            HAND.INDEX_DIP,
+            HAND.INDEX_TIP
+          ),
+          middle: fingerBendDeg(
+            world,
+            HAND.MIDDLE_MCP,
+            HAND.MIDDLE_PIP,
+            HAND.MIDDLE_DIP,
+            HAND.MIDDLE_TIP
+          ),
+          ring: fingerBendDeg(
+            world,
+            HAND.RING_MCP,
+            HAND.RING_PIP,
+            HAND.RING_DIP,
+            HAND.RING_TIP
+          ),
+          pinky: fingerBendDeg(
+            world,
+            HAND.PINKY_MCP,
+            HAND.PINKY_PIP,
+            HAND.PINKY_DIP,
+            HAND.PINKY_TIP
+          ),
+        };
+        const hand = { side, score, pts, world, bend, pointingUp: false };
+        hand.pointingUp = handPointsUp(hand);
+        const prev = found[side];
+        if (!prev || score > prev.score) found[side] = hand;
+      }
+      return found;
+    }
+
+    function buildFingerSample(handResult) {
+      const found = parseDetectedHands(handResult);
+      const left = found.Left;
+      const right = found.Right;
+      const finite = (v) => v != null && !Number.isNaN(v);
+      const pitches = [
+        left && finite(left.bend.index) ? left.bend.index : null,
+        right && finite(right.bend.index) ? right.bend.index : null,
+        right && finite(right.bend.middle) ? right.bend.middle : null,
+        left && finite(left.bend.middle) ? left.bend.middle : null,
+      ];
+      const legal = !!(left && right && pitches.every(finite));
+      const peace = !!(legal && left.pointingUp && right.pointingUp);
+      return {
+        left,
+        right,
+        pitches,
+        legal,
+        peace,
+        indexCount: [left, right].filter((h) => h && finite(h.bend.index)).length,
+        middleCount: [left, right].filter((h) => h && finite(h.bend.middle)).length,
+      };
+    }
+
+    function drawHandBones(hand) {
+      const pts = hand.pts;
+      const indexColor = hand.pointingUp ? "#7cff6b" : "#58a6ff";
+      const middleColor = hand.pointingUp ? "#d2ff6b" : "#e3b341";
+      for (const [a, b] of HAND_OTHER_CHAIN) {
+        drawSegment(pts[a], pts[b], "#2f6f78", 4);
+      }
+      for (const [a, b] of HAND_INDEX_CHAIN) {
+        drawSegment(pts[a], pts[b], indexColor, 8);
+      }
+      for (const [a, b] of HAND_MIDDLE_CHAIN) {
+        drawSegment(pts[a], pts[b], middleColor, 8);
+      }
+      drawJoint(pts[HAND.INDEX_TIP], indexColor, 9);
+      drawJoint(pts[HAND.MIDDLE_TIP], middleColor, 9);
+      drawJoint(pts[HAND.WRIST], "#00F0FF", 7, hand.side === "Left" ? "L" : "R");
+      const tag = hand.side === "Left" ? "L" : "R";
+      drawUnmirroredText(
+        pts[HAND.INDEX_TIP].x,
+        pts[HAND.INDEX_TIP].y,
+        tag + "I " + fmtPitch(hand.bend.index),
+        indexColor,
+        -16
+      );
+      drawUnmirroredText(
+        pts[HAND.MIDDLE_TIP].x,
+        pts[HAND.MIDDLE_TIP].y,
+        tag + "M " + fmtPitch(hand.bend.middle),
+        middleColor,
+        28
+      );
+    }
+
+    /**
+     * Finger mode: index → front legs (LE/RE), middle → back legs (RK/LK).
+     * Straight locks the negative joint limit; a larger 3D bend raises the angle.
+     * Lost hands share the body ready-gate (hold sends, 2s restart).
+     */
+    function renderFingers(handResult) {
+      const { w: cw, h: ch } = stageSize();
+      ctx.clearRect(0, 0, cw, ch);
+      const now = performance.now();
+      const sample = buildFingerSample(handResult);
+      const { w, h } = stageSize();
+      const anchor = stageLocalToScreen(w / 2, h / 2);
+      const person = {
+        trackId: FINGER_TRACK_ID,
+        pts: sample,
+        cx: w / 2,
+        cy: h / 2,
+        screenX: anchor.x,
+        screenY: anchor.y,
+      };
+      const robots = connectedRobotsOrdered();
+      controlLayout = computeControlLayout([person], robots);
+      prunePlayerStates(new Set([FINGER_TRACK_ID]));
+
+      const asg =
+        controlLayout.assignments.find((a) => a.trackId === FINGER_TRACK_ID) ||
+        null;
+      const st = ensurePlayerState(FINGER_TRACK_ID);
+      if (!st.trackers) st.trackers = createJointTrackers(FINGER_TRACK_ID);
+
+      const lines = [];
+      const handCount = (sample.left ? 1 : 0) + (sample.right ? 1 : 0);
+      lines.push(
+        `mode=finger  hands=${handCount}  robots=${controlLayout.robotCount}`
+      );
+
+      if (asg && asg.isController) {
+        updateReadyGateState(st.readyGate, sample, now, {
+          label: "Hands",
+          isLegal: (s) => !!(s && s.legal),
+          isArmed: (s) => !!(s && s.peace),
+          illegalText: () => t("handsIllegal"),
+          armedText: () => t("peacePrompt"),
+          illegalResetMs: FINGER_ILLEGAL_RESET_MS,
+          onHardReset: () => {
+            resetPlayerCalibration(st);
+            holdPlayerCommands(asg);
+            finishRoundAfterLostTarget();
+          },
+        });
+      }
+
+      if (sample.left) drawHandBones(sample.left);
+      if (sample.right) drawHandBones(sample.right);
+
+      const legal = !!(asg && asg.isController && st.readyGate.legal);
+      if (asg && asg.isController && !legal) holdPlayerCommands(asg);
+
+      if (legal) {
+        const pitches = sample.pitches;
+        if (
+          !st.calibLocked &&
+          (st.readyGate.phase === READY_PHASE.READY_FLASH ||
+            st.readyGate.phase === READY_PHASE.CONTROLLING)
+        ) {
+          lockStretchCalibration(st, pitches);
+        }
+        const allowSend =
+          st.readyGate.phase === READY_PHASE.CONTROLLING &&
+          !!st.readyGate.legal &&
+          st.readyGate.illegalSince == null;
+        const statusHint = !st.readyGate.legal
+          ? t("handsIllegal").split("\n")[0] + " · hold"
+          : t("waitReady") + " · " + (st.readyGate.prompt || st.readyGate.phase);
+        const queueKey =
+          controlLayout.mode === "sync"
+            ? "__sync__"
+            : (asg.robotIds && asg.robotIds[0]) || "__none__";
+        const robotIds =
+          controlLayout.mode === "sync" ? null : (asg.robotIds || []).slice();
+        if (!st.angleFilters) st.angleFilters = createAngleFilters();
+        updateGaitControl(pitches, {
+          allowSend: allowSend && queueKey !== "__none__",
+          trackers: st.trackers,
+          angleFilters: st.angleFilters,
+          now,
+          queueKey,
+          robotIds,
+          readyPhase: st.readyGate.phase,
+          statusHint,
+          updateHud: true,
+        });
+        lines.push(
+          `  ready: ${st.readyGate.phase}` +
+            (st.readyGate.prompt ? ` — ${st.readyGate.prompt.replace(/\n/g, " ")}` : "")
+        );
+        lines.push(
+          `  map: index ${FINGER_INDEX_BEND.min}..${FINGER_INDEX_BEND.max}° / middle ${FINGER_MIDDLE_BEND.min}..${FINGER_MIDDLE_BEND.max}° → b±${ANGLE_RANGE}` +
+            (st.calibLocked ? " (locked)" : " (pending)")
+        );
+        const names = ["L-Index", "R-Index", "R-Mid", "L-Mid"];
+        for (let ti = 0; ti < 4; ti++) {
+          const tr = st.trackers[ti];
+          let extra = fmtPitch(pitches[ti]);
+          if (tr && tr.ready) {
+            const ang = tr.mapToAngle(pitches[ti], B_BASE[ti]);
+            extra += `  [${tr.minV.toFixed(0)}..${tr.maxV.toFixed(0)}]→a=${ang != null ? ang.toFixed(0) : "—"}`;
+          }
+          lines.push(`  ${names[ti].padEnd(8)} ${extra}`);
+        }
+      } else {
+        lines.push(
+          "  " +
+            (handCount
+              ? t("handsIllegal").replace(/\n/g, " · ")
+              : t("noHands").replace(/\n/g, " · "))
+        );
+        if (asg && asg.isController) {
+          lines.push("  send: held (hands lost)");
+          statControlEl.textContent =
+            t("handsIllegal").split("\n")[0] + " · hold";
+        }
+      }
+
+      showReadyPrompts(controlLayout.assignments);
+      showBodyIpLabels(controlLayout.assignments);
+      coordTextEl.textContent = lines.join("\n");
+      statPoseEl.textContent = String(handCount);
+      statElbowsEl.textContent = String(sample.indexCount);
+      statKneesEl.textContent = String(sample.middleCount);
+    }
+
+    /** Latest page snapshot taken while the countdown shows 2. */
+    let roundPhotoDataUrl = "";
+    /** False while count stays on 2, so the shot is taken once per visit. */
+    let countdownShotArmed = true;
+    let photoDialogOpen = false;
+
+    function paintChromeSubtree(ctx, appBox, root) {
+      if (!root) return;
+      const nodes = [root, ...root.querySelectorAll("*")];
+      for (const el of nodes) {
+        if (el.closest && el.closest("#cameraStageInner")) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) continue;
+        const cs = getComputedStyle(el);
+        if (cs.display === "none" || cs.visibility === "hidden") continue;
+        const x = r.left - appBox.left;
+        const y = r.top - appBox.top;
+        const bg = cs.backgroundColor;
+        if (bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)") {
+          ctx.fillStyle = bg;
+          ctx.fillRect(x, y, r.width, r.height);
+        }
+        if (el.childElementCount > 0) continue;
+        const text = (el.innerText || el.value || "").replace(/\s+\n/g, "\n").trim();
+        if (!text) continue;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, r.width, r.height);
+        ctx.clip();
+        ctx.fillStyle = cs.color || "#fff";
+        ctx.font = cs.font || "14px system-ui, sans-serif";
+        ctx.textBaseline = "top";
+        const padL = parseFloat(cs.paddingLeft) || 0;
+        const padT = parseFloat(cs.paddingTop) || 0;
+        const fontSize = parseFloat(cs.fontSize) || 14;
+        const lh = Number.isFinite(parseFloat(cs.lineHeight))
+          ? parseFloat(cs.lineHeight)
+          : fontSize * 1.25;
+        let ty = y + padT;
+        for (const line of text.split("\n")) {
+          if (ty > y + r.height) break;
+          ctx.fillText(line, x + padL, ty, Math.max(4, r.width - padL));
+          ty += lh;
+        }
+        ctx.restore();
+      }
+    }
+
+    /** Camera view as shown: CSS mirror + rotation, then the overlay on top. */
+    function paintCameraView(ctx, appBox) {
+      const pane = cameraPane.getBoundingClientRect();
+      const dx = pane.left - appBox.left;
+      const dy = pane.top - appBox.top;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(dx, dy, pane.width, pane.height);
+      ctx.clip();
+      ctx.fillStyle = "#000";
+      ctx.fillRect(dx, dy, pane.width, pane.height);
+      const { w, h } = stageSize();
+      ctx.translate(dx + pane.width / 2, dy + pane.height / 2);
+      // CSS transform "rotate(-deg) scaleX(-1)" applies scaleX first.
+      ctx.rotate((-cameraRotation * Math.PI) / 180);
+      ctx.scale(-1, 1);
+      ctx.translate(-w / 2, -h / 2);
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (vw && vh && video.readyState >= 2) {
+        const s = Math.max(w / vw, h / vh);
+        const dw = vw * s;
+        const dh = vh * s;
+        ctx.drawImage(video, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      }
+      if (overlay.width && overlay.height) ctx.drawImage(overlay, 0, 0, w, h);
+      ctx.restore();
+    }
+
+    /** Snapshot of the demo window (chrome + mirrored camera + prompts). */
+    function capturePageSnapshot() {
+      const app = document.querySelector(".app");
+      const appBox = app.getBoundingClientRect();
+      const scale = Math.min(2, window.devicePixelRatio || 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(appBox.width * scale));
+      canvas.height = Math.max(1, Math.round(appBox.height * scale));
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.fillStyle = "#0f1419";
+      ctx.fillRect(0, 0, appBox.width, appBox.height);
+      paintChromeSubtree(ctx, appBox, document.querySelector(".top-bar"));
+      paintChromeSubtree(ctx, appBox, document.querySelector(".windows-container"));
+      paintCameraView(ctx, appBox);
+      paintChromeSubtree(ctx, appBox, promptLayerEl);
+      paintChromeSubtree(ctx, appBox, bodyIpLayerEl);
+      paintChromeSubtree(ctx, appBox, document.getElementById("hudCoords"));
+      paintChromeSubtree(ctx, appBox, document.getElementById("hudStats"));
+      return canvas.toDataURL("image/jpeg", 0.85);
+    }
+
+    function maybeCaptureCountdownPhoto() {
+      if (photoDialogOpen) return;
+      let atTwo = false;
+      for (const st of playerStates.values()) {
+        const gate = st.readyGate;
+        if (gate && gate.phase === READY_PHASE.COUNTDOWN && gate.count === 2) {
+          atTwo = true;
+          break;
+        }
+      }
+      if (!atTwo) {
+        countdownShotArmed = true;
+        return;
+      }
+      if (!countdownShotArmed) return;
+      countdownShotArmed = false;
+      try {
+        roundPhotoDataUrl = capturePageSnapshot();
+        addConsoleMessage("Page snapshot taken at countdown 2", "good");
+      } catch (e) {
+        console.error(e);
+        roundPhotoDataUrl = "";
+      }
+    }
+
+    function openPhotoDialog(dataUrl) {
+      const dialog = document.getElementById("photoDialog");
+      const overlay = document.getElementById("photoOverlay");
+      const img = document.getElementById("photoPreview");
+      const form = document.getElementById("photoEnroll");
+      const err = document.getElementById("photoEnrollErr");
+      const email = document.getElementById("photoEmail");
+      if (!dialog || !img || !dataUrl) return;
+      img.src = dataUrl;
+      if (form) form.hidden = true;
+      if (err) err.textContent = "";
+      if (email) email.value = "";
+      dialog.classList.add("visible");
+      if (overlay) overlay.classList.add("visible");
+      photoDialogOpen = true;
+    }
+
+    function closePhotoDialog() {
+      const dialog = document.getElementById("photoDialog");
+      const overlay = document.getElementById("photoOverlay");
+      const form = document.getElementById("photoEnroll");
+      if (dialog) dialog.classList.remove("visible");
+      if (overlay) overlay.classList.remove("visible");
+      if (form) form.hidden = true;
+      photoDialogOpen = false;
+      roundPhotoDataUrl = "";
+      countdownShotArmed = true;
+    }
+
+    /** Lost-target reset ends the round and offers the countdown-2 photo. */
+    function finishRoundAfterLostTarget() {
+      if (photoDialogOpen || !roundPhotoDataUrl) return;
+      openPhotoDialog(roundPhotoDataUrl);
+      addConsoleMessage("Round ended (target lost) — photo ready", "warn");
+    }
+
     function tick() {
       rafId = requestAnimationFrame(tick);
-      if (!poseLandmarker) return;
       if (video.readyState < 2) return;
+      const fingerMode = trackMode === "finger";
+      if (fingerMode ? !handLandmarker : !poseLandmarker) return;
 
       const now = performance.now();
       if (video.currentTime === lastVideoTime) return;
       lastVideoTime = video.currentTime;
 
-      let poseResult = null;
       try {
-        poseResult = poseLandmarker.detectForVideo(video, Math.round(now));
+        if (fingerMode) {
+          renderFingers(handLandmarker.detectForVideo(video, Math.round(now)));
+        } else {
+          render(poseLandmarker.detectForVideo(video, Math.round(now)));
+        }
       } catch (e) {
         console.error(e);
         return;
       }
 
-      render(poseResult);
+      maybeCaptureCountdownPhoto();
 
       fpsFrames++;
       if (now - fpsLastMs >= 1000) {
@@ -5119,7 +5940,9 @@
         lastVideoTime = -1;
         rafId = requestAnimationFrame(tick);
         addConsoleMessage(
-          `Camera started — stretch at READY locks elbows→a_min / knees→a_max (b±${ANGLE_RANGE}°)`,
+          trackMode === "finger"
+            ? `Camera started — index ${FINGER_INDEX_BEND.min}..${FINGER_INDEX_BEND.max}° and middle ${FINGER_MIDDLE_BEND.min}..${FINGER_MIDDLE_BEND.max}° fill b±${ANGLE_RANGE}`
+            : `Camera started — stretch at READY locks elbows→a_min / knees→a_max (b±${ANGLE_RANGE}°)`,
           "good"
         );
       } catch (e) {
@@ -5221,6 +6044,50 @@
       });
     }
 
+    async function createHandLandmarker(vision, delegate) {
+      return HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: LOCAL_HAND_MODEL, delegate },
+        runningMode: "VIDEO",
+        numHands: 2,
+        minHandDetectionConfidence: 0.5,
+        minHandPresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+    }
+
+    function refreshCameraButton() {
+      if (document.body.classList.contains("camera-on")) return;
+      const ready = trackMode === "finger" ? !!handLandmarker : !!poseLandmarker;
+      btnStart.disabled = !ready;
+    }
+
+    async function initHand(vision) {
+      if (handLandmarker) {
+        try {
+          handLandmarker.close();
+        } catch {
+          /* ignore */
+        }
+        handLandmarker = null;
+      }
+      try {
+        try {
+          handLandmarker = await createHandLandmarker(vision, "GPU");
+        } catch (gpuErr) {
+          console.warn("Hand GPU delegate failed, falling back to CPU", gpuErr);
+          handLandmarker = await createHandLandmarker(vision, "CPU");
+        }
+        addConsoleMessage("Hand model ready (local bundle)", "good");
+      } catch (e) {
+        console.error(e);
+        handLandmarker = null;
+        addConsoleMessage("Hand model failed: " + (e.message || e), "error");
+        if (trackMode === "finger") {
+          showError(t("mediapipeError", { msg: e.message || e }));
+        }
+      }
+    }
+
     async function initPose() {
       try {
         if (poseLandmarker) {
@@ -5243,10 +6110,13 @@
           loadStatusEl.textContent = t("loadingCpu");
           poseLandmarker = await createPoseLandmarker(vision, "CPU", modelPath);
         }
+        loadStatusEl.dataset.i18nKey = "loadingHand";
+        loadStatusEl.textContent = t("loadingHand");
+        await initHand(vision);
         const readyKey = poseModelSource === "cache" ? "modelSourceCache" : "modelSourceLocal";
         loadStatusEl.dataset.i18nKey = readyKey;
         loadStatusEl.textContent = t(readyKey);
-        btnStart.disabled = false;
+        refreshCameraButton();
         refreshModelSourceButtons();
         addConsoleMessage(
           "Pose model ready (" + (poseModelSource === "cache" ? "CDN cache" : "local bundle") + ")",
@@ -5334,8 +6204,135 @@
       }
     }
 
+    function setI18nText(el, key) {
+      if (!el) return;
+      el.setAttribute("data-i18n", key);
+      el.textContent = t(key);
+    }
+
+    function applyTrackModeChrome() {
+      const finger = trackMode === "finger";
+      const elbowBtn = document.getElementById("modeElbow");
+      const fingerBtn = document.getElementById("modeFinger");
+      if (elbowBtn) {
+        elbowBtn.classList.toggle("active", !finger);
+        elbowBtn.setAttribute("aria-checked", finger ? "false" : "true");
+      }
+      if (fingerBtn) {
+        fingerBtn.classList.toggle("active", finger);
+        fingerBtn.setAttribute("aria-checked", finger ? "true" : "false");
+      }
+      document.title = t(finger ? "modeFinger" : "modeElbow");
+      setI18nText(
+        document.getElementById("labelStatElbows"),
+        finger ? "statIndex" : "statElbows"
+      );
+      setI18nText(
+        document.getElementById("labelStatKnees"),
+        finger ? "statMiddle" : "statKnees"
+      );
+      setI18nText(
+        document.getElementById("hudCoordsTitle"),
+        finger ? "hudCoordsTitleFinger" : "hudCoordsTitle"
+      );
+      setI18nText(
+        document.getElementById("angleChartNoteCenter"),
+        finger ? "angleChartNoteCenterFinger" : "angleChartNoteCenter"
+      );
+    }
+
+    function setTrackMode(mode) {
+      const next = mode === "finger" ? "finger" : "elbow";
+      if (next === trackMode) {
+        applyTrackModeChrome();
+        return;
+      }
+      trackMode = next;
+      playerStates.clear();
+      personTracks = [];
+      nextTrackId = 1;
+      clearAllCmdQueues();
+      lastControlSnapshot = null;
+      angleChartHistory = [];
+      scheduleAngleChartDraw();
+      applyTrackModeChrome();
+      refreshCameraButton();
+      addConsoleMessage(
+        trackMode === "finger"
+          ? "Tracking mode: fingers (index→front legs, middle→back legs; straight→a_min)"
+          : "Tracking mode: elbows & knees",
+        "good"
+      );
+      if (document.body.classList.contains("camera-on")) {
+        coordTextEl.textContent = t(trackMode === "finger" ? "noHands" : "noBody");
+      }
+    }
+
     // Events
     btnStart.addEventListener("click", startCamera);
+    document.getElementById("photoDelete").addEventListener("click", () => {
+      closePhotoDialog();
+      addConsoleMessage("Countdown photo deleted", "warn");
+    });
+    document.getElementById("photoLottery").addEventListener("click", () => {
+      const form = document.getElementById("photoEnroll");
+      const email = document.getElementById("photoEmail");
+      const err = document.getElementById("photoEnrollErr");
+      if (err) err.textContent = "";
+      if (form) form.hidden = false;
+      if (email) email.focus();
+    });
+    document.getElementById("photoEnroll").addEventListener("submit", (e) => {
+      e.preventDefault();
+      enrollCountdownPhoto();
+    });
+
+    const PHOTO_EMAIL_RE = /^[^@\s/\\]+@[^@\s/\\]+\.[^@\s/\\]+$/;
+
+    async function enrollCountdownPhoto() {
+      const emailEl = document.getElementById("photoEmail");
+      const errEl = document.getElementById("photoEnrollErr");
+      const btn = document.getElementById("photoEnrollBtn");
+      const img = document.getElementById("photoPreview");
+      const email = (emailEl && emailEl.value ? emailEl.value : "").trim();
+      if (!PHOTO_EMAIL_RE.test(email)) {
+        if (errEl) errEl.textContent = "Enter a valid email address.";
+        return;
+      }
+      const image = (img && img.src) || roundPhotoDataUrl;
+      if (!image || !image.startsWith("data:image/")) {
+        if (errEl) errEl.textContent = "Photo is missing.";
+        return;
+      }
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch("/api/photo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, image }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Save failed");
+        }
+        addConsoleMessage("Photo saved as " + (data.file || "pics/" + email + ".jpg"), "good");
+        closePhotoDialog();
+      } catch (err) {
+        if (errEl) {
+          errEl.textContent =
+            "Could not save the photo. Start the demo with Autorun so pics/ can be written.";
+        }
+        addConsoleMessage("Photo save failed: " + (err.message || err), "error");
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+    document.getElementById("modeElbow").addEventListener("click", () => {
+      setTrackMode("elbow");
+    });
+    document.getElementById("modeFinger").addEventListener("click", () => {
+      setTrackMode("finger");
+    });
     btnUpdateModel.addEventListener("click", onUpdateModelClick);
     btnUseLocalModel.addEventListener("click", useLocalPoseModel);
     openSerialBtn.addEventListener("click", openSerialPort);
