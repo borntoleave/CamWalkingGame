@@ -424,6 +424,9 @@
         0 -3px 0 #000,
         4px 4px 0 #000;
     }
+    .head-prompt.ready.ready-long {
+      font-size: 38px;
+    }
     .head-prompt.illegal {
       color: #ffe600;
       font-size: 36px;
@@ -467,6 +470,7 @@
     .head-prompt.lane.countdown { font-size: 42px; }
     .head-prompt.lane.countdown .prompt-count { font-size: 64px; }
     .head-prompt.lane.ready { font-size: 56px; }
+    .head-prompt.lane.ready.ready-long { font-size: 24px; }
     .head-prompt.lane.illegal { font-size: 28px; }
     .head-prompt.lane.illegal .prompt-title { font-size: 48px; -webkit-text-stroke: 3px #000; }
     .head-prompt.lane.illegal .prompt-body { font-size: 22px; }
@@ -1570,12 +1574,14 @@
         expandMotion: "Waiting for stretch calibration",
         raiseArmsPrompt: "Fully extend arms and legs,\nraise elbows above shoulders",
         peacePrompt: "Raise both hands\nIndex and middle pointing up",
-        getReadyN: "Get Ready\n{n}",
-        readyFlash: "READY!",
+        getReadyN: "Keep your pose steady\n{n}",
+        readyFlash: "Start moving",
+        "readyFlash-finger": "Start moving your fingers!\nIndex → front legs · Middle → back legs",
+        "readyFlash-body": "Start moving your arms and legs!",
         waitReady: "Waiting for ready",
         waitAllReady: "Waiting for everyone",
         poseIllegal: "Invalid pose!\nStand or sit — keep both elbows and knees fully in frame",
-        handsIllegal: "Hands not recognized!\nKeep both index and middle fingers in frame",
+        handsIllegal: "Hands not recognized!\nHave your palms facing the camera.  Open your hands.\nKeep both index and middle fingers in frame",
         spectatorLabel: "Spectator",
         notConnected: "Not connected",
         sendFailed: "Send failed",
@@ -1737,8 +1743,10 @@
         expandMotion: "等待舒展标定",
         raiseArmsPrompt: "使双臂和双腿充分舒展，\n双肘抬过肩",
         peacePrompt: "举起双手\n食指与中指朝上",
-        getReadyN: "Get Ready\n{n}",
-        readyFlash: "READY!",
+        getReadyN: "Keep your pose steady\n{n}",
+        readyFlash: "Start moving",
+        "readyFlash-finger": "Start moving your fingers!\nIndex → front legs · Middle → back legs",
+        "readyFlash-body": "Start moving your arms and legs!",
         waitReady: "等待就绪",
         waitAllReady: "等待所有人就绪",
         poseIllegal: "姿态无效！\n请站立或坐下，使双肘和双膝完整入镜",
@@ -2586,11 +2594,14 @@
       isArmed = armsOverShoulders,
       illegalText,
       armedText,
+      readyFlashText,
+      persistReadyFlash = false,
       illegalResetMs = ILLEGAL_RESET_MS,
     } = {}) {
       const legal = isLegal(pts);
       const illegalMsg = illegalText ? illegalText() : t("poseIllegal");
       const armedMsg = armedText ? armedText() : t("raiseArmsPrompt");
+      const readyFlashMsg = readyFlashText ? readyFlashText() : t("readyFlash");
       gate.legal = legal;
 
       if (!legal) {
@@ -2654,7 +2665,7 @@
             gate.prompt = t("getReadyN", { n: gate.count });
           } else {
             gate.phase = READY_PHASE.READY_FLASH;
-            gate.prompt = t("readyFlash");
+            gate.prompt = readyFlashMsg;
             addConsoleMessage(
               "READY!" + (label ? " (" + label + ")" : ""),
               "good"
@@ -2664,10 +2675,10 @@
           gate.prompt = t("getReadyN", { n: gate.count });
         }
       } else if (gate.phase === READY_PHASE.READY_FLASH) {
-        gate.prompt = t("readyFlash");
+        gate.prompt = readyFlashMsg;
         if (now - gate.stepStartedAt >= READY_FLASH_MS) {
           gate.phase = READY_PHASE.CONTROLLING;
-          gate.prompt = "";
+          gate.prompt = persistReadyFlash ? readyFlashMsg : "";
           if (!surpriseShotTimer) surpriseShotDue = true;
           addConsoleMessage(
             "Control enabled" + (label ? " (" + label + ")" : ""),
@@ -2675,7 +2686,7 @@
           );
         }
       } else if (gate.phase === READY_PHASE.CONTROLLING) {
-        gate.prompt = "";
+        gate.prompt = persistReadyFlash ? readyFlashMsg : "";
       }
 
       return gate;
@@ -2721,6 +2732,7 @@
     function fillHeadPromptContent(el, text, phase) {
       if (phase === READY_PHASE.READY_FLASH) {
         el.classList.add("ready");
+        el.classList.toggle("ready-long", text.length > 20);
         el.textContent = text;
       } else if (phase === READY_PHASE.COUNTDOWN) {
         el.classList.add("countdown");
@@ -5300,6 +5312,7 @@
         if (asg && asg.isController) {
           updateReadyGateState(st.readyGate, person.pts, now, {
             label: "P" + person.trackId,
+            readyFlashText: () => t("readyFlash-body"),
             onHardReset: () => {
               resetPlayerCalibration(st);
               holdPlayerCommands(asg);
@@ -5849,6 +5862,8 @@
           isArmed: (s) => !!(s && s.peace),
           illegalText: () => t("handsIllegal"),
           armedText: () => t("peacePrompt"),
+          readyFlashText: () => t("readyFlash-finger"),
+          persistReadyFlash: true,
           illegalResetMs: FINGER_ILLEGAL_RESET_MS,
           onHardReset: () => {
             resetPlayerCalibration(st);
