@@ -1216,7 +1216,7 @@
       <div class="mode-dial" id="trackModeDial" role="radiogroup" data-i18n-aria="trackModeAria">
         <button type="button" class="mode-dial-btn" id="modeElbow" role="radio" aria-checked="false" data-i18n="modeElbow">Elbow &amp; Knee Tracking</button>
         <button type="button" class="mode-dial-btn active" id="modeFinger" role="radio" aria-checked="true" data-i18n="modeFinger">Finger Tracking</button>
-        <button type="button" class="mode-dial-btn" id="modeEye" role="radio" aria-checked="false" data-i18n="modeEye">Eye Contact</button>
+        <button type="button" class="mode-dial-btn" id="modeEye" role="radio" aria-checked="false" data-i18n="modeEye">Body Follow</button>
       </div>
       <div class="bar-actions">
         <button type="button" id="btnHelp" data-i18n="helpBtn" data-i18n-title="helpTitle">❓ Help</button>
@@ -1233,7 +1233,7 @@
           id="btnEyeWalk"
           aria-pressed="false"
           data-i18n-title="eyeWalkTitle"
-          title="Eye Contact mode: let the robot step toward or away from you"
+          title="Body Follow mode: let the robot step toward or away from you"
         >🚶 Step: off</button>
         <div class="ip-block">
           <input
@@ -1459,13 +1459,13 @@
         trackModeAria: "Tracking mode",
         modeElbow: "Elbow & Knee Tracking",
         modeFinger: "Finger Tracking",
-        modeEye: "Eye Contact",
-        eyeNoFace: "No face detected",
-        eyeTracking: "Looking at you",
+        modeEye: "Body Follow",
+        eyeNoFace: "Nobody detected",
+        eyeTracking: "Following you",
         eyeWalkOff: "🚶 Step: off",
         eyeWalkOn: "🚶 Step: ON",
         eyeWalkTitle:
-          "Eye Contact mode: robot steps toward you when you approach, back when you retreat. Put a barrier at the table edge first.",
+          "Body Follow mode: robot steps toward you when you approach, back when you retreat. Put a barrier at the table edge first.",
         helpBtn: "❓ Help",
         helpTitle: "Help",
         btnCloseHelp: "Close",
@@ -1514,10 +1514,12 @@
           "<li>Get ready by holding <b>both</b> hands up so the index and middle fingers are visible and point generally upward. They do not have to be straight.</li>" +
           "<li>Dropping the hands or turning the fingers away from upward during countdown restarts preparation. Losing the hands for about <b>2 seconds</b> restarts preparation, and <b>no joint commands</b> are sent during that wait.</li>" +
           "</ul>" +
-          "<h4>Eye contact</h4>" +
-          "<p>The top-left dial switches to <b>Eye Contact</b>. The robot looks at whoever is in front of the camera, and <b>leans toward them</b> as it does. There is no READY countdown and it never walks.</p>" +
+          "<h4>Body follow</h4>" +
+          "<p>The top-left dial switches to <b>Body Follow</b>. The robot responds to where your body is: its eyes look at you, it <b>leans toward you</b>, and if stepping is enabled it <b>walks toward or away from you</b>. There is no READY countdown.</p>" +
           "<ul>" +
-          "<li>Your <b>position</b> in the frame aims the pupils, not the direction your head is turned. Step left and the pupils follow you.</li>" +
+          "<li>Your <b>torso position</b> in the frame aims the eyes, not the direction your head is turned. Step left and the eyes follow you. It falls back to your head if your shoulders are not visible.</li>" +
+          "<li><b>Stepping</b> is off until you press <b>🚶 Step</b> in the top bar, and it resets to off on every page reload. Walk toward the camera and the robot takes a few steps toward you; back away and it steps back. <b>Put a barrier at the table edge before enabling it.</b></li>" +
+          "<li>It cannot lean and walk at the same time (the firmware only leans while standing still), so it alternates: leaning while you hold still, stepping when you move.</li>" +
           "<li>The lean and the gaze are <b>the same signal</b>: the firmware turns eye direction into leg angles, so you cannot have one without the other. <code>EYE_TUNE.gain</code> in the browser console scales both together (lower = subtler eyes and a smaller lean).</li>" +
           "<li>With two people it looks at the <b>nearest</b> one (largest apparent head). It will not flip between them unless the other is clearly closer for half a second.</li>" +
           "<li>Walk out of frame and the pupils recentre after about <b>0.4 s</b>, handing the eyes back to the robot's own idle behaviour.</li>" +
@@ -1649,13 +1651,13 @@
         trackModeAria: "追踪模式",
         modeElbow: "肘膝追踪",
         modeFinger: "手指追踪",
-        modeEye: "眼神追踪",
-        eyeNoFace: "未检测到人脸",
-        eyeTracking: "正在看着你",
+        modeEye: "身体跟随",
+        eyeNoFace: "未检测到人",
+        eyeTracking: "正在跟随你",
         eyeWalkOff: "🚶 走动：关",
         eyeWalkOn: "🚶 走动：开",
         eyeWalkTitle:
-          "眼神追踪模式：你靠近时机器人迈步靠近，你后退时它后退。请先在桌边放挡块。",
+          "身体跟随模式：你靠近时机器人迈步靠近，你后退时它后退。请先在桌边放挡块。",
         helpBtn: "❓ 帮助",
         helpTitle: "帮助",
         btnCloseHelp: "关闭",
@@ -1704,10 +1706,12 @@
           "<li>准备时只要<b>双手食指和中指</b>都入镜，且大方向朝上即可，不必伸直，并保持到倒计时结束。</li>" +
           "<li>倒计时中放下双手或手指不再朝上会重新准备。丢失双手识别约 <b>2 秒</b>后重新准备，等待期间<strong>不发送</strong>关节指令。</li>" +
           "</ul>" +
-          "<h4>眼神追踪</h4>" +
-          "<p>左上角拨动按钮可切到<b>眼神追踪</b>。机器人会看向镜头前的人，并<b>同时朝其方向侧倾</b>。没有 READY 倒计时，也不会行走。</p>" +
+          "<h4>身体跟随</h4>" +
+          "<p>左上角拨动按钮可切到<b>身体跟随</b>。机器人会根据你身体的位置做出反应：眼睛看向你、<b>朝你侧倾</b>，若开启走动则会<b>朝你走近或后退</b>。没有 READY 倒计时。</p>" +
           "<ul>" +
-          "<li>由你在画面中的<b>位置</b>决定眼球朝向，而不是头的转向。向左走，眼球跟着你。</li>" +
+          "<li>由<b>躯干位置</b>决定眼球朝向，而不是头的转向。向左走，眼球跟着你。若肩部不可见，则退回使用头部位置。</li>" +
+          "<li><b>走动</b>默认关闭，需按顶栏的 <b>🚶 走动</b> 开启，且每次刷新页面都会复位为关闭。你走近镜头，机器人向你迈几步；你后退，它也后退。<b>开启前请先在桌边放好挡块。</b></li>" +
+          "<li>侧倾与走动无法同时进行（固件只在站立静止时侧倾），因此两者交替：你静止时侧倾，你移动时迈步。</li>" +
           "<li>侧倾和视线是<b>同一个信号</b>：固件会把眼球朝向换算成腿部角度，两者无法分开。在浏览器控制台用 <code>EYE_TUNE.gain</code> 可同时缩放二者（数值越小，眼动越含蓄，侧倾也越小）。</li>" +
           "<li>两人同时入镜时看<b>更近</b>的那位（头部看起来更大）。除非另一人明显更近并保持半秒，否则不会来回切换。</li>" +
           "<li>走出画面约 <b>0.4 秒</b>后眼球回正，交还给机器人自己的待机行为。</li>" +
@@ -5999,7 +6003,12 @@
       statKneesEl.textContent = String(sample.middleCount);
     }
 
-    /* ——— Eye contact mode ———————————————————————————————————————————————
+    /* ——— Body Follow mode ———————————————————————————————————————————————
+     * Named "eye" internally for historical reasons: it began as pupil-only eye
+     * contact, then grew torso-driven aim, body lean and stepping. The trackMode id,
+     * EYE_TUNE and renderEyeTracking keep the old names deliberately; renaming them
+     * mid-demo-prep would have broken the console knobs being tuned against live
+     * hardware. Rename after the demo.
      * Face POSITION (not head orientation) aims the robot's on-board TFT pupils.
      * No firmware change: processJoystick() stores the Jr rstick values and then
      * returns early while viewMode == 3, skipping the leg apply, and
