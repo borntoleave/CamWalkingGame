@@ -6101,7 +6101,8 @@
     const EYE_WALK_CONFIRM_MS = 250; // sustained before firing, rejects a lean-in
     const EYE_WALK_BURST_MS = 1800; // gait duration, a few walk steps (EYE_TUNE.walkMs)
     const EYE_WALK_COOLDOWN_MS = 1200; // quiet time after a burst
-    const EYE_WALK_BASE_TAU_MS = 3000; // baseline drifts to your standing distance
+    const EYE_WALK_BASE_TAU_MS = 4000; // baseline drifts to your standing distance
+    const EYE_WALK_BASE_BAND = 0.04; // baseline freezes once |ratio-1| exceeds this
     /**
      * Live tuning handles, read every frame. The correct signs cannot be derived
      * from the code: they depend on how `eyeX` maps to the robot's own left vs the
@@ -6144,6 +6145,8 @@
       walkTrigger: EYE_WALK_TRIGGER, // ratio vs baseline to step toward you
       walkRelease: EYE_WALK_RELEASE, // ratio to step away
       walkConfirmMs: EYE_WALK_CONFIRM_MS,
+      walkBaseBand: EYE_WALK_BASE_BAND, // raise if the baseline freezes on noise
+      walkBaseTauMs: EYE_WALK_BASE_TAU_MS,
       walkCooldownMs: EYE_WALK_COOLDOWN_MS,
     };
 
@@ -6321,11 +6324,20 @@
         eyeState.walkBase = size; // re-anchor to where they ended up
         return "cooldown";
       }
-      // Baseline chases the person slowly, so standing still never triggers.
-      const k = Math.min(1, dtMs / EYE_WALK_BASE_TAU_MS);
-      eyeState.walkBase += (size - eyeState.walkBase) * k;
-
+      // The baseline exists so standing at any distance never triggers. But it has to
+      // FREEZE the moment you start moving, or it chases you: on a slow approach it
+      // drifts as fast as the ratio builds, the ratio stays near 1.00, and nothing
+      // ever fires. So it only drifts while you are essentially still.
       const ratio = size / eyeState.walkBase;
+      // While you are still, the baseline tracks you so standing at any distance never
+      // triggers. While you are MOVING it must not chase you, or a slow approach feeds
+      // the baseline as fast as it feeds the ratio and nothing ever fires. A slow leak
+      // rather than a hard freeze, so a baseline left stale by settling slightly off
+      // still catches up eventually instead of sticking forever.
+      const tau = tune.walkBaseTauMs ?? EYE_WALK_BASE_TAU_MS;
+      const moving = Math.abs(ratio - 1) >= (tune.walkBaseBand ?? EYE_WALK_BASE_BAND);
+      const k = Math.min(1, dtMs / (moving ? tau * 6 : tau));
+      eyeState.walkBase += (size - eyeState.walkBase) * k;
       const dir =
         ratio >= (tune.walkTrigger ?? EYE_WALK_TRIGGER)
           ? 1
