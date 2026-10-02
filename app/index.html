@@ -6020,15 +6020,22 @@
      * reactionApplyRstickFromEyeNorm(), so gaze and lean are one signal and
      * EYE_TUNE.gain scales both. Verified on hardware 2026-10-01 and kept.
      *
-     * DO NOT try to deepen the lean. Tested on hardware 2026-10-01: driving joints
-     * 2/3/4/5 directly with `I`, using the firmware's own lean pattern (2 and 5 one
-     * way, 3 and 4 the other), HOPS instead of leaning at +-10 deg and jump-steps
-     * forward at +-25. Quaddle has one fore/aft joint per leg, so a sideways tilt is
-     * faked by swinging the left and right legs oppositely, and there is almost no
-     * range in that before it becomes a step. The firmware's RSTICK_LX_DIV 7
-     * (~7 deg cap) is therefore a STABILITY limit, not arbitrary caution, and
-     * lowering it makes the robot hop. For bigger motion use stepping
-     * (EYE_TUNE.walk), which is the same physics working on purpose.
+     * Deeper lean via direct `I` joint control: the JOINT PAIRING matters and is not
+     * what this file's own "joints 2..5 = LE, RE, RK, LK" comment implies.
+     *
+     *   WRONG (hops at +-10, jump-steps forward at +-25): pair (2,5) against (3,4),
+     *   i.e. the left/right grouping that comment suggests. Commands a twist the
+     *   robot cannot hold.
+     *
+     *   WORKING (confirmed on hardware 2026-10-01, from Petoi): pair (2,4) against
+     *   (3,5) --  i2 <u2+10> 3 <u3-10> 4 <u4+10> 5 <u5-10>  -- where u* are the
+     *   neutral standing angles from the `j` token.
+     *
+     * So the ~7 deg firmware cap (RSTICK_LX_DIV 7) is NOT necessarily a stability
+     * limit as first concluded; that conclusion came from testing the wrong pattern.
+     * Still unresolved: whether an `I` lean survives the gaze stream, since
+     * doSyncBody rewrites joints 0,2,3,4,5 from the gaze every ~31ms while
+     * joystickJrRstickIsActive(). Untested. Do not build on it until it is.
      *
      * Two firmware facts shape everything below:
      *  - joystickJrRstickIsActive() is value-based with NO time lease, so a stale
@@ -6099,8 +6106,9 @@
       // Passed straight through as the skill argument, so it means exactly what it
       // means when you type it in the serial box: below 200 is gait CYCLES, 200 or
       // above is MILLISECONDS. The firmware ends the gait, so the robot stops even
-      // if this page dies mid-step. Test a value with "kwkF 3" before setting it.
-      walkArg: 3,
+      // if this page dies mid-step. 1 cycle is the confirmed-good value on hardware
+      // ("kwkF 1" / "kwkB 1"); raise it only after measuring the travel per cycle.
+      walkArg: 1,
       walkCooldownMs: EYE_WALK_COOLDOWN_MS,
     };
 
