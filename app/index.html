@@ -6021,6 +6021,15 @@
     const EYE_SWITCH_MARGIN = 1.15; // challenger must be 15% larger
     const EYE_SWITCH_HOLD_MS = 500;
     const EYE_WS_TIMEOUT_MS = 250;
+    /* Step-toward / step-away. Face size is the depth signal: ear-span grows as you
+     * approach. Fires BURSTS, not a held gait, so travel per trigger is bounded and
+     * the robot cannot march off a table while you keep walking. Default OFF. */
+    const EYE_WALK_TRIGGER = 1.15; // size ratio vs baseline to step forward
+    const EYE_WALK_RELEASE = 0.87; // ratio to step backward
+    const EYE_WALK_CONFIRM_MS = 350; // sustained before firing, rejects a lean-in
+    const EYE_WALK_BURST_MS = 700; // gait duration, roughly one or two steps
+    const EYE_WALK_COOLDOWN_MS = 2000; // quiet time after a burst
+    const EYE_WALK_BASE_TAU_MS = 3000; // baseline drifts to your standing distance
     /**
      * Live tuning handles, read every frame. The correct signs cannot be derived
      * from the code: they depend on how `eyeX` maps to the robot's own left vs the
@@ -6035,7 +6044,20 @@
      * full pupil travel are reached at the same instant. Gain changes how much
      * movement gets you there, never how far the lean goes.
      */
-    window.EYE_TUNE = { signX: 1, signY: 1, gain: EYE_GAIN, smooth: EYE_SMOOTH };
+    window.EYE_TUNE = {
+      signX: 1,
+      signY: 1,
+      gain: EYE_GAIN,
+      smooth: EYE_SMOOTH,
+      // Step-toward/step-away. OFF by default: this is the only thing here that
+      // makes the robot locomote, so it stays off until you have put a backstop at
+      // the table edge. Gait names are editable because they are inferred from
+      // Instinct_Quaddle.h (trFI / bkFI / upI) and not yet confirmed on hardware.
+      walk: false,
+      walkFwd: "trF",
+      walkBack: "bkF",
+      walkStop: "up",
+    };
 
     const eyeState = {
       lastSentHx: null,
@@ -6052,6 +6074,12 @@
       challengerSinceMs: 0,
       smoothDx: null,
       smoothDy: null,
+      lastFrameMs: 0,
+      walkBase: null, // slow baseline of face size = your standing distance
+      walkCandidate: 0, // +1 approaching, -1 retreating, 0 neither
+      walkCandidateSince: 0,
+      walkBurstUntil: 0,
+      walkQuietUntil: 0,
     };
 
     function resetEyeTrackingState() {
@@ -6069,6 +6097,12 @@
       eyeState.challengerSinceMs = 0;
       eyeState.smoothDx = null;
       eyeState.smoothDy = null;
+      eyeState.lastFrameMs = 0;
+      eyeState.walkBase = null;
+      eyeState.walkCandidate = 0;
+      eyeState.walkCandidateSince = 0;
+      eyeState.walkBurstUntil = 0;
+      eyeState.walkQuietUntil = 0;
     }
 
     /**
@@ -6117,6 +6151,66 @@
       // sweeping across from wherever the last person stood.
       eyeState.smoothDx = null;
       eyeState.smoothDy = null;
+    }
+
+    /** Fire a named OpenCat skill, e.g. eyeSendSkill("trF") -> "ktrF". */
+    function eyeSendSkill(name) {
+      if (!name) return;
+      sendEyeCommand(encodeCommand("k", [String(name)]), true);
+    }
+
+    /** End any walk burst in progress and stand. Called on teardown and face loss. */
+    function eyeStopWalk(now) {
+      if (!eyeState.walkBurstUntil) return;
+      eyeState.walkBurstUntil = 0;
+      eyeState.walkQuietUntil = (now || performance.now()) + EYE_WALK_COOLDOWN_MS;
+      eyeSendSkill(window.EYE_TUNE.walkStop);
+    }
+
+    /**
+     * Step toward or away from the person, as bursts rather than a held gait.
+     * Face size is the depth signal. A slow baseline tracks where the person has
+     * been standing, so this fires on a deliberate approach, not on their resting
+     * distance. Bounded travel per trigger is the whole point: a held gait would
+     * march off a table while the person keeps walking.
+     */
+    function eyeUpdateWalk(size, now, dtMs) {
+      const tune = window.EYE_TUNE;
+      if (!tune.walk) {
+        if (eyeState.walkBurstUntil) eyeStopWalk(now);
+        eyeState.walkBase = null;
+        return "off";
+      }
+      if (eyeState.walkBurstUntil) {
+        if (now >= eyeState.walkBurstUntil) eyeStopWalk(now);
+        return "stepping";
+      }
+      if (eyeState.walkBase === null) {
+        eyeState.walkBase = size;
+        return "learning";
+      }
+      if (now < eyeState.walkQuietUntil) {
+        eyeState.walkBase = size; // re-anchor to where they ended up
+        return "cooldown";
+      }
+      // Baseline chases the person slowly, so standing still never triggers.
+      const k = Math.min(1, dtMs / EYE_WALK_BASE_TAU_MS);
+      eyeState.walkBase += (size - eyeState.walkBase) * k;
+
+      const ratio = size / eyeState.walkBase;
+      const dir = ratio >= EYE_WALK_TRIGGER ? 1 : ratio <= EYE_WALK_RELEASE ? -1 : 0;
+      if (dir === 0 || dir !== eyeState.walkCandidate) {
+        eyeState.walkCandidate = dir;
+        eyeState.walkCandidateSince = now;
+        return dir === 0 ? "steady" : "arming";
+      }
+      if (now - eyeState.walkCandidateSince < EYE_WALK_CONFIRM_MS) return "arming";
+
+      eyeSendSkill(dir > 0 ? tune.walkFwd : tune.walkBack);
+      eyeState.walkBurstUntil = now + EYE_WALK_BURST_MS;
+      eyeState.walkCandidate = 0;
+      eyeState.walkBase = size;
+      return dir > 0 ? "step fwd" : "step back";
     }
 
     /** Apparent head size, used only to pick the nearest person. */
@@ -6200,6 +6294,7 @@
         if (eyeState.lastSeenMs && now - eyeState.lastSeenMs < EYE_LOST_MS) {
           lines.push("eye: face lost, holding");
         } else if (!eyeState.quiet) {
+          eyeStopWalk(now); // never leave a gait running with nobody in frame
           releaseEyeLook();
           lines.push("eye: face lost, recentred");
         } else {
@@ -6217,7 +6312,17 @@
       // Raw normalized landmarks, NOT landmarkToClient: keeps the mapping
       // independent of the preview's CSS rotation and mirror.
       const tune = window.EYE_TUNE;
-      const rawDx = (target.nose.x - 0.5) * 2;
+      // Horizontal comes from the TORSO (shoulder midpoint), so the aim follows
+      // where your body actually is and does not jitter when you turn your head.
+      // Vertical stays on the nose: shoulder-y sits well below head height, so
+      // using it would bias the gaze permanently downward.
+      const pts = people[target.idx];
+      const ls = pts[11];
+      const rs = pts[12];
+      const bodyOk =
+        ls && rs && (ls.visibility ?? 1) >= EYE_VIS_FLOOR && (rs.visibility ?? 1) >= EYE_VIS_FLOOR;
+      const aimX = bodyOk ? (ls.x + rs.x) / 2 : target.nose.x;
+      const rawDx = (aimX - 0.5) * 2;
       const rawDy = (target.nose.y - 0.5) * 2;
       // EMA on position, not on the stick value: landmark jitter of ±0.01 crosses
       // the send deadband once gain is high, and a twitching robot reads as broken
@@ -6256,10 +6361,19 @@
         eyeState.quiet = false;
       }
 
+      const dtMs = eyeState.lastFrameMs ? now - eyeState.lastFrameMs : 16;
+      eyeState.lastFrameMs = now;
+      const walkState = eyeUpdateWalk(target.size, now, dtMs);
+
       lines.push("mode=eye  faces=" + cands.length + "  target=#" + target.idx);
       lines.push(
-        "  face: x=" + dx.toFixed(2) + " y=" + dy.toFixed(2) +
-          "  size=" + target.size.toFixed(3)
+        "  aim: x=" + dx.toFixed(2) + " y=" + dy.toFixed(2) +
+          " (" + (bodyOk ? "torso" : "head") + ")  size=" + target.size.toFixed(3)
+      );
+      lines.push(
+        "  walk: " + walkState +
+          (eyeState.walkBase ? "  base=" + eyeState.walkBase.toFixed(3) +
+            "  ratio=" + (target.size / eyeState.walkBase).toFixed(2) : "")
       );
       lines.push(
         "  stick: hx=" + hx + " rsy=" + rsy +
@@ -6811,7 +6925,10 @@
       }
       // Leaving eye mode: the robot has no lease on the gaze offset, so a stale
       // non-zero stick would stay applied forever. Recenter before switching.
-      if (trackMode === "eye") releaseEyeLook();
+      if (trackMode === "eye") {
+        eyeStopWalk(performance.now());
+        releaseEyeLook();
+      }
       trackMode = next;
       playerStates.clear();
       personTracks = [];
