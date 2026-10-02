@@ -6042,7 +6042,7 @@
     const EYE_WALK_TRIGGER = 1.15; // size ratio vs baseline to step forward
     const EYE_WALK_RELEASE = 0.87; // ratio to step backward
     const EYE_WALK_CONFIRM_MS = 350; // sustained before firing, rejects a lean-in
-    const EYE_WALK_BURST_MS = 700; // gait duration, roughly one or two steps
+    const EYE_WALK_BURST_MS = 700; // gait duration, roughly one or two walk steps
     const EYE_WALK_COOLDOWN_MS = 2000; // quiet time after a burst
     const EYE_WALK_BASE_TAU_MS = 3000; // baseline drifts to your standing distance
     /**
@@ -6066,11 +6066,16 @@
       smooth: EYE_SMOOTH,
       // Step-toward/step-away. OFF by default: this is the only thing here that
       // makes the robot locomote, so it stays off until you have put a backstop at
-      // the table edge. Gait names are editable because they are inferred from
-      // Instinct_Quaddle.h (trFI / bkFI / upI) and not yet confirmed on hardware.
+      // the table edge.
+      //
+      // Gait names come from Quaddle's registered skillNameWithType[] in
+      // Instinct_Quaddle.h. Swap them live if these travel too far on a table:
+      //   marchF / marchB   marching, should cover less ground than walking
+      //   step1F / step2F   discrete single steps, if they do what the name says
+      //   smallTrF          small trot, forward only
       walk: false,
-      walkFwd: "trF",
-      walkBack: "bkF",
+      walkFwd: "wkF",
+      walkBack: "wkB",
       walkStop: "up",
     };
 
