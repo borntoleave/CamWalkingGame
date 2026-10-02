@@ -6004,7 +6004,8 @@
      *    exactly the wrong moment. Hence EYE_MIN_MAG.
      */
     const EYE_FULL_SCALE = 50; // ±50 stick units spans full pupil travel
-    const EYE_GAIN = 1.4; // frame edge overshoots, so usable range sits inside
+    const EYE_GAIN = 2.6; // bigger = less movement fills the travel (and the lean)
+    const EYE_SMOOTH = 0.3; // EMA on face position; higher gain needs more of this
     const EYE_SEND_MIN_MS = 100; // 10Hz cap
     const EYE_DEADBAND = 2; // resend threshold, matches the firmware deadzone
     const EYE_MIN_MAG = 3; // present-but-centred face must clear the deadzone
@@ -6021,9 +6022,15 @@
      * viewer's left, and on how the camera is mounted. Flip them from the browser
      * console instead of editing this file:
      *   EYE_TUNE.signX = -1     // step left; pupils must follow you, not flee
-     *   EYE_TUNE.gain  = 2.0    // bigger = smaller head movement fills the travel
+     *   EYE_TUNE.gain  = 3.0    // bigger = less movement fills eye travel AND lean
+     *   EYE_TUNE.smooth = 0.2   // lower = steadier but laggier (0 < s <= 1)
+     *
+     * Note on gain: max lean is firmware-capped. reactionEyeNormToRstickInt()
+     * clamps the gaze norm to ±1 before deriving the body stick, so full lean and
+     * full pupil travel are reached at the same instant. Gain changes how much
+     * movement gets you there, never how far the lean goes.
      */
-    window.EYE_TUNE = { signX: 1, signY: 1, gain: EYE_GAIN };
+    window.EYE_TUNE = { signX: 1, signY: 1, gain: EYE_GAIN, smooth: EYE_SMOOTH };
 
     const eyeState = {
       lastSentHx: null,
@@ -6038,6 +6045,8 @@
       trackSize: 0,
       challengerIdx: -1,
       challengerSinceMs: 0,
+      smoothDx: null,
+      smoothDy: null,
     };
 
     function resetEyeTrackingState() {
@@ -6053,6 +6062,8 @@
       eyeState.trackSize = 0;
       eyeState.challengerIdx = -1;
       eyeState.challengerSinceMs = 0;
+      eyeState.smoothDx = null;
+      eyeState.smoothDy = null;
     }
 
     /**
@@ -6097,6 +6108,10 @@
       eyeState.quiet = true;
       eyeState.trackIdx = -1;
       eyeState.trackSize = 0;
+      // Drop the filter too, so re-acquiring a face snaps to them instead of
+      // sweeping across from wherever the last person stood.
+      eyeState.smoothDx = null;
+      eyeState.smoothDy = null;
     }
 
     /** Apparent head size, used only to pick the nearest person. */
@@ -6196,9 +6211,19 @@
 
       // Raw normalized landmarks, NOT landmarkToClient: keeps the mapping
       // independent of the preview's CSS rotation and mirror.
-      const dx = (target.nose.x - 0.5) * 2;
-      const dy = (target.nose.y - 0.5) * 2;
       const tune = window.EYE_TUNE;
+      const rawDx = (target.nose.x - 0.5) * 2;
+      const rawDy = (target.nose.y - 0.5) * 2;
+      // EMA on position, not on the stick value: landmark jitter of ±0.01 crosses
+      // the send deadband once gain is high, and a twitching robot reads as broken
+      // rather than alive. Snap on first acquire so it does not sweep in from centre.
+      const a = Math.max(0.05, Math.min(1, tune.smooth ?? EYE_SMOOTH));
+      eyeState.smoothDx =
+        eyeState.smoothDx === null ? rawDx : eyeState.smoothDx + a * (rawDx - eyeState.smoothDx);
+      eyeState.smoothDy =
+        eyeState.smoothDy === null ? rawDy : eyeState.smoothDy + a * (rawDy - eyeState.smoothDy);
+      const dx = eyeState.smoothDx;
+      const dy = eyeState.smoothDy;
       const span = EYE_FULL_SCALE * (tune.gain || EYE_GAIN);
       let hx = Math.max(-EYE_FULL_SCALE, Math.min(EYE_FULL_SCALE, Math.round(tune.signX * dx * span)));
       let rsy = Math.max(-EYE_FULL_SCALE, Math.min(EYE_FULL_SCALE, Math.round(tune.signY * dy * span)));
