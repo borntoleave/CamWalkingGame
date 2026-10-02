@@ -6319,6 +6319,56 @@
       return dir > 0 ? "step fwd" : "step back";
     }
 
+    /**
+     * Draw the skeleton so the operator can see whether a body is being tracked at
+     * all, and which body the robot is following. Tracked person is bright, everyone
+     * else is dim, so "is it following me" is answerable at a glance instead of by
+     * reading the text panel. Also marks the two things that actually drive the
+     * robot: the shoulder-midpoint aim point, and the head-width measure that the
+     * stepping trigger reads as depth.
+     */
+    function drawBodyFollowSkeleton(pts, isTarget) {
+      const P = pts.map(landmarkToClient);
+      const bone = isTarget ? "#7cff6b" : "#3d5a4d";
+      const joint = isTarget ? "#d2ff6b" : "#3d5a4d";
+      for (const [a, b] of POSE_CONNECTIONS) {
+        if (P[a] && P[b]) drawSegment(P[a], P[b], bone, isTarget ? 5 : 2);
+      }
+      for (const i of [
+        POSE.NOSE, POSE.LEFT_SHOULDER, POSE.RIGHT_SHOULDER,
+        POSE.LEFT_ELBOW, POSE.RIGHT_ELBOW, POSE.LEFT_HIP, POSE.RIGHT_HIP,
+      ]) {
+        if (P[i]) drawJoint(P[i], joint, isTarget ? 6 : 3);
+      }
+      if (!isTarget) return;
+
+      // Head-width measure: what the step trigger reads as "closer / further".
+      const l = P[7];
+      const r = P[8];
+      if (l && r && l.vis >= VIS_MIN && r.vis >= VIS_MIN) {
+        drawSegment(l, r, "#58a6ff", 3);
+      }
+
+      // Aim point: the shoulder midpoint actually sent to the robot.
+      const ls = P[POSE.LEFT_SHOULDER];
+      const rs = P[POSE.RIGHT_SHOULDER];
+      if (ls && rs && ls.vis >= VIS_MIN && rs.vis >= VIS_MIN) {
+        const cx = (ls.x + rs.x) / 2;
+        const cy = (ls.y + rs.y) / 2;
+        ctx.strokeStyle = "#ffe600";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx - 14, cy);
+        ctx.lineTo(cx + 14, cy);
+        ctx.moveTo(cx, cy - 14);
+        ctx.lineTo(cx, cy + 14);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     /** Apparent head size, used only to pick the nearest person. */
     function eyeFaceSize(pts) {
       const le = pts[7];
@@ -6393,6 +6443,13 @@
       }
 
       const target = eyePickTarget(cands, now);
+
+      // Non-target bodies first so the tracked one draws on top of them.
+      for (const c of cands) {
+        if (!target || c.idx !== target.idx) drawBodyFollowSkeleton(people[c.idx], false);
+      }
+      if (target) drawBodyFollowSkeleton(people[target.idx], true);
+
       const lines = [];
 
       if (!target) {
