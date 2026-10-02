@@ -6074,7 +6074,7 @@
     // the frame edge, so the lean reads as nothing. Works on either firmware.
     //   RSTICK_LX_DIV 7 (stock): cap 7 deg/leg joint, reached by 38% off-centre
     //   RSTICK_LX_DIV 2 (deep) : cap 25 deg, 16 deg by 25% off-centre
-    const EYE_GAIN = 2.6;
+    const EYE_GAIN = 3.6;
     const EYE_SMOOTH = 0.3; // EMA on face position; higher gain needs more of this
     const EYE_SEND_MIN_MS = 100; // 10Hz cap
     const EYE_DEADBAND = 2; // resend threshold, matches the firmware deadzone
@@ -6096,11 +6096,11 @@
     /* Step-toward / step-away. Face size is the depth signal: ear-span grows as you
      * approach. Fires BURSTS, not a held gait, so travel per trigger is bounded and
      * the robot cannot march off a table while you keep walking. Default OFF. */
-    const EYE_WALK_TRIGGER = 1.15; // size ratio vs baseline to step forward
-    const EYE_WALK_RELEASE = 0.87; // ratio to step backward
-    const EYE_WALK_CONFIRM_MS = 350; // sustained before firing, rejects a lean-in
+    const EYE_WALK_TRIGGER = 1.1; // size ratio vs baseline to step forward
+    const EYE_WALK_RELEASE = 0.91; // ratio to step backward
+    const EYE_WALK_CONFIRM_MS = 250; // sustained before firing, rejects a lean-in
     const EYE_WALK_BURST_MS = 1800; // gait duration, a few walk steps (EYE_TUNE.walkMs)
-    const EYE_WALK_COOLDOWN_MS = 2000; // quiet time after a burst
+    const EYE_WALK_COOLDOWN_MS = 1200; // quiet time after a burst
     const EYE_WALK_BASE_TAU_MS = 3000; // baseline drifts to your standing distance
     /**
      * Live tuning handles, read every frame. The correct signs cannot be derived
@@ -6140,7 +6140,10 @@
       // above is MILLISECONDS. The firmware ends the gait, so the robot stops even
       // if this page dies mid-step. 1 cycle is the confirmed-good value on hardware
       // ("kwkF 1" / "kwkB 1"); raise it only after measuring the travel per cycle.
-      walkArg: 1,
+      walkArg: 2,
+      walkTrigger: EYE_WALK_TRIGGER, // ratio vs baseline to step toward you
+      walkRelease: EYE_WALK_RELEASE, // ratio to step away
+      walkConfirmMs: EYE_WALK_CONFIRM_MS,
       walkCooldownMs: EYE_WALK_COOLDOWN_MS,
     };
 
@@ -6323,13 +6326,19 @@
       eyeState.walkBase += (size - eyeState.walkBase) * k;
 
       const ratio = size / eyeState.walkBase;
-      const dir = ratio >= EYE_WALK_TRIGGER ? 1 : ratio <= EYE_WALK_RELEASE ? -1 : 0;
+      const dir =
+        ratio >= (tune.walkTrigger ?? EYE_WALK_TRIGGER)
+          ? 1
+          : ratio <= (tune.walkRelease ?? EYE_WALK_RELEASE)
+            ? -1
+            : 0;
       if (dir === 0 || dir !== eyeState.walkCandidate) {
         eyeState.walkCandidate = dir;
         eyeState.walkCandidateSince = now;
         return dir === 0 ? "steady" : "arming";
       }
-      if (now - eyeState.walkCandidateSince < EYE_WALK_CONFIRM_MS) return "arming";
+      if (now - eyeState.walkCandidateSince < (tune.walkConfirmMs ?? EYE_WALK_CONFIRM_MS))
+        return "arming";
 
       const arg = tune.walkArg ?? 3;
       eyeSendSkill(dir > 0 ? tune.walkFwd : tune.walkBack, arg);
