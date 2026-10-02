@@ -6004,11 +6004,12 @@
      *    exactly the wrong moment. Hence EYE_MIN_MAG.
      */
     const EYE_FULL_SCALE = 50; // ±50 stick units spans full pupil travel
-    // 1.0 pairs with the firmware's RSTICK_LX_DIV=2 lean cap (25 deg/leg joint) to
-    // give a progressive ramp across the frame: roughly 6/13/19/25 deg at a
-    // quarter/half/three-quarters/edge. Raising this reaches full lean sooner, so
-    // at 2.6 the robot slams to the cap by half-frame. Lower it to tame the lean.
-    const EYE_GAIN = 1.0;
+    // 2.6 reaches the firmware lean cap at roughly 38% off-centre, which matters
+    // because people stand near the middle of frame: at gain 1.0 full lean needs
+    // the frame edge, so the lean reads as nothing. Works on either firmware.
+    //   RSTICK_LX_DIV 7 (stock): cap 7 deg/leg joint, reached by 38% off-centre
+    //   RSTICK_LX_DIV 2 (deep) : cap 25 deg, 16 deg by 25% off-centre
+    const EYE_GAIN = 2.6;
     const EYE_SMOOTH = 0.3; // EMA on face position; higher gain needs more of this
     const EYE_SEND_MIN_MS = 100; // 10Hz cap
     const EYE_DEADBAND = 2; // resend threshold, matches the firmware deadzone
