@@ -1228,6 +1228,13 @@
           data-i18n-title="rotateCameraTitle"
           title="Rotate camera view 90° counterclockwise"
         >↺ 90°</button>
+        <button
+          type="button"
+          id="btnEyeWalk"
+          aria-pressed="false"
+          data-i18n-title="eyeWalkTitle"
+          title="Eye Contact mode: let the robot step toward or away from you"
+        >🚶 Step: off</button>
         <div class="ip-block">
           <input
             type="text"
@@ -1455,6 +1462,10 @@
         modeEye: "Eye Contact",
         eyeNoFace: "No face detected",
         eyeTracking: "Looking at you",
+        eyeWalkOff: "🚶 Step: off",
+        eyeWalkOn: "🚶 Step: ON",
+        eyeWalkTitle:
+          "Eye Contact mode: robot steps toward you when you approach, back when you retreat. Put a barrier at the table edge first.",
         helpBtn: "❓ Help",
         helpTitle: "Help",
         btnCloseHelp: "Close",
@@ -1641,6 +1652,10 @@
         modeEye: "眼神追踪",
         eyeNoFace: "未检测到人脸",
         eyeTracking: "正在看着你",
+        eyeWalkOff: "🚶 走动：关",
+        eyeWalkOn: "🚶 走动：开",
+        eyeWalkTitle:
+          "眼神追踪模式：你靠近时机器人迈步靠近，你后退时它后退。请先在桌边放挡块。",
         helpBtn: "❓ 帮助",
         helpTitle: "帮助",
         btnCloseHelp: "关闭",
@@ -6153,6 +6168,35 @@
       eyeState.smoothDy = null;
     }
 
+    /**
+     * The step toggle lives in the UI, not just on EYE_TUNE, because reaching for a
+     * browser console is the wrong interface on demo night. Deliberately NOT
+     * persisted: every page load starts with walking off, so a reload can never
+     * surprise you with a robot that locomotes.
+     */
+    function refreshEyeWalkButton() {
+      const btn = document.getElementById("btnEyeWalk");
+      if (!btn) return;
+      const on = !!window.EYE_TUNE.walk;
+      btn.textContent = t(on ? "eyeWalkOn" : "eyeWalkOff");
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.classList.toggle("active", on);
+      btn.disabled = trackMode !== "eye";
+    }
+
+    function toggleEyeWalk() {
+      const on = !window.EYE_TUNE.walk;
+      window.EYE_TUNE.walk = on;
+      if (!on) eyeStopWalk(performance.now());
+      refreshEyeWalkButton();
+      addConsoleMessage(
+        on
+          ? "Stepping ENABLED: robot steps toward you on approach, back on retreat. Check the table edge."
+          : "Stepping disabled",
+        on ? "warn" : "good"
+      );
+    }
+
     /** Fire a named OpenCat skill, e.g. eyeSendSkill("trF") -> "ktrF". */
     function eyeSendSkill(name) {
       if (!name) return;
@@ -6898,6 +6942,7 @@
         btn.setAttribute("aria-checked", on ? "true" : "false");
       }
       document.title = t(trackModeTitleKey());
+      refreshEyeWalkButton();
       setI18nText(
         document.getElementById("labelStatElbows"),
         finger ? "statIndex" : "statElbows"
@@ -7076,6 +7121,8 @@
     document.getElementById("modeEye").addEventListener("click", () => {
       setTrackMode("eye");
     });
+    document.getElementById("btnEyeWalk").addEventListener("click", toggleEyeWalk);
+    refreshEyeWalkButton();
     // No gaze lease on the robot: if this page goes away mid-stream the last
     // stick value stays applied, so recenter on every teardown path.
     window.addEventListener("pagehide", releaseEyeLook);
