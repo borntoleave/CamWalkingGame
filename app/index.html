@@ -6080,12 +6080,10 @@
     const EYE_DEADBAND = 2; // resend threshold, matches the firmware deadzone
     const EYE_MIN_MAG = 3; // present-but-centred face must clear the deadzone
     const EYE_VIS_FLOOR = 0.5;
-    // "Too far" threshold, compared against eyeFaceSize() which is the EAR SPAN (or
-    // inter-eye distance as fallback), NOT shoulder width. Ear span is several times
-    // smaller, so this has to be small: 0.05 sat above a normal standing distance and
-    // the hint fired constantly. Read the live "size=" in the status panel and set
-    // EYE_TUNE.minSize below your usual standing value; 0 disables the hint.
-    const EYE_MIN_SIZE = 0.02;
+    // "Too far" threshold, compared against eyeBodySize() = normalized SHOULDER WIDTH
+    // (head width scaled up when shoulders are hidden). Read the live "size=" in the
+    // status panel and set EYE_TUNE.minSize below your usual standing value; 0 = off.
+    const EYE_MIN_SIZE = 0.09;
     const EYE_FAR_CONFIRM_MS = 1200; // sustained before nagging, stops flicker
     const EYE_LOST_MS = 400; // face-loss grace before recentring
     const EYE_VIEW_REASSERT_MS = 5000; // `ve` cadence: viewMode 3 is the leg guard
@@ -6093,7 +6091,7 @@
     const EYE_SWITCH_MARGIN = 1.15; // challenger must be 15% larger
     const EYE_SWITCH_HOLD_MS = 500;
     const EYE_WS_TIMEOUT_MS = 250;
-    /* Step-toward / step-away. Face size is the depth signal: ear-span grows as you
+    /* Step-toward / step-away. Shoulder width is the depth signal: it grows as you
      * approach. Fires BURSTS, not a held gait, so travel per trigger is bounded and
      * the robot cannot march off a table while you keep walking. Default OFF. */
     const EYE_WALK_TRIGGER = 1.1; // size ratio vs baseline to step forward
@@ -6300,7 +6298,7 @@
 
     /**
      * Step toward or away from the person, as bursts rather than a held gait.
-     * Face size is the depth signal. A slow baseline tracks where the person has
+     * Shoulder width is the depth signal. A slow baseline tracks where the person has
      * been standing, so this fires on a deliberate approach, not on their resting
      * distance. Bounded travel per trigger is the whole point: a held gait would
      * march off a table while the person keeps walking.
@@ -6391,8 +6389,8 @@
      * all, and which body the robot is following. Tracked person is bright, everyone
      * else is dim, so "is it following me" is answerable at a glance instead of by
      * reading the text panel. Also marks the two things that actually drive the
-     * robot: the shoulder-midpoint aim point, and the head-width measure that the
-     * stepping trigger reads as depth.
+     * robot: the shoulder-midpoint aim point, and the shoulder span that the stepping
+     * trigger reads as depth.
      */
     function drawBodyFollowSkeleton(pts, isTarget) {
       const P = pts.map(landmarkToClient);
@@ -6409,11 +6407,12 @@
       }
       if (!isTarget) return;
 
-      // Head-width measure: what the step trigger reads as "closer / further".
-      const l = P[7];
-      const r = P[8];
-      if (l && r && l.vis >= VIS_MIN && r.vis >= VIS_MIN) {
-        drawSegment(l, r, "#58a6ff", 3);
+      // Shoulder span: what the step trigger reads as "closer / further". Drawn over
+      // the skeleton bone so the measured quantity is visible, not inferred.
+      const sl = P[POSE.LEFT_SHOULDER];
+      const sr = P[POSE.RIGHT_SHOULDER];
+      if (sl && sr && sl.vis >= VIS_MIN && sr.vis >= VIS_MIN) {
+        drawSegment(sl, sr, "#58a6ff", 8);
       }
 
       // Aim point: the shoulder midpoint actually sent to the robot.
@@ -6437,26 +6436,38 @@
     }
 
     /** Apparent head size, used only to pick the nearest person. */
-    function eyeFaceSize(pts) {
+    /**
+     * Apparent body size: the depth signal for stepping, and the nearest-person metric.
+     *
+     * SHOULDER WIDTH, not head width. Ear span was used first (this started as a
+     * face-tracking mode) and is a poor depth signal: ~0.03-0.05 in normalized units,
+     * so landmark noise swamps the 10% change a real step produces, and it shrinks
+     * when the head turns, which is noise here. Shoulder width is 4-5x larger in the
+     * same units, so the same percentage change actually survives. Head width stays
+     * as a fallback for when shoulders are hidden.
+     */
+    function eyeBodySize(pts) {
+      const vis = (p) => p && (p.visibility ?? 1) >= EYE_VIS_FLOOR;
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      if (vis(ls) && vis(rs)) return Math.hypot(ls.x - rs.x, ls.y - rs.y);
+      // Shoulders hidden: fall back to head width, which is noisier but better than
+      // losing the person entirely. Scaled up so the two are roughly comparable and
+      // the step threshold does not have to change when the fallback kicks in.
       const le = pts[7];
       const re = pts[8];
-      if (le && re && (le.visibility ?? 1) >= EYE_VIS_FLOOR && (re.visibility ?? 1) >= EYE_VIS_FLOOR) {
-        return Math.hypot(le.x - re.x, le.y - re.y);
-      }
-      // Ears fail on profile views, hats, long hair. Eyes are a usable fallback.
+      if (vis(le) && vis(re)) return Math.hypot(le.x - re.x, le.y - re.y) * 2.2;
       const l2 = pts[2];
       const r5 = pts[5];
-      if (l2 && r5 && (l2.visibility ?? 1) >= EYE_VIS_FLOOR && (r5.visibility ?? 1) >= EYE_VIS_FLOOR) {
-        return Math.hypot(l2.x - r5.x, l2.y - r5.y);
-      }
+      if (vis(l2) && vis(r5)) return Math.hypot(l2.x - r5.x, l2.y - r5.y) * 5.0;
       return 0;
     }
 
     /**
-     * Pick who the robot looks at. Largest apparent head wins, but a challenger
-     * must be clearly bigger and stay bigger before we switch: projected head size
-     * shrinks when someone turns, which would otherwise flip the target at the
-     * worst moment. If the incumbent vanishes we switch immediately instead.
+     * Pick who the robot looks at. Largest apparent body wins, but a challenger must
+     * be clearly bigger and stay bigger before we switch: projected size shrinks when
+     * someone turns, which would otherwise flip the target at the worst moment. If the
+     * incumbent vanishes we switch immediately instead.
      */
     function eyePickTarget(cands, now) {
       if (!cands.length) {
@@ -6503,7 +6514,7 @@
         const pts = people[i];
         const nose = pts && pts[0];
         if (!nose || (nose.visibility ?? 1) < EYE_VIS_FLOOR) continue;
-        const size = eyeFaceSize(pts);
+        const size = eyeBodySize(pts);
         if (size <= 0) continue;
         cands.push({ idx: i, nose, size });
       }
