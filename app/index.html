@@ -1216,6 +1216,7 @@
       <div class="mode-dial" id="trackModeDial" role="radiogroup" data-i18n-aria="trackModeAria">
         <button type="button" class="mode-dial-btn" id="modeElbow" role="radio" aria-checked="false" data-i18n="modeElbow">Elbow &amp; Knee Tracking</button>
         <button type="button" class="mode-dial-btn active" id="modeFinger" role="radio" aria-checked="true" data-i18n="modeFinger">Finger Tracking</button>
+        <button type="button" class="mode-dial-btn" id="modeEye" role="radio" aria-checked="false" data-i18n="modeEye">Eye Contact</button>
       </div>
       <div class="bar-actions">
         <button type="button" id="btnHelp" data-i18n="helpBtn" data-i18n-title="helpTitle">❓ Help</button>
@@ -1451,6 +1452,9 @@
         trackModeAria: "Tracking mode",
         modeElbow: "Elbow & Knee Tracking",
         modeFinger: "Finger Tracking",
+        modeEye: "Eye Contact",
+        eyeNoFace: "No face detected",
+        eyeTracking: "Looking at you",
         helpBtn: "❓ Help",
         helpTitle: "Help",
         btnCloseHelp: "Close",
@@ -1498,6 +1502,16 @@
           "<li>The command uses the finger’s <b>3D bend</b> (MediaPipe world landmarks: knuckle + PIP + DIP). This is not the angle projected on the camera image. Index <b>15°–40°</b> and middle <b>18°–50°</b> each fill the full joint range (b±range). A smaller reading sits at the negative limit; a larger one at the positive limit.</li>" +
           "<li>Get ready by holding <b>both</b> hands up so the index and middle fingers are visible and point generally upward. They do not have to be straight.</li>" +
           "<li>Dropping the hands or turning the fingers away from upward during countdown restarts preparation. Losing the hands for about <b>2 seconds</b> restarts preparation, and <b>no joint commands</b> are sent during that wait.</li>" +
+          "</ul>" +
+          "<h4>Eye contact</h4>" +
+          "<p>The top-left dial switches to <b>Eye Contact</b>. The robot's on-screen eyes look at whoever is in front of the camera. <b>No legs move in this mode</b> and there is no READY countdown.</p>" +
+          "<ul>" +
+          "<li>Your <b>position</b> in the frame aims the pupils, not the direction your head is turned. Step left and the pupils follow you.</li>" +
+          "<li>With two people it looks at the <b>nearest</b> one (largest apparent head). It will not flip between them unless the other is clearly closer for half a second.</li>" +
+          "<li>Walk out of frame and the pupils recentre after about <b>0.4 s</b>, handing the eyes back to the robot's own idle behaviour.</li>" +
+          "<li><b>Keep the robot level.</b> The gaze is added on top of the robot's tilt sensor, so a tilted robot aims off-target. Tilt it and you will see the eyes move on their own.</li>" +
+          "<li><b>Needs current firmware.</b> Pre-demo check: send <code>ve</code> then <code>bytes:[74,114,40,0,126]</code> in the serial box. If the pupils do not move, the firmware is too old for this mode and nothing else here will work.</li>" +
+          "<li><b>Privacy:</b> camera frames are processed in this page only. No image, landmark or face data is stored, logged or sent anywhere.</li>" +
           "</ul>" +
           "<h4>4. Multi-player / multi-robot (max 2 people)</h4>" +
           "<ul>" +
@@ -1623,6 +1637,9 @@
         trackModeAria: "追踪模式",
         modeElbow: "肘膝追踪",
         modeFinger: "手指追踪",
+        modeEye: "眼神追踪",
+        eyeNoFace: "未检测到人脸",
+        eyeTracking: "正在看着你",
         helpBtn: "❓ 帮助",
         helpTitle: "帮助",
         btnCloseHelp: "关闭",
@@ -1670,6 +1687,16 @@
           "<li>指令用手指的<b>三维弯曲角</b>（MediaPipe 世界坐标：掌指关节 + PIP + DIP），不是画面上的投影角。食指 <b>15°–40°</b>、中指 <b>18°–50°</b> 各自铺满关节可动范围（b±range）。读数越小越靠近负角度极限，越大越靠近正角度极限。</li>" +
           "<li>准备时只要<b>双手食指和中指</b>都入镜，且大方向朝上即可，不必伸直，并保持到倒计时结束。</li>" +
           "<li>倒计时中放下双手或手指不再朝上会重新准备。丢失双手识别约 <b>2 秒</b>后重新准备，等待期间<strong>不发送</strong>关节指令。</li>" +
+          "</ul>" +
+          "<h4>眼神追踪</h4>" +
+          "<p>左上角拨动按钮可切到<b>眼神追踪</b>。机器人屏幕上的眼睛会看向镜头前的人。<b>此模式下腿部不动</b>，也没有 READY 倒计时。</p>" +
+          "<ul>" +
+          "<li>由你在画面中的<b>位置</b>决定眼球朝向，而不是头的转向。向左走，眼球跟着你。</li>" +
+          "<li>两人同时入镜时看<b>更近</b>的那位（头部看起来更大）。除非另一人明显更近并保持半秒，否则不会来回切换。</li>" +
+          "<li>走出画面约 <b>0.4 秒</b>后眼球回正，交还给机器人自己的待机行为。</li>" +
+          "<li><b>请保持机器人水平。</b>视线是叠加在机器人倾角传感器之上的，机身倾斜会导致瞄偏。倾斜机器人时能看到眼睛自行移动。</li>" +
+          "<li><b>需要较新固件。</b>演示前自检：在串口输入框发送 <code>ve</code>，再发送 <code>bytes:[74,114,40,0,126]</code>。若眼球不动，说明固件过旧，本模式无法工作。</li>" +
+          "<li><b>隐私：</b>摄像头画面仅在本页面内处理，不存储、不记录、不上传任何图像或人脸数据。</li>" +
           "</ul>" +
           "<h4>4. 多人 / 多机（最多 2 人）</h4>" +
           "<ul>" +
@@ -1810,7 +1837,7 @@
 
     function applyI18n() {
       document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
-      document.title = t(trackMode === "finger" ? "modeFinger" : "modeElbow");
+      document.title = t(trackModeTitleKey());
       document.querySelectorAll("[data-i18n]").forEach((el) => {
         const key = el.getAttribute("data-i18n");
         if (key) el.textContent = t(key);
@@ -4629,6 +4656,8 @@
     }
 
     async function closeSerialPort() {
+      // Recentre before the link goes: the robot keeps the last stick value forever.
+      if (trackMode === "eye") releaseEyeLook();
       await transport.disconnect();
       refreshConnectedUi();
       addConsoleMessage("Serial disconnected", "warn");
@@ -5953,6 +5982,259 @@
       statKneesEl.textContent = String(sample.middleCount);
     }
 
+    /* ——— Eye contact mode ———————————————————————————————————————————————
+     * Face POSITION (not head orientation) aims the robot's on-board TFT pupils.
+     * No firmware change: processJoystick() stores the Jr rstick values and then
+     * returns early while viewMode == 3, skipping the leg apply, and
+     * updateEyes09tft() adds the stored offset to the gaze. So `ve` + binary `J`
+     * is the whole transport.
+     *
+     * Two firmware facts shape everything below:
+     *  - joystickJrRstickIsActive() is value-based with NO time lease, so a stale
+     *    non-zero value stays applied forever. Every teardown path must send zeros.
+     *  - that same activity test uses |v| <= 2, so a face at dead centre would
+     *    encode identically to no face and hand the eyes back to idle saccades at
+     *    exactly the wrong moment. Hence EYE_MIN_MAG.
+     */
+    const EYE_FULL_SCALE = 50; // ±50 stick units spans full pupil travel
+    const EYE_GAIN = 1.4; // frame edge overshoots, so usable range sits inside
+    const EYE_SEND_MIN_MS = 100; // 10Hz cap
+    const EYE_DEADBAND = 2; // resend threshold, matches the firmware deadzone
+    const EYE_MIN_MAG = 3; // present-but-centred face must clear the deadzone
+    const EYE_VIS_FLOOR = 0.5;
+    const EYE_LOST_MS = 400; // face-loss grace before recentring
+    const EYE_VIEW_REASSERT_MS = 5000; // `ve` cadence: viewMode 3 is the leg guard
+    const EYE_ZERO_FRAMES = 3; // zero sends before going quiet
+    const EYE_SWITCH_MARGIN = 1.15; // challenger must be 15% larger
+    const EYE_SWITCH_HOLD_MS = 500;
+    const EYE_WS_TIMEOUT_MS = 250;
+    /**
+     * Live tuning handles, read every frame. The correct signs cannot be derived
+     * from the code: they depend on how `eyeX` maps to the robot's own left vs the
+     * viewer's left, and on how the camera is mounted. Flip them from the browser
+     * console instead of editing this file:
+     *   EYE_TUNE.signX = -1     // step left; pupils must follow you, not flee
+     *   EYE_TUNE.gain  = 2.0    // bigger = smaller head movement fills the travel
+     */
+    window.EYE_TUNE = { signX: 1, signY: 1, gain: EYE_GAIN };
+
+    const eyeState = {
+      lastSentHx: null,
+      lastSentRsy: null,
+      lastSendMs: 0,
+      lastSeenMs: 0,
+      zerosLeft: 0,
+      quiet: true,
+      viewAssertedMs: 0,
+      inFlight: false,
+      trackIdx: -1,
+      trackSize: 0,
+      challengerIdx: -1,
+      challengerSinceMs: 0,
+    };
+
+    function resetEyeTrackingState() {
+      eyeState.lastSentHx = null;
+      eyeState.lastSentRsy = null;
+      eyeState.lastSendMs = 0;
+      eyeState.lastSeenMs = 0;
+      eyeState.zerosLeft = 0;
+      eyeState.quiet = true;
+      eyeState.viewAssertedMs = 0;
+      eyeState.inFlight = false;
+      eyeState.trackIdx = -1;
+      eyeState.trackSize = 0;
+      eyeState.challengerIdx = -1;
+      eyeState.challengerSinceMs = 0;
+    }
+
+    /**
+     * Fire-and-forget on both transports. Gaze is latest-wins, so a frame that
+     * arrives while one is in flight is dropped rather than queued. `force`
+     * bypasses that gate for teardown, where every zero frame must actually go out.
+     */
+    function sendEyeCommand(command, force = false) {
+      if (eyeState.inFlight && !force) return;
+      const sends = [];
+      if (transport.isConnected()) {
+        sends.push(
+          transport.send(command, {
+            addNewline: true,
+            logConsole: false,
+            logSerial: false,
+          })
+        );
+      }
+      for (const ip of petoiPool.list()) {
+        sends.push(petoiPool.sendAndWait(ip, command, EYE_WS_TIMEOUT_MS));
+      }
+      if (!sends.length) return;
+      eyeState.inFlight = true;
+      Promise.allSettled(sends).then(() => {
+        eyeState.inFlight = false;
+      });
+    }
+
+    function sendEyeStick(hx, rsy, force = false) {
+      sendEyeCommand(encodeCommand("J", [114, hx & 0xff, rsy & 0xff]), force);
+    }
+
+    /** Recentre the pupils and stop streaming. Safe to call when not in eye mode. */
+    function releaseEyeLook() {
+      if (eyeState.lastSentHx === 0 && eyeState.lastSentRsy === 0) return;
+      // Forced: these must not be swallowed by the in-flight gate, because the
+      // robot holds the last stick value indefinitely if they never arrive.
+      for (let i = 0; i < EYE_ZERO_FRAMES; i++) sendEyeStick(0, 0, true);
+      eyeState.lastSentHx = 0;
+      eyeState.lastSentRsy = 0;
+      eyeState.quiet = true;
+      eyeState.trackIdx = -1;
+      eyeState.trackSize = 0;
+    }
+
+    /** Apparent head size, used only to pick the nearest person. */
+    function eyeFaceSize(pts) {
+      const le = pts[7];
+      const re = pts[8];
+      if (le && re && (le.visibility ?? 1) >= EYE_VIS_FLOOR && (re.visibility ?? 1) >= EYE_VIS_FLOOR) {
+        return Math.hypot(le.x - re.x, le.y - re.y);
+      }
+      // Ears fail on profile views, hats, long hair. Eyes are a usable fallback.
+      const l2 = pts[2];
+      const r5 = pts[5];
+      if (l2 && r5 && (l2.visibility ?? 1) >= EYE_VIS_FLOOR && (r5.visibility ?? 1) >= EYE_VIS_FLOOR) {
+        return Math.hypot(l2.x - r5.x, l2.y - r5.y);
+      }
+      return 0;
+    }
+
+    /**
+     * Pick who the robot looks at. Largest apparent head wins, but a challenger
+     * must be clearly bigger and stay bigger before we switch: projected head size
+     * shrinks when someone turns, which would otherwise flip the target at the
+     * worst moment. If the incumbent vanishes we switch immediately instead.
+     */
+    function eyePickTarget(cands, now) {
+      if (!cands.length) {
+        eyeState.trackIdx = -1;
+        eyeState.trackSize = 0;
+        eyeState.challengerIdx = -1;
+        return null;
+      }
+      let best = cands[0];
+      for (const c of cands) if (c.size > best.size) best = c;
+
+      const held = cands.find((c) => c.idx === eyeState.trackIdx);
+      if (!held) {
+        eyeState.trackIdx = best.idx;
+        eyeState.trackSize = best.size;
+        eyeState.challengerIdx = -1;
+        return best;
+      }
+      eyeState.trackSize = held.size;
+      if (best.idx !== held.idx && best.size > held.size * EYE_SWITCH_MARGIN) {
+        if (eyeState.challengerIdx !== best.idx) {
+          eyeState.challengerIdx = best.idx;
+          eyeState.challengerSinceMs = now;
+        } else if (now - eyeState.challengerSinceMs >= EYE_SWITCH_HOLD_MS) {
+          eyeState.trackIdx = best.idx;
+          eyeState.trackSize = best.size;
+          eyeState.challengerIdx = -1;
+          return best;
+        }
+      } else {
+        eyeState.challengerIdx = -1;
+      }
+      return held;
+    }
+
+    function renderEyeTracking(poseResult, now) {
+      const { w: cw, h: ch } = stageSize();
+      ctx.clearRect(0, 0, cw, ch);
+      syncColumnGuides(0);
+      hideOverlayPool(promptLayerEl, 0);
+
+      const people = poseResult?.landmarks || [];
+      const cands = [];
+      for (let i = 0; i < people.length; i++) {
+        const pts = people[i];
+        const nose = pts && pts[0];
+        if (!nose || (nose.visibility ?? 1) < EYE_VIS_FLOOR) continue;
+        const size = eyeFaceSize(pts);
+        if (size <= 0) continue;
+        cands.push({ idx: i, nose, size });
+      }
+
+      const target = eyePickTarget(cands, now);
+      const lines = [];
+
+      if (!target) {
+        // Grace period: a dropped frame should not make the eyes twitch home.
+        if (eyeState.lastSeenMs && now - eyeState.lastSeenMs < EYE_LOST_MS) {
+          lines.push("eye: face lost, holding");
+        } else if (!eyeState.quiet) {
+          releaseEyeLook();
+          lines.push("eye: face lost, recentred");
+        } else {
+          lines.push("eye: " + t("eyeNoFace"));
+        }
+        coordTextEl.textContent = lines.join("\n");
+        statPoseEl.textContent = "0";
+        statElbowsEl.textContent = "—";
+        statKneesEl.textContent = "—";
+        return;
+      }
+
+      eyeState.lastSeenMs = now;
+
+      // Raw normalized landmarks, NOT landmarkToClient: keeps the mapping
+      // independent of the preview's CSS rotation and mirror.
+      const dx = (target.nose.x - 0.5) * 2;
+      const dy = (target.nose.y - 0.5) * 2;
+      const tune = window.EYE_TUNE;
+      const span = EYE_FULL_SCALE * (tune.gain || EYE_GAIN);
+      let hx = Math.max(-EYE_FULL_SCALE, Math.min(EYE_FULL_SCALE, Math.round(tune.signX * dx * span)));
+      let rsy = Math.max(-EYE_FULL_SCALE, Math.min(EYE_FULL_SCALE, Math.round(tune.signY * dy * span)));
+      // A centred face must not read as "no face" to joystickJrRstickIsActive().
+      if (Math.abs(hx) <= EYE_DEADBAND && Math.abs(rsy) <= EYE_DEADBAND) {
+        hx = EYE_MIN_MAG;
+      }
+
+      // viewMode 3 is the only thing keeping this stream out of the legs, and other
+      // inputs can change the view, so re-assert it on a slow cadence.
+      if (!eyeState.viewAssertedMs || now - eyeState.viewAssertedMs >= EYE_VIEW_REASSERT_MS) {
+        eyeState.viewAssertedMs = now;
+        sendEyeCommand(encodeCommand("v", ["e"]));
+      }
+
+      const moved =
+        eyeState.lastSentHx === null ||
+        Math.abs(hx - eyeState.lastSentHx) > EYE_DEADBAND ||
+        Math.abs(rsy - eyeState.lastSentRsy) > EYE_DEADBAND;
+      if (moved && now - eyeState.lastSendMs >= EYE_SEND_MIN_MS) {
+        sendEyeStick(hx, rsy);
+        eyeState.lastSentHx = hx;
+        eyeState.lastSentRsy = rsy;
+        eyeState.lastSendMs = now;
+        eyeState.quiet = false;
+      }
+
+      lines.push("mode=eye  faces=" + cands.length + "  target=#" + target.idx);
+      lines.push(
+        "  face: x=" + dx.toFixed(2) + " y=" + dy.toFixed(2) +
+          "  size=" + target.size.toFixed(3)
+      );
+      lines.push(
+        "  stick: hx=" + hx + " rsy=" + rsy +
+          "  (±" + EYE_FULL_SCALE + " = full travel, gain " + EYE_GAIN + ")"
+      );
+      lines.push("  " + t("eyeTracking") + " · legs idle");
+      coordTextEl.textContent = lines.join("\n");
+      statPoseEl.textContent = String(cands.length);
+      statElbowsEl.textContent = String(hx);
+      statKneesEl.textContent = String(rsy);
+    }
+
     /** Latest page snapshot, taken 0.5s after the first post-READY joint command. */
     let roundPhotoDataUrl = "";
     /** Set when control starts; cleared once that round's first `I` is sent. */
@@ -6135,6 +6417,11 @@
       try {
         if (fingerMode) {
           renderFingers(handLandmarker.detectForVideo(video, Math.round(now)));
+        } else if (trackMode === "eye") {
+          renderEyeTracking(
+            poseLandmarker.detectForVideo(video, Math.round(now)),
+            now
+          );
         } else {
           render(poseLandmarker.detectForVideo(video, Math.round(now)));
         }
@@ -6440,19 +6727,26 @@
       el.textContent = t(key);
     }
 
+    function trackModeTitleKey() {
+      if (trackMode === "finger") return "modeFinger";
+      if (trackMode === "eye") return "modeEye";
+      return "modeElbow";
+    }
+
     function applyTrackModeChrome() {
       const finger = trackMode === "finger";
-      const elbowBtn = document.getElementById("modeElbow");
-      const fingerBtn = document.getElementById("modeFinger");
-      if (elbowBtn) {
-        elbowBtn.classList.toggle("active", !finger);
-        elbowBtn.setAttribute("aria-checked", finger ? "false" : "true");
+      for (const [id, mode] of [
+        ["modeElbow", "elbow"],
+        ["modeFinger", "finger"],
+        ["modeEye", "eye"],
+      ]) {
+        const btn = document.getElementById(id);
+        if (!btn) continue;
+        const on = trackMode === mode;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-checked", on ? "true" : "false");
       }
-      if (fingerBtn) {
-        fingerBtn.classList.toggle("active", finger);
-        fingerBtn.setAttribute("aria-checked", finger ? "true" : "false");
-      }
-      document.title = t(finger ? "modeFinger" : "modeElbow");
+      document.title = t(trackModeTitleKey());
       setI18nText(
         document.getElementById("labelStatElbows"),
         finger ? "statIndex" : "statElbows"
@@ -6472,11 +6766,15 @@
     }
 
     function setTrackMode(mode) {
-      const next = mode === "finger" ? "finger" : "elbow";
+      const next =
+        mode === "finger" || mode === "eye" || mode === "elbow" ? mode : "elbow";
       if (next === trackMode) {
         applyTrackModeChrome();
         return;
       }
+      // Leaving eye mode: the robot has no lease on the gaze offset, so a stale
+      // non-zero stick would stay applied forever. Recenter before switching.
+      if (trackMode === "eye") releaseEyeLook();
       trackMode = next;
       playerStates.clear();
       personTracks = [];
@@ -6485,16 +6783,26 @@
       lastControlSnapshot = null;
       angleChartHistory = [];
       scheduleAngleChartDraw();
+      resetEyeTrackingState();
       applyTrackModeChrome();
       refreshCameraButton();
       addConsoleMessage(
         trackMode === "finger"
           ? "Tracking mode: fingers (index→front legs, middle→back legs; straight→a_min)"
-          : "Tracking mode: elbows & knees",
+          : trackMode === "eye"
+            ? "Tracking mode: eye contact (face position → robot pupils; no legs). " +
+              "If the pupils move AWAY from you, run EYE_TUNE.signX = -1 in the browser console."
+            : "Tracking mode: elbows & knees",
         "good"
       );
       if (document.body.classList.contains("camera-on")) {
-        coordTextEl.textContent = t(trackMode === "finger" ? "noHands" : "noBody");
+        coordTextEl.textContent = t(
+          trackMode === "finger"
+            ? "noHands"
+            : trackMode === "eye"
+              ? "eyeNoFace"
+              : "noBody"
+        );
       }
     }
 
@@ -6611,6 +6919,13 @@
     document.getElementById("modeFinger").addEventListener("click", () => {
       setTrackMode("finger");
     });
+    document.getElementById("modeEye").addEventListener("click", () => {
+      setTrackMode("eye");
+    });
+    // No gaze lease on the robot: if this page goes away mid-stream the last
+    // stick value stays applied, so recenter on every teardown path.
+    window.addEventListener("pagehide", releaseEyeLook);
+    window.addEventListener("beforeunload", releaseEyeLook);
     btnUpdateModel.addEventListener("click", onUpdateModelClick);
     btnUseLocalModel.addEventListener("click", useLocalPoseModel);
     openSerialBtn.addEventListener("click", openSerialPort);
