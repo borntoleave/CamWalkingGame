@@ -6077,7 +6077,11 @@
       walkFwd: "wkF",
       walkBack: "wkB",
       walkStop: "up",
-      walkMs: EYE_WALK_BURST_MS, // how long each burst runs = how many steps
+      // Passed straight through as the skill argument, so it means exactly what it
+      // means when you type it in the serial box: below 200 is gait CYCLES, 200 or
+      // above is MILLISECONDS. The firmware ends the gait, so the robot stops even
+      // if this page dies mid-step. Test a value with "kwkF 3" before setting it.
+      walkArg: 3,
       walkCooldownMs: EYE_WALK_COOLDOWN_MS,
     };
 
@@ -6204,10 +6208,17 @@
       );
     }
 
-    /** Fire a named OpenCat skill, e.g. eyeSendSkill("trF") -> "ktrF". */
-    function eyeSendSkill(name) {
+    /**
+     * Fire a named OpenCat skill, optionally bounded: eyeSendSkill("wkF", 3) sends
+     * "kwkF 3". Per reaction.h, an argument below 200 is a gait-cycle count and 200
+     * or above is milliseconds; either way the FIRMWARE ends the gait itself. That
+     * matters more than brevity here: if this page dies mid-burst, a bounded gait
+     * still stops on its own, where an unbounded one would keep walking.
+     */
+    function eyeSendSkill(name, arg) {
       if (!name) return;
-      sendEyeCommand(encodeCommand("k", [String(name)]), true);
+      const payload = arg == null ? String(name) : String(name) + " " + String(arg);
+      sendEyeCommand(encodeCommand("k", [payload]), true);
     }
 
     /** End any walk burst in progress and stand. Called on teardown and face loss. */
@@ -6259,8 +6270,13 @@
       }
       if (now - eyeState.walkCandidateSince < EYE_WALK_CONFIRM_MS) return "arming";
 
-      eyeSendSkill(dir > 0 ? tune.walkFwd : tune.walkBack);
-      eyeState.walkBurstUntil = now + (tune.walkMs ?? EYE_WALK_BURST_MS);
+      const arg = tune.walkArg ?? 3;
+      eyeSendSkill(dir > 0 ? tune.walkFwd : tune.walkBack, arg);
+      // Local watchdog only. The firmware ends the gait; this is a generous backstop
+      // that re-asserts "up" if it somehow did not, so it must not fire early and
+      // cut a legitimate gait short. Cycles have no fixed duration, so estimate long.
+      const estMs = arg < 200 ? arg * 1500 + 1000 : Number(arg) + 1000;
+      eyeState.walkBurstUntil = now + estMs;
       eyeState.walkCandidate = 0;
       eyeState.walkBase = size;
       return dir > 0 ? "step fwd" : "step back";
