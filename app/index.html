@@ -4685,8 +4685,10 @@
     }
 
     async function closeSerialPort() {
-      // Recentre before the link goes: the robot keeps the last stick value forever.
-      if (trackMode === "eye") releaseEyeLook();
+      // Recentre BEFORE the link goes, and wait for the zeros to actually land: the
+      // robot keeps the last stick value forever, and disconnecting first guarantees
+      // they never arrive.
+      if (trackMode === "eye") await releaseEyeLook();
       await transport.disconnect();
       refreshConnectedUi();
       addConsoleMessage("Serial disconnected", "warn");
@@ -6085,6 +6087,11 @@
     // status panel and set EYE_TUNE.minSize below your usual standing value; 0 = off.
     const EYE_MIN_SIZE = 0.09;
     const EYE_FAR_CONFIRM_MS = 1200; // sustained before nagging, stops flicker
+    // Frames stop arriving when the camera is closed, inference throws repeatedly, or
+    // the tab is backgrounded. Past this the render loop can no longer be trusted to
+    // clean up, so the independent watchdog does it.
+    const EYE_STALL_MS = 1000;
+    const EYE_WATCHDOG_MS = 500;
     const EYE_LOST_MS = 400; // face-loss grace before recentring
     const EYE_VIEW_REASSERT_MS = 5000; // `ve` cadence: viewMode 3 is the leg guard
     const EYE_ZERO_FRAMES = 3; // zero sends before going quiet
@@ -6170,6 +6177,10 @@
       walkBurstUntil: 0,
       walkQuietUntil: 0,
       farSince: 0,
+      sizeSrc: "",        // which metric fed walkBase; a change invalidates it
+      sendFailed: false,  // every transport rejected the last send
+      releasedQ: true,    // zeros confirmed on the wire (true when nothing to release)
+      linkWasUp: false,   // reconnect edge: re-assert the view guard
     };
 
     function resetEyeTrackingState() {
@@ -6194,6 +6205,24 @@
       eyeState.walkBurstUntil = 0;
       eyeState.walkQuietUntil = 0;
       eyeState.farSince = 0;
+      eyeState.sizeSrc = "";
+      eyeState.sendFailed = false;
+      eyeState.releasedQ = true;
+      eyeState.linkWasUp = false;
+    }
+
+    /**
+     * Clear everything the step trigger accumulated. Must run whenever the tracked
+     * person is lost or replaced, and whenever the depth metric changes source:
+     * otherwise a new, stationary person is compared against the previous person's
+     * size, or a shoulder occlusion swaps shoulder-width for scaled head-width and
+     * the ratio jumps past the trigger with nobody having moved.
+     */
+    function eyeResetWalkTracking() {
+      eyeState.walkBase = null;
+      eyeState.walkCandidate = 0;
+      eyeState.walkCandidateSince = 0;
+      eyeState.sizeSrc = "";
     }
 
     /**
@@ -6202,8 +6231,8 @@
      * bypasses that gate for teardown, where every zero frame must actually go out.
      */
     function sendEyeCommand(command, force = false) {
-      if (eyeState.inFlight && !force) return;
-      const sends = [];
+      if (eyeState.inFlight && !force) return false; // dropped, caller must not
+      const sends = [];                              // record this as delivered
       if (transport.isConnected()) {
         sends.push(
           transport.send(command, {
@@ -6216,32 +6245,77 @@
       for (const ip of petoiPool.list()) {
         sends.push(petoiPool.sendAndWait(ip, command, EYE_WS_TIMEOUT_MS));
       }
-      if (!sends.length) return;
+      if (!sends.length) return false; // nothing connected: nothing was delivered
       eyeState.inFlight = true;
-      Promise.allSettled(sends).then(() => {
+      Promise.allSettled(sends).then((rs) => {
         eyeState.inFlight = false;
+        // If EVERY transport rejected, the robot never saw this. Invalidate the
+        // cached "last sent" so the next frame resends rather than deadbanding
+        // against a value that only exists in this page.
+        if (rs.every((r) => r.status === "rejected")) eyeState.sendFailed = true;
       });
+      return true;
     }
 
     function sendEyeStick(hx, rsy, force = false) {
-      sendEyeCommand(encodeCommand("J", [114, hx & 0xff, rsy & 0xff]), force);
+      return sendEyeCommand(encodeCommand("J", [114, hx & 0xff, rsy & 0xff]), force);
     }
 
-    /** Recentre the pupils and stop streaming. Safe to call when not in eye mode. */
+    /**
+     * Recentre the pupils and stop streaming. Returns a promise that settles once the
+     * zeros are actually on the wire, so a controlled disconnect can await it.
+     *
+     * The robot holds the last stick value forever, so "I called send" is not good
+     * enough here: if every transport rejects, releasedQ stays false and the no-target
+     * branch (and the stall watchdog) keep retrying until one lands.
+     */
     function releaseEyeLook() {
-      if (eyeState.lastSentHx === 0 && eyeState.lastSentRsy === 0) return;
-      // Forced: these must not be swallowed by the in-flight gate, because the
-      // robot holds the last stick value indefinitely if they never arrive.
-      for (let i = 0; i < EYE_ZERO_FRAMES; i++) sendEyeStick(0, 0, true);
-      eyeState.lastSentHx = 0;
-      eyeState.lastSentRsy = 0;
-      eyeState.quiet = true;
+      if (eyeState.releasedQ) return Promise.resolve();
       eyeState.trackIdx = -1;
       eyeState.trackSize = 0;
       // Drop the filter too, so re-acquiring a face snaps to them instead of
       // sweeping across from wherever the last person stood.
       eyeState.smoothDx = null;
       eyeState.smoothDy = null;
+      eyeResetWalkTracking(); // a stale baseline must not outlive the target
+
+      const zero = encodeCommand("J", [114, 0, 0]);
+      const sends = [];
+      if (transport.isConnected()) {
+        for (let i = 0; i < EYE_ZERO_FRAMES; i++) {
+          sends.push(
+            transport
+              .send(zero, { addNewline: true, logConsole: false, logSerial: false })
+              .then(() => true, () => false)
+          );
+        }
+      }
+      for (const ip of petoiPool.list()) {
+        sends.push(
+          petoiPool.sendAndWait(ip, zero, EYE_WS_TIMEOUT_MS).then(() => true, () => false)
+        );
+      }
+      if (!sends.length) {
+        // Nothing connected, so nothing is holding a stale value either.
+        eyeState.releasedQ = true;
+        eyeState.lastSentHx = 0;
+        eyeState.lastSentRsy = 0;
+        eyeState.quiet = true;
+        return Promise.resolve();
+      }
+      eyeState.inFlight = false; // teardown owns the link now
+      return Promise.all(sends).then((oks) => {
+        if (oks.some(Boolean)) {
+          eyeState.releasedQ = true;
+          eyeState.lastSentHx = 0;
+          eyeState.lastSentRsy = 0;
+          eyeState.quiet = true;
+        } else {
+          // Every zero failed. Leave releasedQ false so this is retried.
+          eyeState.lastSentHx = null;
+          addConsoleMessage("Eye recentre failed, will retry", "warn");
+        }
+      });
     }
 
     /**
@@ -6303,7 +6377,7 @@
      * distance. Bounded travel per trigger is the whole point: a held gait would
      * march off a table while the person keeps walking.
      */
-    function eyeUpdateWalk(size, now, dtMs) {
+    function eyeUpdateWalk(size, sizeSrc, now, dtMs) {
       const tune = window.EYE_TUNE;
       if (!tune.walk) {
         if (eyeState.walkBurstUntil) eyeStopWalk(now);
@@ -6314,8 +6388,17 @@
         if (now >= eyeState.walkBurstUntil) eyeStopWalk(now);
         return "stepping";
       }
+      // The scaled head-width fallbacks are only roughly comparable to shoulder
+      // width, so a source change would otherwise read as a big move. Relearn.
+      if (eyeState.sizeSrc && eyeState.sizeSrc !== sizeSrc) {
+        eyeResetWalkTracking();
+        eyeState.walkBase = size;
+        eyeState.sizeSrc = sizeSrc;
+        return "relearn(" + sizeSrc + ")";
+      }
       if (eyeState.walkBase === null) {
         eyeState.walkBase = size;
+        eyeState.sizeSrc = sizeSrc;
         return "learning";
       }
       if (now < eyeState.walkQuietUntil) {
@@ -6450,17 +6533,20 @@
       const vis = (p) => p && (p.visibility ?? 1) >= EYE_VIS_FLOOR;
       const ls = pts[POSE.LEFT_SHOULDER];
       const rs = pts[POSE.RIGHT_SHOULDER];
-      if (vis(ls) && vis(rs)) return Math.hypot(ls.x - rs.x, ls.y - rs.y);
+      if (vis(ls) && vis(rs))
+        return { v: Math.hypot(ls.x - rs.x, ls.y - rs.y), src: "sh" };
       // Shoulders hidden: fall back to head width, which is noisier but better than
       // losing the person entirely. Scaled up so the two are roughly comparable and
       // the step threshold does not have to change when the fallback kicks in.
       const le = pts[7];
       const re = pts[8];
-      if (vis(le) && vis(re)) return Math.hypot(le.x - re.x, le.y - re.y) * 2.2;
+      if (vis(le) && vis(re))
+        return { v: Math.hypot(le.x - re.x, le.y - re.y) * 2.2, src: "ear" };
       const l2 = pts[2];
       const r5 = pts[5];
-      if (vis(l2) && vis(r5)) return Math.hypot(l2.x - r5.x, l2.y - r5.y) * 5.0;
-      return 0;
+      if (vis(l2) && vis(r5))
+        return { v: Math.hypot(l2.x - r5.x, l2.y - r5.y) * 5.0, src: "eye" };
+      return { v: 0, src: "" };
     }
 
     /**
@@ -6471,6 +6557,7 @@
      */
     function eyePickTarget(cands, now) {
       if (!cands.length) {
+        if (eyeState.trackIdx !== -1) eyeResetWalkTracking();
         eyeState.trackIdx = -1;
         eyeState.trackSize = 0;
         eyeState.challengerIdx = -1;
@@ -6481,6 +6568,7 @@
 
       const held = cands.find((c) => c.idx === eyeState.trackIdx);
       if (!held) {
+        if (eyeState.trackIdx !== best.idx) eyeResetWalkTracking();
         eyeState.trackIdx = best.idx;
         eyeState.trackSize = best.size;
         eyeState.challengerIdx = -1;
@@ -6492,6 +6580,7 @@
           eyeState.challengerIdx = best.idx;
           eyeState.challengerSinceMs = now;
         } else if (now - eyeState.challengerSinceMs >= EYE_SWITCH_HOLD_MS) {
+          eyeResetWalkTracking(); // new person, previous baseline is meaningless
           eyeState.trackIdx = best.idx;
           eyeState.trackSize = best.size;
           eyeState.challengerIdx = -1;
@@ -6514,9 +6603,9 @@
         const pts = people[i];
         const nose = pts && pts[0];
         if (!nose || (nose.visibility ?? 1) < EYE_VIS_FLOOR) continue;
-        const size = eyeBodySize(pts);
-        if (size <= 0) continue;
-        cands.push({ idx: i, nose, size });
+        const m = eyeBodySize(pts);
+        if (m.v <= 0) continue;
+        cands.push({ idx: i, nose, size: m.v, sizeSrc: m.src });
       }
 
       const target = eyePickTarget(cands, now);
@@ -6533,10 +6622,12 @@
         // Grace period: a dropped frame should not make the eyes twitch home.
         if (eyeState.lastSeenMs && now - eyeState.lastSeenMs < EYE_LOST_MS) {
           lines.push("eye: face lost, holding");
-        } else if (!eyeState.quiet) {
+        } else if (!eyeState.releasedQ) {
+          // releasedQ, not quiet: a release whose zeros all failed leaves this false
+          // so the next frame tries again instead of assuming it is done.
           eyeStopWalk(now); // never leave a gait running with nobody in frame
           releaseEyeLook();
-          lines.push("eye: face lost, recentred");
+          lines.push("eye: face lost, recentring");
         } else {
           lines.push("eye: " + t("eyeNoFace"));
         }
@@ -6606,28 +6697,49 @@
         hx = EYE_MIN_MAG;
       }
 
-      // viewMode 3 is the only thing keeping this stream out of the legs, and other
-      // inputs can change the view, so re-assert it on a slow cadence.
+      // A reconnect gets a fresh robot with an unknown view, so the guard has to be
+      // re-established rather than inherited from before the drop.
+      const linkUp = transport.isConnected() || petoiPool.list().length > 0;
+      if (linkUp && !eyeState.linkWasUp) eyeState.viewAssertedMs = 0;
+      eyeState.linkWasUp = linkUp;
+
+      // viewMode 3 is the only thing keeping this stream out of the legs. Assert it
+      // BEFORE any stick command and return: `ve` and `J` must not compete for the
+      // single in-flight slot, or the stick gets dropped while we record it as sent
+      // and the gaze silently stops tracking. One frame (~33ms) of delay is free.
+      // Only advance the timestamp when the command was actually dispatched, so a
+      // dropped `ve` does not buy itself five seconds of unguarded streaming.
       if (!eyeState.viewAssertedMs || now - eyeState.viewAssertedMs >= EYE_VIEW_REASSERT_MS) {
-        eyeState.viewAssertedMs = now;
-        sendEyeCommand(encodeCommand("v", ["e"]));
+        if (sendEyeCommand(encodeCommand("v", ["e"]))) eyeState.viewAssertedMs = now;
+        coordTextEl.textContent = lines.concat("  view: asserting ve").join("\n");
+        return;
       }
 
+      // A send whose transports all rejected never reached the robot, so the cached
+      // value is a lie; drop it and let this frame resend.
+      if (eyeState.sendFailed) {
+        eyeState.sendFailed = false;
+        eyeState.lastSentHx = null;
+      }
       const moved =
         eyeState.lastSentHx === null ||
         Math.abs(hx - eyeState.lastSentHx) > EYE_DEADBAND ||
         Math.abs(rsy - eyeState.lastSentRsy) > EYE_DEADBAND;
       if (moved && now - eyeState.lastSendMs >= EYE_SEND_MIN_MS) {
-        sendEyeStick(hx, rsy);
-        eyeState.lastSentHx = hx;
-        eyeState.lastSentRsy = rsy;
-        eyeState.lastSendMs = now;
-        eyeState.quiet = false;
+        // Only record it as sent if it actually went out. Otherwise the deadband
+        // compares against a value the robot never received and tracking stalls.
+        if (sendEyeStick(hx, rsy)) {
+          eyeState.lastSentHx = hx;
+          eyeState.lastSentRsy = rsy;
+          eyeState.lastSendMs = now;
+          eyeState.quiet = false;
+          eyeState.releasedQ = false; // something non-zero is applied again
+        }
       }
 
       const dtMs = eyeState.lastFrameMs ? now - eyeState.lastFrameMs : 16;
       eyeState.lastFrameMs = now;
-      const walkState = eyeUpdateWalk(target.size, now, dtMs);
+      const walkState = eyeUpdateWalk(target.size, target.sizeSrc, now, dtMs);
 
       lines.push("mode=eye  faces=" + cands.length + "  target=#" + target.idx);
       lines.push(
@@ -6842,6 +6954,13 @@
         }
       } catch (e) {
         console.error(e);
+        // Inference failed. The eye-mode cleanup paths all live inside
+        // renderEyeTracking(), which just did not run, so release here too rather
+        // than leaving the last gaze applied until the watchdog notices.
+        if (trackMode === "eye" && !eyeState.releasedQ) {
+          eyeStopWalk(performance.now());
+          releaseEyeLook();
+        }
         return;
       }
 
@@ -6885,6 +7004,11 @@
     }
 
     function stopCamera() {
+      // Frames are about to stop, so the render loop cannot recentre for us.
+      if (trackMode === "eye") {
+        eyeStopWalk(performance.now());
+        releaseEyeLook();
+      }
       if (rafId) cancelAnimationFrame(rafId);
       rafId = 0;
       if (stream) {
@@ -7344,6 +7468,23 @@
     });
     document.getElementById("btnEyeWalk").addEventListener("click", toggleEyeWalk);
     refreshEyeWalkButton();
+    /**
+     * Teardown must not depend on camera frames continuing to arrive. Every other
+     * cleanup path lives inside renderEyeTracking(), so stopping the camera, a run of
+     * failing detectForVideo() calls, or a throttled background tab would all leave the
+     * last gaze and lean applied indefinitely. This runs on its own timer and recovers
+     * all three, and also retries a release whose zeros never reached the robot.
+     */
+    setInterval(() => {
+      const stale =
+        !eyeState.lastFrameMs || performance.now() - eyeState.lastFrameMs > EYE_STALL_MS;
+      if (trackMode !== "eye" || stale) {
+        if (!eyeState.releasedQ) {
+          eyeStopWalk(performance.now());
+          releaseEyeLook();
+        }
+      }
+    }, EYE_WATCHDOG_MS);
     // No gaze lease on the robot: if this page goes away mid-stream the last
     // stick value stays applied, so recenter on every teardown path.
     window.addEventListener("pagehide", releaseEyeLook);
