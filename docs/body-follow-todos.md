@@ -29,15 +29,17 @@ handles in use against live hardware. See the post-demo section.
 - [ ] **WebSocket transport.** Only serial has been exercised. The WS path sends via
       `petoiPool.sendAndWait` with a 250ms timeout and swallowed rejections.
 
-## Blocked on an answer from Petoi
+## Resolved by Petoi
 
-- [ ] **Does the 5° limit on joints 4 and 5 apply to held offsets only, or to all
-      motion?** It matters beyond this feature: the shipped elbow and finger modes
-      already drive joints 2–5 over `b ± 25°` (`ANGLE_RANGE = 25`), ten times the
-      stated limit. `ANGLE_RANGE` was deliberately left alone rather than narrowed on
-      an ambiguous instruction hours before a demo.
-- [ ] **The constraint and the sample disagree.** Petoi's working lean sample offsets
-      joints 4 and 5 by 10, not 5. Worth raising in the same conversation.
+- [x] **The 5° guidance on joints 4 and 5 is a jitter precaution, not a hard limit.**
+      Constraining them stops a noisy signal being amplified into body sway and
+      tipping the robot. So the real requirement is "don't feed joints 4/5 a noisy
+      signal"; 5° is the safe amplitude when smoothness isn't guaranteed. This also
+      dissolves the apparent conflicts: `ANGLE_RANGE = 25` is fine in the existing
+      modes because their joint angles pass through a 1€ filter first, and Petoi's own
+      lean sample can offset 4 and 5 by 10 for the same reason. **No change needed to
+      `ANGLE_RANGE`.** Any future lean touching 4/5 must smooth its input hard and
+      size the amplitude to how clean the signal is.
 
 ## Blocked on an untested question
 

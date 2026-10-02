@@ -6031,15 +6031,21 @@
      *   (3,5) --  i2 <u2+10> 3 <u3-10> 4 <u4+10> 5 <u5-10>  -- where u* are the
      *   neutral standing angles from the `j` token.
      *
-     * CONSTRAINT FROM PETOI (2026-10-01): joints 4 and 5 (the back shoulders) must
-     * stay within 5 deg of change. Note this is NOT what the working sample above
-     * does (it offsets 4 and 5 by 10), and it is an order of magnitude tighter than
-     * what the existing elbow/finger modes already drive into those joints
-     * (ANGLE_RANGE 25, so b +-25). Scope therefore unclear: it most likely governs a
-     * HELD static offset, which loads the back shoulders continuously, rather than a
-     * gait that cycles through and unloads them. Resolve with Petoi before building
-     * any sustained-lean feature on joints 4/5, and do not relax ANGLE_RANGE for the
-     * existing modes on the strength of this note alone.
+     * GUIDELINE FROM PETOI (2026-10-01), and the reason matters more than the number:
+     * keep joints 4 and 5 (back shoulders) within ~5 deg of change *to stop jitter
+     * being amplified into body sway and tipping the robot over*. It is a stability
+     * precaution against noisy input, NOT a mechanical limit.
+     *
+     * So the real requirement is "do not feed joints 4/5 a noisy signal"; 5 deg is
+     * the safe amplitude when smoothness cannot be guaranteed. A smooth signal
+     * tolerates more, which is why ANGLE_RANGE 25 is fine in the elbow/finger modes
+     * (their joint angles go through a 1-euro filter first) and why Petoi's own lean
+     * sample can offset 4 and 5 by 10.
+     *
+     * Consequence for any future lean on joints 4/5: smooth the input hard before it
+     * reaches them, and treat amplitude as a function of how clean the signal is.
+     * This mode already EMA-filters the aim point (EYE_TUNE.smooth); raw landmark
+     * positions must never drive those joints directly.
      *
      * So the ~7 deg firmware cap (RSTICK_LX_DIV 7) is NOT necessarily a stability
      * limit as first concluded; that conclusion came from testing the wrong pattern.
