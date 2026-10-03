@@ -1447,6 +1447,7 @@
 
   <script type="module">
     import {
+      FaceLandmarker,
       FilesetResolver,
       HandLandmarker,
       PoseLandmarker,
@@ -1915,6 +1916,10 @@
       "./vendor/mediapipe/models/hand_landmarker.task",
       import.meta.url
     ).href;
+    const LOCAL_FACE_MODEL = new URL(
+      "./vendor/mediapipe/models/face_landmarker.task",
+      import.meta.url
+    ).href;
     const CDN_POSE_MODEL =
       "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
     const MP_MODEL_CACHE = "camWalkingGame.mediapipe.model.v1";
@@ -2098,6 +2103,7 @@
 
     let poseLandmarker = null;
     let handLandmarker = null;
+    let faceLandmarker = null;
     let stream = null;
     let rafId = 0;
     let lastVideoTime = -1;
@@ -6931,6 +6937,128 @@
       addConsoleMessage("Round ended (target lost) — photo ready", "warn");
     }
 
+    /**
+     * STAGE 1 PROBE — THROWAWAY. Delete this block once the estimator exists.
+     *
+     * Answers the three gate questions the model file alone cannot. The bundle's
+     * metadata already proved 478 landmarks offline ("Detects 478 face landmarks",
+     * output dim 1434 = 478*3), so this probe is about whether the iris points are
+     * USEFUL:
+     *
+     *   1. Are 468 / 473 actually the iris centres? -> irisOffset should be a small
+     *      fraction of the socket half-width, and clearly smaller than the distance
+     *      to either canthus.
+     *   2. Does the ratio track eye direction? -> look left, centre, right and watch
+     *      ratioL / ratioR swing together.
+     *   3. Is the ratio translation-invariant? -> THIS is the corrected check. The raw
+     *      iris x MUST move when your head translates; only `ratio` should hold still.
+     *      Move your head side to side while fixating one spot: rawXL/rawXR change a
+     *      lot, ratioL/ratioR should barely move.
+     *
+     * Run GAZE_PROBE.start() from the console with the camera on, in any mode. It uses
+     * its own rAF loop and its own timestamp counter, touches no robot state, and sends
+     * nothing on the wire.
+     */
+    const GAZE_PROBE_IDS = {
+      // MediaPipe face mesh canonical indices. "R" / "L" are the SUBJECT's eyes.
+      R: { iris: 468, outer: 33, inner: 133, lidTop: 159, lidBottom: 145 },
+      L: { iris: 473, outer: 263, inner: 362, lidTop: 386, lidBottom: 374 },
+    };
+
+    /** Aspect-corrected per-eye iris ratio. Positive = iris toward larger image x. */
+    function gazeProbeEye(lm, ids, aspect) {
+      const px = (i) => ({ x: lm[i].x * aspect, y: lm[i].y });
+      const iris = px(ids.iris);
+      const outer = px(ids.outer);
+      const inner = px(ids.inner);
+      let ax = outer.x - inner.x;
+      let ay = outer.y - inner.y;
+      // Orient BOTH eyes toward increasing image x, or averaging the two ratios
+      // partially cancels real gaze: outer-minus-inner points opposite ways per eye.
+      if (ax < 0) {
+        ax = -ax;
+        ay = -ay;
+      }
+      const w = Math.hypot(ax, ay);
+      if (!Number.isFinite(w) || w < 1e-6) return null;
+      const midX = (outer.x + inner.x) / 2;
+      const midY = (outer.y + inner.y) / 2;
+      const ratio = ((iris.x - midX) * ax + (iris.y - midY) * ay) / (w * w);
+      const top = px(ids.lidTop);
+      const bottom = px(ids.lidBottom);
+      return {
+        ratio,
+        w,
+        rawX: lm[ids.iris].x,
+        irisOffset: Math.hypot(iris.x - midX, iris.y - midY) / (w / 2),
+        ear: Math.hypot(top.x - bottom.x, top.y - bottom.y) / w,
+      };
+    }
+
+    window.GAZE_PROBE = {
+      running: false,
+      ts: 0,
+      everyMs: 250,
+      lastLog: 0,
+      start() {
+        if (!faceLandmarker) {
+          console.warn("GAZE_PROBE: face model not ready");
+          return;
+        }
+        if (video.readyState < 2) {
+          console.warn("GAZE_PROBE: start the camera first");
+          return;
+        }
+        this.running = true;
+        const loop = () => {
+          if (!this.running) return;
+          requestAnimationFrame(loop);
+          if (video.readyState < 2) return;
+          // Own timestamp counter: this landmarker instance needs its own
+          // monotonically increasing series, independent of tick().
+          this.ts += 16;
+          let res;
+          try {
+            res = faceLandmarker.detectForVideo(video, this.ts);
+          } catch (e) {
+            console.error("GAZE_PROBE detect failed", e);
+            this.running = false;
+            return;
+          }
+          const now = performance.now();
+          if (now - this.lastLog < this.everyMs) return;
+          this.lastLog = now;
+          const lm = res?.faceLandmarks?.[0];
+          if (!lm) {
+            console.log("GAZE_PROBE: no face");
+            return;
+          }
+          const aspect = (video.videoWidth || 16) / (video.videoHeight || 9);
+          const R = gazeProbeEye(lm, GAZE_PROBE_IDS.R, aspect);
+          const L = gazeProbeEye(lm, GAZE_PROBE_IDS.L, aspect);
+          const f = (v) => (v === null || v === undefined ? "--" : v.toFixed(3));
+          console.log(
+            `n=${lm.length}  ratioR=${f(R?.ratio)} ratioL=${f(L?.ratio)}` +
+              `  mean=${f(R && L ? (R.ratio + L.ratio) / 2 : null)}` +
+              `  rawXR=${f(R?.rawX)} rawXL=${f(L?.rawX)}` +
+              `  irisOff=${f(R?.irisOffset)}/${f(L?.irisOffset)}` +
+              `  ear=${f(R?.ear)}/${f(L?.ear)}  w=${f(R?.w)}/${f(L?.w)}`
+          );
+        };
+        requestAnimationFrame(loop);
+        console.log(
+          "GAZE_PROBE started. Checks: (1) n must be 478. (2) look left/centre/right, " +
+            "ratioR and ratioL swing together. (3) translate your head while fixating " +
+            "one spot: rawX changes a lot, ratio barely moves. (4) irisOff well under 1. " +
+            "Stop with GAZE_PROBE.stop()."
+        );
+      },
+      stop() {
+        this.running = false;
+        console.log("GAZE_PROBE stopped");
+      },
+    };
+
     function tick() {
       rafId = requestAnimationFrame(tick);
       if (video.readyState < 2) return;
@@ -7111,6 +7239,56 @@
       });
     }
 
+    /**
+     * numFaces 1 on purpose: a second face can steal the mode, and Body Follow stays
+     * the crowd-capable mode. Blendshapes are off — the iris geometry is the signal,
+     * and the blendshape category strings cannot be verified from any vendored file.
+     */
+    async function createFaceLandmarker(vision, delegate) {
+      return FaceLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: LOCAL_FACE_MODEL, delegate },
+        runningMode: "VIDEO",
+        numFaces: 1,
+        minFaceDetectionConfidence: 0.5,
+        minFacePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+        outputFaceBlendshapes: false,
+        outputFacialTransformationMatrixes: false,
+      });
+    }
+
+    /**
+     * Shaped exactly like initHand: it swallows its own errors so it can never reject
+     * into initPose's catch, which sets "model failed" and showError and would read as
+     * the whole app being broken when only the gaze mode is unavailable. Model
+     * readiness is per-model — Body Follow and the other two modes must keep working
+     * with this file deliberately absent.
+     */
+    async function initFace(vision) {
+      if (faceLandmarker) {
+        try {
+          faceLandmarker.close();
+        } catch {
+          /* ignore */
+        }
+        faceLandmarker = null;
+      }
+      try {
+        try {
+          faceLandmarker = await createFaceLandmarker(vision, "GPU");
+        } catch (gpuErr) {
+          console.warn("Face GPU delegate failed, falling back to CPU", gpuErr);
+          faceLandmarker = await createFaceLandmarker(vision, "CPU");
+        }
+        addConsoleMessage("Face model ready (local bundle)", "good");
+      } catch (e) {
+        console.error(e);
+        faceLandmarker = null;
+        addConsoleMessage("Face model failed: " + (e.message || e), "warn");
+      }
+      refreshCameraButton();
+    }
+
     function refreshCameraButton() {
       if (document.body.classList.contains("camera-on")) return;
       const ready = trackMode === "finger" ? !!handLandmarker : !!poseLandmarker;
@@ -7178,6 +7356,11 @@
           "Pose model ready (" + (poseModelSource === "cache" ? "CDN cache" : "local bundle") + ")",
           "good"
         );
+        // Deliberately NOT awaited: the face model is another ~3.7MB, and awaiting it
+        // here would hold the Start button disabled past this point for every mode,
+        // including the Body Follow fallback that does not use it. It refreshes the
+        // button itself when it settles, and it never throws.
+        initFace(vision);
       } catch (e) {
         console.error(e);
         loadStatusEl.dataset.i18nKey = "modelFailed";
