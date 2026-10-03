@@ -7000,14 +7000,34 @@
       ts: 0,
       everyMs: 250,
       lastLog: 0,
+      /**
+       * The two things start() needs are module-scoped, so the console cannot see
+       * them. Report them instead of letting start() bail behind a warning nobody
+       * reads. Same module-scope trap the plan hit for gazeFromLandmarks.
+       */
+      status() {
+        const s = {
+          faceModelReady: !!faceLandmarker,
+          cameraOn: document.body.classList.contains("camera-on"),
+          videoReadyState: video.readyState,
+          videoSize: `${video.videoWidth}x${video.videoHeight}`,
+          trackMode,
+          running: this.running,
+        };
+        s.canStart = s.faceModelReady && s.videoReadyState >= 2;
+        s.blockedBy = s.canStart
+          ? "nothing, call GAZE_PROBE.start()"
+          : !s.faceModelReady
+            ? "face model not ready (look for 'Face model failed' in the app console)"
+            : "camera not started (click Start in the app and allow the camera)";
+        console.table(s);
+        return s;
+      },
       start() {
-        if (!faceLandmarker) {
-          console.warn("GAZE_PROBE: face model not ready");
-          return;
-        }
-        if (video.readyState < 2) {
-          console.warn("GAZE_PROBE: start the camera first");
-          return;
+        const s = this.status();
+        if (!s.canStart) {
+          console.warn("GAZE_PROBE: cannot start — " + s.blockedBy);
+          return s;
         }
         this.running = true;
         const loop = () => {
@@ -7026,16 +7046,26 @@
             return;
           }
           const now = performance.now();
+          const lm = res?.faceLandmarks?.[0];
+          // Compute EVERY frame, not just on the log tick, so sweep() samples at the
+          // real inference rate instead of at the 4Hz console throttle.
+          const aspect = (video.videoWidth || 16) / (video.videoHeight || 9);
+          const R = lm ? gazeProbeEye(lm, GAZE_PROBE_IDS.R, aspect) : null;
+          const L = lm ? gazeProbeEye(lm, GAZE_PROBE_IDS.L, aspect) : null;
+          if (this.collecting && R && L) {
+            this.samples.push({
+              t: now,
+              mean: (R.ratio + L.ratio) / 2,
+              rawX: (R.rawX + L.rawX) / 2,
+              disagree: R.ratio - L.ratio,
+            });
+          }
           if (now - this.lastLog < this.everyMs) return;
           this.lastLog = now;
-          const lm = res?.faceLandmarks?.[0];
           if (!lm) {
             console.log("GAZE_PROBE: no face");
             return;
           }
-          const aspect = (video.videoWidth || 16) / (video.videoHeight || 9);
-          const R = gazeProbeEye(lm, GAZE_PROBE_IDS.R, aspect);
-          const L = gazeProbeEye(lm, GAZE_PROBE_IDS.L, aspect);
           const f = (v) => (v === null || v === undefined ? "--" : v.toFixed(3));
           console.log(
             `n=${lm.length}  ratioR=${f(R?.ratio)} ratioL=${f(L?.ratio)}` +
@@ -7056,6 +7086,58 @@
       stop() {
         this.running = false;
         console.log("GAZE_PROBE stopped");
+      },
+      collecting: false,
+      samples: [],
+      /**
+       * Records for `seconds` and prints the numbers the Stage 1 gate actually needs,
+       * so nobody has to eyeball scrolling rows at 9pm. Run it twice:
+       *
+       *   GAZE_PROBE.sweep(8, "look left, centre, right")
+       *   GAZE_PROBE.sweep(8, "fixate one spot, slide head side to side")
+       *
+       * Test 1 wants a big ratio swing. Test 2 wants a big rawX swing with a SMALL
+       * ratio swing — that is the translation-invariance check, and it is the one the
+       * plan originally had backwards.
+       */
+      sweep(seconds = 8, label = "") {
+        if (!this.running) {
+          console.warn("GAZE_PROBE: call start() first");
+          return;
+        }
+        this.samples = [];
+        this.collecting = true;
+        console.log(`GAZE_PROBE sweep: recording ${seconds}s — ${label}`);
+        setTimeout(() => {
+          this.collecting = false;
+          const s = this.samples;
+          if (s.length < 5) {
+            console.warn(`GAZE_PROBE sweep: only ${s.length} samples, face not found?`);
+            return;
+          }
+          const col = (k) => s.map((x) => x[k]);
+          const stat = (a) => {
+            const mn = Math.min(...a), mx = Math.max(...a);
+            const mean = a.reduce((p, c) => p + c, 0) / a.length;
+            const sd = Math.sqrt(a.reduce((p, c) => p + (c - mean) ** 2, 0) / a.length);
+            return { min: mn, max: mx, swing: mx - mn, mean, sd };
+          };
+          const ratio = stat(col("mean"));
+          const rawX = stat(col("rawX"));
+          const dis = stat(col("disagree").map(Math.abs));
+          const fps = (s.length - 1) / ((s[s.length - 1].t - s[0].t) / 1000);
+          const toStick = (v) => (v / 0.15) * 50; // plan: full scale 0.15, gain 1.0
+          console.log(
+            `\nGAZE_PROBE SWEEP — ${label}\n` +
+              `  samples ${s.length} over ${seconds}s  (${fps.toFixed(1)} fps inference)\n` +
+              `  ratio   swing ${ratio.swing.toFixed(4)}  min ${ratio.min.toFixed(4)}  max ${ratio.max.toFixed(4)}  mean ${ratio.mean.toFixed(4)}  sd ${ratio.sd.toFixed(4)}\n` +
+              `  rawX    swing ${rawX.swing.toFixed(4)}\n` +
+              `  |R-L|   mean ${dis.mean.toFixed(4)}  max ${dis.max.toFixed(4)}\n` +
+              `  IN STICK UNITS: swing ${toStick(ratio.swing).toFixed(1)}  ` +
+              `raw jitter sd ${toStick(ratio.sd).toFixed(1)}  (full travel is 50)\n`
+          );
+          return { ratio, rawX, dis, fps, samples: s.length };
+        }, seconds * 1000);
       },
     };
 
