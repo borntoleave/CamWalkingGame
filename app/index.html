@@ -6769,9 +6769,20 @@
     let surpriseShotTimer = null;
     const SURPRISE_PHOTO_DELAY_MS = 500;
     let photoDialogOpen = false;
+    /**
+     * Lucky-draw photo prompt, OFF. Set to true to bring it back — that is the only
+     * change needed; the dialog markup, styles, enrol form and handlers are all still
+     * here and untouched.
+     *
+     * This gates the capture as well as the dialog, deliberately. With the prompt off
+     * nothing would ever display the snapshot, so taking one each round would be a
+     * silent capture of the camera view that nobody asked for and nobody sees.
+     */
+    const PHOTO_LOTTERY_ENABLED = false;
 
     /** One shot per ready cycle, 0.5s after the first motion command is sent. */
     function scheduleSurprisePhoto() {
+      if (!PHOTO_LOTTERY_ENABLED) return;
       if (!surpriseShotDue || surpriseShotTimer || photoDialogOpen) return;
       surpriseShotDue = false;
       surpriseShotTimer = setTimeout(() => {
@@ -6926,6 +6937,7 @@
 
     /** Lost-target reset ends the round and offers the post-READY photo. */
     function finishRoundAfterLostTarget() {
+      if (!PHOTO_LOTTERY_ENABLED) return;
       if (photoDialogOpen || !roundPhotoDataUrl) return;
       openPhotoDialog(roundPhotoDataUrl);
       addConsoleMessage("Round ended (target lost) — photo ready", "warn");
