@@ -46,6 +46,25 @@ Python program. What carries over is the **protocol** and the **control law**. N
   already uses.
 - **Model**: reuse `app/vendor/mediapipe/models/pose_landmarker_lite.task`, already in the repo.
 
+## Shared power and camera mounting (confirmed on hardware, 2026-10-09)
+
+**The Pi runs off the robot's battery.** Two consequences, one good and one that changes a risk.
+
+Good: a Pi brownout now self-recovers. `Restart=on-failure` brings the service back, which re-sends
+`kup` and `ve` and resumes streaming. The robot holds its last lean for the reboot, roughly 20-30s,
+then carries on.
+
+The change: this turns critical gap 1 from a rare crash into a **recurring** failure mode. Servo
+current surges and the Pi share one rail, and a Zero 2 W is sensitive to undervoltage, so the
+likely trigger is not a kernel panic but the robot browning out its own computer while drawing
+hard. For **v1 this risk is low** — a 7° lean is a small load. It rises sharply at **milestone 2**,
+where gaits draw far more, so measuring the rail under a gait is a milestone-2 prerequisite rather
+than a v1 one. Sustained MediaPipe load also shortens robot runtime; budget for it.
+
+**The camera is mounted on the front of the top chassis.** It therefore never moves with joint 0,
+so the head's ±50° pan is fully decoupled from the image. Confirms the body-mount assumption the
+loop analysis rests on.
+
 ## MediaPipe and camera configuration (must be stated, not inherited)
 
 Same weights does not mean same behaviour. v1 pins these explicitly:
@@ -112,10 +131,30 @@ is chosen directly. Note that `tau = 250ms` is nearly 4x slower than the laptop'
 a deliberate choice for a delayed loop, not preservation of laptop feel. Start at 250ms and set it
 from the floor measurement.
 
-**2. Aim is now a closed feedback loop.** Leaning toward the person rotates the camera toward them,
-which moves them toward frame centre and shrinks the error. Negative feedback, self-correcting.
-But at ~5fps with hundreds of ms of latency, too much loop gain hunts. Start `gain` at **1.5**,
-well below the laptop's 3.6, and set it from the floor measurement, never from a stand.
+**2. Aim MAY be a closed feedback loop, and the sign of that is unverified.** The earlier claim
+that "leaning toward the person moves them toward frame centre" assumes a chassis motion nobody has
+measured. What the firmware actually does (`joystick.h:69-73`) is:
+
+```c
+int dxL = lx / RSTICK_LX_DIV;     // plus or minus 7 at full stick
+*outV2 = u2 - dxL + yLeg;         // joints 2 and 5 move together
+*outV3 = u3 + dxL + yLeg;         // joints 3 and 4 move the opposite way
+```
+
+Whether that is a roll, a yaw or a twist depends on the joint-index-to-physical-leg mapping, and
+**that mapping has already misled this project once**: the browser's own `LE, RE, RK, LK` comment
+produced a pairing that made the robot hop instead of lean. It is not re-derived here.
+
+It matters because the two cases behave oppositely. If the chassis **yaws**, the camera pans, the
+person moves toward centre, and the loop is closed and self-correcting, so gain must stay low. If
+the chassis **rolls**, the image rotates about its optical axis and the person barely moves
+horizontally, so the loop is nearly open, much more like the laptop, and the conservative gain is
+unnecessary.
+
+**T5 settles it**, and its first measurement is specifically: command a known `hx` with the robot
+on the floor and nobody moving, and record how far the person's horizontal position shifts in the
+image. A large shift means a closed loop; a near-zero shift with visible image rotation means an
+open one. Start `gain` at **1.5** until that number exists, then set it from the measurement.
 
 **3. Timeouts sized for 43fps.** `EYE_LOST_MS = 400` is two frames at 5fps; raise to ~1000ms.
 `EYE_STALL_MS = 1000` is still five frames.
@@ -318,12 +357,16 @@ camera configuration; CX-10 this reconciliation.
 
 ## Unresolved
 
-- **U1** — Power topology unknown. Check the wiring. Note that neither answer makes the shutdown
-  gap safe: a shared battery does not guarantee simultaneous shutdown.
+- ~~**U1** — Power topology unknown.~~ **RESOLVED 2026-10-09: the Pi runs off the robot's
+  battery.** See "Shared power" below; this does not make the shutdown gap safe, it changes its
+  shape.
 - **U2** — Whether the measured capture-to-write distribution meets the 400ms p95 budget. T1
   settles it and is a kill gate.
 - **U3** — Whether `num_poses = 2` is affordable at 5fps. If not, dropping to 1 removes person
   switching and is a scope change, not a tuning tweak.
+- **U4** — Whether the chassis lean yaws the camera (closed loop, keep gain low) or rolls it
+  (near-open loop, the laptop's gain may be fine). Settled by T5's first measurement, not by
+  reading the joint map.
 
 ## GSTACK REVIEW REPORT
 
@@ -357,6 +400,7 @@ camera configuration; CX-10 this reconciliation.
   kill gate with a numeric budget.
 
 **UNRESOLVED DECISIONS:**
-- **U1** — Power topology unknown; check the wiring. Neither answer makes the shutdown gap safe, because a shared battery does not guarantee that the Pi and the servos die together.
+- ~~**U1**~~ — RESOLVED: the Pi runs off the robot's battery, and the camera is on the front of the top chassis. Both are recorded in the spec. U1 is replaced by **U4** below, which is narrower and sharper.
 - **U2** — Whether measured capture-to-write latency meets the p95 ≤ 400ms budget at ≥ 3fps. T1 settles it and is a kill gate.
 - **U3** — Whether `num_poses = 2` is affordable at 5fps; dropping to 1 removes person switching and is a scope change rather than a tuning tweak.
+- **U4** — Whether the chassis lean yaws the camera or merely rolls it. A yaw makes the aim loop closed and demands a low gain; a roll leaves it nearly open and the laptop's gain may be fine. T5's first measurement settles it; the joint-index-to-leg mapping is not a safe way to derive it, having already misled this project once.
