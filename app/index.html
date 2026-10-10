@@ -1216,6 +1216,7 @@
       <div class="mode-dial" id="trackModeDial" role="radiogroup" data-i18n-aria="trackModeAria">
         <button type="button" class="mode-dial-btn" id="modeElbow" role="radio" aria-checked="false" data-i18n="modeElbow">Elbow &amp; Knee Tracking</button>
         <button type="button" class="mode-dial-btn active" id="modeFinger" role="radio" aria-checked="true" data-i18n="modeFinger">Finger Tracking</button>
+        <button type="button" class="mode-dial-btn" id="modeEye" role="radio" aria-checked="false" data-i18n="modeEye">Body Follow</button>
       </div>
       <div class="bar-actions">
         <button type="button" id="btnHelp" data-i18n="helpBtn" data-i18n-title="helpTitle">❓ Help</button>
@@ -1227,6 +1228,13 @@
           data-i18n-title="rotateCameraTitle"
           title="Rotate camera view 90° counterclockwise"
         >↺ 90°</button>
+        <button
+          type="button"
+          id="btnEyeWalk"
+          aria-pressed="false"
+          data-i18n-title="eyeWalkTitle"
+          title="Body Follow mode: let the robot step toward or away from you"
+        >🚶 Step: off</button>
         <div class="ip-block">
           <input
             type="text"
@@ -1451,6 +1459,18 @@
         trackModeAria: "Tracking mode",
         modeElbow: "Elbow & Knee Tracking",
         modeFinger: "Finger Tracking",
+        modeEye: "Body Follow",
+        eyeNoFace: "Nobody detected",
+        eyeTracking: "Following you",
+        eyeHintNoBody:
+          "Nobody detected\nStand in front of the camera with your head and shoulders in frame",
+        eyeHintNoShoulders:
+          "Shoulders not visible\nFace the camera and keep both shoulders in frame",
+        eyeHintTooFar: "Too far away\nStep closer until your shoulders fill more of the frame",
+        eyeWalkOff: "🚶 Step: off",
+        eyeWalkOn: "🚶 Step: ON",
+        eyeWalkTitle:
+          "Body Follow mode: robot steps toward you when you approach, back when you retreat. Put a barrier at the table edge first.",
         helpBtn: "❓ Help",
         helpTitle: "Help",
         btnCloseHelp: "Close",
@@ -1498,6 +1518,19 @@
           "<li>The command uses the finger’s <b>3D bend</b> (MediaPipe world landmarks: knuckle + PIP + DIP). This is not the angle projected on the camera image. Index <b>15°–40°</b> and middle <b>18°–50°</b> each fill the full joint range (b±range). A smaller reading sits at the negative limit; a larger one at the positive limit.</li>" +
           "<li>Get ready by holding <b>both</b> hands up so the index and middle fingers are visible and point generally upward. They do not have to be straight.</li>" +
           "<li>Dropping the hands or turning the fingers away from upward during countdown restarts preparation. Losing the hands for about <b>2 seconds</b> restarts preparation, and <b>no joint commands</b> are sent during that wait.</li>" +
+          "</ul>" +
+          "<h4>Body follow</h4>" +
+          "<p>The top-left dial switches to <b>Body Follow</b>. The robot responds to where your body is: its eyes look at you, it <b>leans toward you</b>, and if stepping is enabled it <b>walks toward or away from you</b>. There is no READY countdown.</p>" +
+          "<ul>" +
+          "<li>Your <b>torso position</b> in the frame aims the eyes, not the direction your head is turned. Step left and the eyes follow you. It falls back to your head if your shoulders are not visible.</li>" +
+          "<li><b>Stepping</b> is off until you press <b>🚶 Step</b> in the top bar, and it resets to off on every page reload. Walk toward the camera and the robot takes a few steps toward you; back away and it steps back. <b>Put a barrier at the table edge before enabling it.</b></li>" +
+          "<li>It cannot lean and walk at the same time (the firmware only leans while standing still), so it alternates: leaning while you hold still, stepping when you move.</li>" +
+          "<li>The lean and the gaze are <b>the same signal</b>: the firmware turns eye direction into leg angles, so you cannot have one without the other. <code>EYE_TUNE.gain</code> in the browser console scales both together (lower = subtler eyes and a smaller lean).</li>" +
+          "<li>With two people it looks at the <b>nearest</b> one (largest apparent head). It will not flip between them unless the other is clearly closer for half a second.</li>" +
+          "<li>Walk out of frame and the pupils recentre after about <b>0.4 s</b>, handing the eyes back to the robot's own idle behaviour.</li>" +
+          "<li><b>Keep the robot level.</b> The gaze is added on top of the robot's tilt sensor, so a tilted robot aims off-target. Tilt it and you will see the eyes move on their own.</li>" +
+          "<li><b>Needs current firmware.</b> Pre-demo check: send <code>ve</code> then <code>bytes:[74,114,40,0,126]</code> in the serial box. If the pupils do not move, the firmware is too old for this mode and nothing else here will work.</li>" +
+          "<li><b>Privacy:</b> camera frames are processed in this page only. No image, landmark or face data is stored, logged or sent anywhere.</li>" +
           "</ul>" +
           "<h4>4. Multi-player / multi-robot (max 2 people)</h4>" +
           "<ul>" +
@@ -1623,6 +1656,16 @@
         trackModeAria: "追踪模式",
         modeElbow: "肘膝追踪",
         modeFinger: "手指追踪",
+        modeEye: "身体跟随",
+        eyeNoFace: "未检测到人",
+        eyeTracking: "正在跟随你",
+        eyeHintNoBody: "未检测到人\n请站到摄像头前，让头部和双肩完整入镜",
+        eyeHintNoShoulders: "未看到双肩\n请正对摄像头，保持双肩完整入镜",
+        eyeHintTooFar: "距离太远\n请靠近一些，让双肩在画面中更大",
+        eyeWalkOff: "🚶 走动：关",
+        eyeWalkOn: "🚶 走动：开",
+        eyeWalkTitle:
+          "身体跟随模式：你靠近时机器人迈步靠近，你后退时它后退。请先在桌边放挡块。",
         helpBtn: "❓ 帮助",
         helpTitle: "帮助",
         btnCloseHelp: "关闭",
@@ -1670,6 +1713,19 @@
           "<li>指令用手指的<b>三维弯曲角</b>（MediaPipe 世界坐标：掌指关节 + PIP + DIP），不是画面上的投影角。食指 <b>15°–40°</b>、中指 <b>18°–50°</b> 各自铺满关节可动范围（b±range）。读数越小越靠近负角度极限，越大越靠近正角度极限。</li>" +
           "<li>准备时只要<b>双手食指和中指</b>都入镜，且大方向朝上即可，不必伸直，并保持到倒计时结束。</li>" +
           "<li>倒计时中放下双手或手指不再朝上会重新准备。丢失双手识别约 <b>2 秒</b>后重新准备，等待期间<strong>不发送</strong>关节指令。</li>" +
+          "</ul>" +
+          "<h4>身体跟随</h4>" +
+          "<p>左上角拨动按钮可切到<b>身体跟随</b>。机器人会根据你身体的位置做出反应：眼睛看向你、<b>朝你侧倾</b>，若开启走动则会<b>朝你走近或后退</b>。没有 READY 倒计时。</p>" +
+          "<ul>" +
+          "<li>由<b>躯干位置</b>决定眼球朝向，而不是头的转向。向左走，眼球跟着你。若肩部不可见，则退回使用头部位置。</li>" +
+          "<li><b>走动</b>默认关闭，需按顶栏的 <b>🚶 走动</b> 开启，且每次刷新页面都会复位为关闭。你走近镜头，机器人向你迈几步；你后退，它也后退。<b>开启前请先在桌边放好挡块。</b></li>" +
+          "<li>侧倾与走动无法同时进行（固件只在站立静止时侧倾），因此两者交替：你静止时侧倾，你移动时迈步。</li>" +
+          "<li>侧倾和视线是<b>同一个信号</b>：固件会把眼球朝向换算成腿部角度，两者无法分开。在浏览器控制台用 <code>EYE_TUNE.gain</code> 可同时缩放二者（数值越小，眼动越含蓄，侧倾也越小）。</li>" +
+          "<li>两人同时入镜时看<b>更近</b>的那位（头部看起来更大）。除非另一人明显更近并保持半秒，否则不会来回切换。</li>" +
+          "<li>走出画面约 <b>0.4 秒</b>后眼球回正，交还给机器人自己的待机行为。</li>" +
+          "<li><b>请保持机器人水平。</b>视线是叠加在机器人倾角传感器之上的，机身倾斜会导致瞄偏。倾斜机器人时能看到眼睛自行移动。</li>" +
+          "<li><b>需要较新固件。</b>演示前自检：在串口输入框发送 <code>ve</code>，再发送 <code>bytes:[74,114,40,0,126]</code>。若眼球不动，说明固件过旧，本模式无法工作。</li>" +
+          "<li><b>隐私：</b>摄像头画面仅在本页面内处理，不存储、不记录、不上传任何图像或人脸数据。</li>" +
           "</ul>" +
           "<h4>4. 多人 / 多机（最多 2 人）</h4>" +
           "<ul>" +
@@ -1810,7 +1866,7 @@
 
     function applyI18n() {
       document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
-      document.title = t(trackMode === "finger" ? "modeFinger" : "modeElbow");
+      document.title = t(trackModeTitleKey());
       document.querySelectorAll("[data-i18n]").forEach((el) => {
         const key = el.getAttribute("data-i18n");
         if (key) el.textContent = t(key);
@@ -4629,6 +4685,10 @@
     }
 
     async function closeSerialPort() {
+      // Recentre BEFORE the link goes, and wait for the zeros to actually land: the
+      // robot keeps the last stick value forever, and disconnecting first guarantees
+      // they never arrive.
+      if (trackMode === "eye") await releaseEyeLook();
       await transport.disconnect();
       refreshConnectedUi();
       addConsoleMessage("Serial disconnected", "warn");
@@ -5953,6 +6013,755 @@
       statKneesEl.textContent = String(sample.middleCount);
     }
 
+    /* ——— Body Follow mode ———————————————————————————————————————————————
+     * Named "eye" internally for historical reasons: it began as pupil-only eye
+     * contact, then grew torso-driven aim, body lean and stepping. The trackMode id,
+     * EYE_TUNE and renderEyeTracking keep the old names deliberately; renaming them
+     * mid-demo-prep would have broken the console knobs being tuned against live
+     * hardware. Rename after the demo.
+     * Face POSITION (not head orientation) aims the robot's on-board TFT pupils.
+     * No firmware change: processJoystick() stores the Jr rstick values and then
+     * returns early while viewMode == 3, skipping the leg apply, and
+     * updateEyes09tft() adds the stored offset to the gaze. So `ve` + binary `J`
+     * is the whole transport.
+     *
+     * The body also leans with the gaze and this is intentional, not a leak:
+     * doSyncBody feeds the rendered eyeX/eyeY back through
+     * reactionApplyRstickFromEyeNorm(), so gaze and lean are one signal and
+     * EYE_TUNE.gain scales both. Verified on hardware 2026-10-01 and kept.
+     *
+     * Deeper lean via direct `I` joint control: the JOINT PAIRING matters and is not
+     * what this file's own "joints 2..5 = LE, RE, RK, LK" comment implies.
+     *
+     *   WRONG (hops at +-10, jump-steps forward at +-25): pair (2,5) against (3,4),
+     *   i.e. the left/right grouping that comment suggests. Commands a twist the
+     *   robot cannot hold.
+     *
+     *   WORKING (confirmed on hardware 2026-10-01, from Petoi): pair (2,4) against
+     *   (3,5) --  i2 <u2+10> 3 <u3-10> 4 <u4+10> 5 <u5-10>  -- where u* are the
+     *   neutral standing angles from the `j` token.
+     *
+     * GUIDELINE FROM PETOI (2026-10-01), and the reason matters more than the number:
+     * keep joints 4 and 5 (back shoulders) within ~5 deg of change *to stop jitter
+     * being amplified into body sway and tipping the robot over*. It is a stability
+     * precaution against noisy input, NOT a mechanical limit.
+     *
+     * So the real requirement is "do not feed joints 4/5 a noisy signal"; 5 deg is
+     * the safe amplitude when smoothness cannot be guaranteed. A smooth signal
+     * tolerates more, which is why ANGLE_RANGE 25 is fine in the elbow/finger modes
+     * (their joint angles go through a 1-euro filter first) and why Petoi's own lean
+     * sample can offset 4 and 5 by 10.
+     *
+     * Consequence for any future lean on joints 4/5: smooth the input hard before it
+     * reaches them, and treat amplitude as a function of how clean the signal is.
+     * This mode already EMA-filters the aim point (EYE_TUNE.smooth); raw landmark
+     * positions must never drive those joints directly.
+     *
+     * So the ~7 deg firmware cap (RSTICK_LX_DIV 7) is NOT necessarily a stability
+     * limit as first concluded; that conclusion came from testing the wrong pattern.
+     * Still unresolved: whether an `I` lean survives the gaze stream, since
+     * doSyncBody rewrites joints 0,2,3,4,5 from the gaze every ~31ms while
+     * joystickJrRstickIsActive(). Untested. Do not build on it until it is.
+     *
+     * Two firmware facts shape everything below:
+     *  - joystickJrRstickIsActive() is value-based with NO time lease, so a stale
+     *    non-zero value stays applied forever. Every teardown path must send zeros.
+     *  - that same activity test uses |v| <= 2, so a face at dead centre would
+     *    encode identically to no face and hand the eyes back to idle saccades at
+     *    exactly the wrong moment. Hence EYE_MIN_MAG.
+     */
+    const EYE_FULL_SCALE = 50; // ±50 stick units spans full pupil travel
+    // 2.6 reaches the firmware lean cap at roughly 38% off-centre, which matters
+    // because people stand near the middle of frame: at gain 1.0 full lean needs
+    // the frame edge, so the lean reads as nothing. Works on either firmware.
+    //   RSTICK_LX_DIV 7 (stock): cap 7 deg/leg joint, reached by 38% off-centre
+    //   RSTICK_LX_DIV 2 (deep) : cap 25 deg, 16 deg by 25% off-centre
+    const EYE_GAIN = 3.6;
+    const EYE_SMOOTH = 0.3; // EMA on face position; higher gain needs more of this
+    const EYE_SEND_MIN_MS = 100; // 10Hz cap
+    const EYE_DEADBAND = 2; // resend threshold, matches the firmware deadzone
+    const EYE_MIN_MAG = 3; // present-but-centred face must clear the deadzone
+    const EYE_VIS_FLOOR = 0.5;
+    // "Too far" threshold, compared against eyeBodySize() = normalized SHOULDER WIDTH
+    // (head width scaled up when shoulders are hidden). Read the live "size=" in the
+    // status panel and set EYE_TUNE.minSize below your usual standing value; 0 = off.
+    const EYE_MIN_SIZE = 0.09;
+    const EYE_FAR_CONFIRM_MS = 1200; // sustained before nagging, stops flicker
+    // Frames stop arriving when the camera is closed, inference throws repeatedly, or
+    // the tab is backgrounded. Past this the render loop can no longer be trusted to
+    // clean up, so the independent watchdog does it.
+    const EYE_STALL_MS = 1000;
+    const EYE_WATCHDOG_MS = 500;
+    const EYE_LOST_MS = 400; // face-loss grace before recentring
+    const EYE_VIEW_REASSERT_MS = 5000; // `ve` cadence: viewMode 3 is the leg guard
+    const EYE_ZERO_FRAMES = 3; // zero sends before going quiet
+    const EYE_SWITCH_MARGIN = 1.15; // challenger must be 15% larger
+    const EYE_SWITCH_HOLD_MS = 500;
+    const EYE_WS_TIMEOUT_MS = 250;
+    /* Step-toward / step-away. Shoulder width is the depth signal: it grows as you
+     * approach. Fires BURSTS, not a held gait, so travel per trigger is bounded and
+     * the robot cannot march off a table while you keep walking. Default OFF. */
+    const EYE_WALK_TRIGGER = 1.1; // size ratio vs baseline to step forward
+    const EYE_WALK_RELEASE = 0.91; // ratio to step backward
+    const EYE_WALK_CONFIRM_MS = 250; // sustained before firing, rejects a lean-in
+    const EYE_WALK_BURST_MS = 1800; // gait duration, a few walk steps (EYE_TUNE.walkMs)
+    const EYE_WALK_COOLDOWN_MS = 1200; // quiet time after a burst
+    const EYE_WALK_BASE_TAU_MS = 4000; // baseline drifts to your standing distance
+    const EYE_WALK_BASE_BAND = 0.04; // baseline freezes once |ratio-1| exceeds this
+    /**
+     * Live tuning handles, read every frame. The correct signs cannot be derived
+     * from the code: they depend on how `eyeX` maps to the robot's own left vs the
+     * viewer's left, and on how the camera is mounted. Flip them from the browser
+     * console instead of editing this file:
+     *   EYE_TUNE.signX = -1     // step left; pupils must follow you, not flee
+     *   EYE_TUNE.gain  = 3.0    // bigger = less movement fills eye travel AND lean
+     *   EYE_TUNE.smooth = 0.2   // lower = steadier but laggier (0 < s <= 1)
+     *
+     * Note on gain: max lean is firmware-capped. reactionEyeNormToRstickInt()
+     * clamps the gaze norm to ±1 before deriving the body stick, so full lean and
+     * full pupil travel are reached at the same instant. Gain changes how much
+     * movement gets you there, never how far the lean goes.
+     */
+    window.EYE_TUNE = {
+      signX: 1,
+      signY: 1,
+      gain: EYE_GAIN,
+      smooth: EYE_SMOOTH,
+      minSize: EYE_MIN_SIZE, // ear-span below this for 1.2s shows "step closer"; 0 = off
+      // Step-toward/step-away. OFF by default: this is the only thing here that
+      // makes the robot locomote, so it stays off until you have put a backstop at
+      // the table edge.
+      //
+      // Gait names come from Quaddle's registered skillNameWithType[] in
+      // Instinct_Quaddle.h. Swap them live if these travel too far on a table:
+      //   marchF / marchB   marching, should cover less ground than walking
+      //   step1F / step2F   discrete single steps, if they do what the name says
+      //   smallTrF          small trot, forward only
+      walk: false,
+      walkFwd: "wkF",
+      walkBack: "wkB",
+      walkStop: "up",
+      // Passed straight through as the skill argument, so it means exactly what it
+      // means when you type it in the serial box: below 200 is gait CYCLES, 200 or
+      // above is MILLISECONDS. The firmware ends the gait, so the robot stops even
+      // if this page dies mid-step. 1 cycle is the confirmed-good value on hardware
+      // ("kwkF 1" / "kwkB 1"); raise it only after measuring the travel per cycle.
+      walkArg: 2,
+      walkTrigger: EYE_WALK_TRIGGER, // ratio vs baseline to step toward you
+      walkRelease: EYE_WALK_RELEASE, // ratio to step away
+      walkConfirmMs: EYE_WALK_CONFIRM_MS,
+      walkBaseBand: EYE_WALK_BASE_BAND, // raise if the baseline freezes on noise
+      walkBaseTauMs: EYE_WALK_BASE_TAU_MS,
+      walkCooldownMs: EYE_WALK_COOLDOWN_MS,
+    };
+
+    const eyeState = {
+      lastSentHx: null,
+      lastSentRsy: null,
+      lastSendMs: 0,
+      lastSeenMs: 0,
+      zerosLeft: 0,
+      quiet: true,
+      viewAssertedMs: 0,
+      inFlight: false,
+      trackIdx: -1,
+      trackSize: 0,
+      challengerIdx: -1,
+      challengerSinceMs: 0,
+      smoothDx: null,
+      smoothDy: null,
+      lastFrameMs: 0,
+      walkBase: null, // slow baseline of face size = your standing distance
+      walkCandidate: 0, // +1 approaching, -1 retreating, 0 neither
+      walkCandidateSince: 0,
+      walkBurstUntil: 0,
+      walkQuietUntil: 0,
+      farSince: 0,
+      sizeSrc: "",        // which metric fed walkBase; a change invalidates it
+      sendFailed: false,  // every transport rejected the last send
+      releasedQ: true,    // zeros confirmed on the wire (true when nothing to release)
+      linkWasUp: false,   // reconnect edge: re-assert the view guard
+    };
+
+    function resetEyeTrackingState() {
+      eyeState.lastSentHx = null;
+      eyeState.lastSentRsy = null;
+      eyeState.lastSendMs = 0;
+      eyeState.lastSeenMs = 0;
+      eyeState.zerosLeft = 0;
+      eyeState.quiet = true;
+      eyeState.viewAssertedMs = 0;
+      eyeState.inFlight = false;
+      eyeState.trackIdx = -1;
+      eyeState.trackSize = 0;
+      eyeState.challengerIdx = -1;
+      eyeState.challengerSinceMs = 0;
+      eyeState.smoothDx = null;
+      eyeState.smoothDy = null;
+      eyeState.lastFrameMs = 0;
+      eyeState.walkBase = null;
+      eyeState.walkCandidate = 0;
+      eyeState.walkCandidateSince = 0;
+      eyeState.walkBurstUntil = 0;
+      eyeState.walkQuietUntil = 0;
+      eyeState.farSince = 0;
+      eyeState.sizeSrc = "";
+      eyeState.sendFailed = false;
+      eyeState.releasedQ = true;
+      eyeState.linkWasUp = false;
+    }
+
+    /**
+     * Clear everything the step trigger accumulated. Must run whenever the tracked
+     * person is lost or replaced, and whenever the depth metric changes source:
+     * otherwise a new, stationary person is compared against the previous person's
+     * size, or a shoulder occlusion swaps shoulder-width for scaled head-width and
+     * the ratio jumps past the trigger with nobody having moved.
+     */
+    function eyeResetWalkTracking() {
+      eyeState.walkBase = null;
+      eyeState.walkCandidate = 0;
+      eyeState.walkCandidateSince = 0;
+      eyeState.sizeSrc = "";
+    }
+
+    /**
+     * Fire-and-forget on both transports. Gaze is latest-wins, so a frame that
+     * arrives while one is in flight is dropped rather than queued. `force`
+     * bypasses that gate for teardown, where every zero frame must actually go out.
+     */
+    function sendEyeCommand(command, force = false) {
+      if (eyeState.inFlight && !force) return false; // dropped, caller must not
+      const sends = [];                              // record this as delivered
+      if (transport.isConnected()) {
+        sends.push(
+          transport.send(command, {
+            addNewline: true,
+            logConsole: false,
+            logSerial: false,
+          })
+        );
+      }
+      for (const ip of petoiPool.list()) {
+        sends.push(petoiPool.sendAndWait(ip, command, EYE_WS_TIMEOUT_MS));
+      }
+      if (!sends.length) return false; // nothing connected: nothing was delivered
+      eyeState.inFlight = true;
+      Promise.allSettled(sends).then((rs) => {
+        eyeState.inFlight = false;
+        // If EVERY transport rejected, the robot never saw this. Invalidate the
+        // cached "last sent" so the next frame resends rather than deadbanding
+        // against a value that only exists in this page.
+        if (rs.every((r) => r.status === "rejected")) eyeState.sendFailed = true;
+      });
+      return true;
+    }
+
+    function sendEyeStick(hx, rsy, force = false) {
+      return sendEyeCommand(encodeCommand("J", [114, hx & 0xff, rsy & 0xff]), force);
+    }
+
+    /**
+     * Recentre the pupils and stop streaming. Returns a promise that settles once the
+     * zeros are actually on the wire, so a controlled disconnect can await it.
+     *
+     * The robot holds the last stick value forever, so "I called send" is not good
+     * enough here: if every transport rejects, releasedQ stays false and the no-target
+     * branch (and the stall watchdog) keep retrying until one lands.
+     */
+    function releaseEyeLook() {
+      if (eyeState.releasedQ) return Promise.resolve();
+      eyeState.trackIdx = -1;
+      eyeState.trackSize = 0;
+      // Drop the filter too, so re-acquiring a face snaps to them instead of
+      // sweeping across from wherever the last person stood.
+      eyeState.smoothDx = null;
+      eyeState.smoothDy = null;
+      eyeResetWalkTracking(); // a stale baseline must not outlive the target
+
+      const zero = encodeCommand("J", [114, 0, 0]);
+      const sends = [];
+      if (transport.isConnected()) {
+        for (let i = 0; i < EYE_ZERO_FRAMES; i++) {
+          sends.push(
+            transport
+              .send(zero, { addNewline: true, logConsole: false, logSerial: false })
+              .then(() => true, () => false)
+          );
+        }
+      }
+      for (const ip of petoiPool.list()) {
+        sends.push(
+          petoiPool.sendAndWait(ip, zero, EYE_WS_TIMEOUT_MS).then(() => true, () => false)
+        );
+      }
+      if (!sends.length) {
+        // Nothing connected, so nothing is holding a stale value either.
+        eyeState.releasedQ = true;
+        eyeState.lastSentHx = 0;
+        eyeState.lastSentRsy = 0;
+        eyeState.quiet = true;
+        return Promise.resolve();
+      }
+      eyeState.inFlight = false; // teardown owns the link now
+      return Promise.all(sends).then((oks) => {
+        if (oks.some(Boolean)) {
+          eyeState.releasedQ = true;
+          eyeState.lastSentHx = 0;
+          eyeState.lastSentRsy = 0;
+          eyeState.quiet = true;
+        } else {
+          // Every zero failed. Leave releasedQ false so this is retried.
+          eyeState.lastSentHx = null;
+          addConsoleMessage("Eye recentre failed, will retry", "warn");
+        }
+      });
+    }
+
+    /**
+     * The step toggle lives in the UI, not just on EYE_TUNE, because reaching for a
+     * browser console is the wrong interface on demo night. Deliberately NOT
+     * persisted: every page load starts with walking off, so a reload can never
+     * surprise you with a robot that locomotes.
+     */
+    function refreshEyeWalkButton() {
+      const btn = document.getElementById("btnEyeWalk");
+      if (!btn) return;
+      const on = !!window.EYE_TUNE.walk;
+      btn.textContent = t(on ? "eyeWalkOn" : "eyeWalkOff");
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.classList.toggle("active", on);
+      btn.disabled = trackMode !== "eye";
+    }
+
+    function toggleEyeWalk() {
+      const on = !window.EYE_TUNE.walk;
+      window.EYE_TUNE.walk = on;
+      if (!on) eyeStopWalk(performance.now());
+      refreshEyeWalkButton();
+      addConsoleMessage(
+        on
+          ? "Stepping ENABLED: robot steps toward you on approach, back on retreat. Check the table edge."
+          : "Stepping disabled",
+        on ? "warn" : "good"
+      );
+    }
+
+    /**
+     * Fire a named OpenCat skill, optionally bounded: eyeSendSkill("wkF", 3) sends
+     * "kwkF 3". Per reaction.h, an argument below 200 is a gait-cycle count and 200
+     * or above is milliseconds; either way the FIRMWARE ends the gait itself. That
+     * matters more than brevity here: if this page dies mid-burst, a bounded gait
+     * still stops on its own, where an unbounded one would keep walking.
+     */
+    function eyeSendSkill(name, arg) {
+      if (!name) return;
+      const payload = arg == null ? String(name) : String(name) + " " + String(arg);
+      sendEyeCommand(encodeCommand("k", [payload]), true);
+    }
+
+    /** End any walk burst in progress and stand. Called on teardown and face loss. */
+    function eyeStopWalk(now) {
+      if (!eyeState.walkBurstUntil) return;
+      eyeState.walkBurstUntil = 0;
+      eyeState.walkQuietUntil =
+        (now || performance.now()) +
+        (window.EYE_TUNE.walkCooldownMs ?? EYE_WALK_COOLDOWN_MS);
+      eyeSendSkill(window.EYE_TUNE.walkStop);
+    }
+
+    /**
+     * Step toward or away from the person, as bursts rather than a held gait.
+     * Shoulder width is the depth signal. A slow baseline tracks where the person has
+     * been standing, so this fires on a deliberate approach, not on their resting
+     * distance. Bounded travel per trigger is the whole point: a held gait would
+     * march off a table while the person keeps walking.
+     */
+    function eyeUpdateWalk(size, sizeSrc, now, dtMs) {
+      const tune = window.EYE_TUNE;
+      if (!tune.walk) {
+        if (eyeState.walkBurstUntil) eyeStopWalk(now);
+        eyeState.walkBase = null;
+        return "off";
+      }
+      if (eyeState.walkBurstUntil) {
+        if (now >= eyeState.walkBurstUntil) eyeStopWalk(now);
+        return "stepping";
+      }
+      // The scaled head-width fallbacks are only roughly comparable to shoulder
+      // width, so a source change would otherwise read as a big move. Relearn.
+      if (eyeState.sizeSrc && eyeState.sizeSrc !== sizeSrc) {
+        eyeResetWalkTracking();
+        eyeState.walkBase = size;
+        eyeState.sizeSrc = sizeSrc;
+        return "relearn(" + sizeSrc + ")";
+      }
+      if (eyeState.walkBase === null) {
+        eyeState.walkBase = size;
+        eyeState.sizeSrc = sizeSrc;
+        return "learning";
+      }
+      if (now < eyeState.walkQuietUntil) {
+        eyeState.walkBase = size; // re-anchor to where they ended up
+        return "cooldown";
+      }
+      // The baseline exists so standing at any distance never triggers. But it has to
+      // FREEZE the moment you start moving, or it chases you: on a slow approach it
+      // drifts as fast as the ratio builds, the ratio stays near 1.00, and nothing
+      // ever fires. So it only drifts while you are essentially still.
+      const ratio = size / eyeState.walkBase;
+      // While you are still, the baseline tracks you so standing at any distance never
+      // triggers. While you are MOVING it must not chase you, or a slow approach feeds
+      // the baseline as fast as it feeds the ratio and nothing ever fires. A slow leak
+      // rather than a hard freeze, so a baseline left stale by settling slightly off
+      // still catches up eventually instead of sticking forever.
+      const tau = tune.walkBaseTauMs ?? EYE_WALK_BASE_TAU_MS;
+      const moving = Math.abs(ratio - 1) >= (tune.walkBaseBand ?? EYE_WALK_BASE_BAND);
+      const k = Math.min(1, dtMs / (moving ? tau * 6 : tau));
+      eyeState.walkBase += (size - eyeState.walkBase) * k;
+      const dir =
+        ratio >= (tune.walkTrigger ?? EYE_WALK_TRIGGER)
+          ? 1
+          : ratio <= (tune.walkRelease ?? EYE_WALK_RELEASE)
+            ? -1
+            : 0;
+      if (dir === 0 || dir !== eyeState.walkCandidate) {
+        eyeState.walkCandidate = dir;
+        eyeState.walkCandidateSince = now;
+        return dir === 0 ? "steady" : "arming";
+      }
+      if (now - eyeState.walkCandidateSince < (tune.walkConfirmMs ?? EYE_WALK_CONFIRM_MS))
+        return "arming";
+
+      const arg = tune.walkArg ?? 3;
+      eyeSendSkill(dir > 0 ? tune.walkFwd : tune.walkBack, arg);
+      // Local watchdog only. The firmware ends the gait; this is a generous backstop
+      // that re-asserts "up" if it somehow did not, so it must not fire early and
+      // cut a legitimate gait short. Cycles have no fixed duration, so estimate long.
+      const estMs = arg < 200 ? arg * 1500 + 1000 : Number(arg) + 1000;
+      eyeState.walkBurstUntil = now + estMs;
+      eyeState.walkCandidate = 0;
+      eyeState.walkBase = size;
+      return dir > 0 ? "step fwd" : "step back";
+    }
+
+    /**
+     * One centred hint on the camera view, reusing the same prompt layer and styling
+     * the elbow/finger modes use for "get into frame" guidance. Only shown when
+     * something is actually wrong: once tracking works the skeleton and crosshair are
+     * the confirmation, and a banner over the view would just be in the way during a
+     * demo. Pass null to clear.
+     */
+    function showBodyFollowHint(text) {
+      if (!text) {
+        hideOverlayPool(promptLayerEl, 0);
+        return;
+      }
+      const el = ensureOverlayEl(promptLayerEl, "head-prompt", 0);
+      el.classList.remove(
+        "visible", "long", "countdown", "ready", "illegal", "below", "lane"
+      );
+      fillHeadPromptContent(el, text, READY_PHASE.WAITING);
+      placePromptEl(el, {});
+      el.classList.add("visible");
+      hideOverlayPool(promptLayerEl, 1);
+    }
+
+    /**
+     * Draw the skeleton so the operator can see whether a body is being tracked at
+     * all, and which body the robot is following. Tracked person is bright, everyone
+     * else is dim, so "is it following me" is answerable at a glance instead of by
+     * reading the text panel. Also marks the two things that actually drive the
+     * robot: the shoulder-midpoint aim point, and the shoulder span that the stepping
+     * trigger reads as depth.
+     */
+    function drawBodyFollowSkeleton(pts, isTarget) {
+      const P = pts.map(landmarkToClient);
+      const bone = isTarget ? "#7cff6b" : "#3d5a4d";
+      const joint = isTarget ? "#d2ff6b" : "#3d5a4d";
+      for (const [a, b] of POSE_CONNECTIONS) {
+        if (P[a] && P[b]) drawSegment(P[a], P[b], bone, isTarget ? 5 : 2);
+      }
+      for (const i of [
+        POSE.NOSE, POSE.LEFT_SHOULDER, POSE.RIGHT_SHOULDER,
+        POSE.LEFT_ELBOW, POSE.RIGHT_ELBOW, POSE.LEFT_HIP, POSE.RIGHT_HIP,
+      ]) {
+        if (P[i]) drawJoint(P[i], joint, isTarget ? 6 : 3);
+      }
+      if (!isTarget) return;
+
+      // Shoulder span: what the step trigger reads as "closer / further". Drawn over
+      // the skeleton bone so the measured quantity is visible, not inferred.
+      const sl = P[POSE.LEFT_SHOULDER];
+      const sr = P[POSE.RIGHT_SHOULDER];
+      if (sl && sr && sl.vis >= VIS_MIN && sr.vis >= VIS_MIN) {
+        drawSegment(sl, sr, "#58a6ff", 8);
+      }
+
+      // Aim point: the shoulder midpoint actually sent to the robot.
+      const ls = P[POSE.LEFT_SHOULDER];
+      const rs = P[POSE.RIGHT_SHOULDER];
+      if (ls && rs && ls.vis >= VIS_MIN && rs.vis >= VIS_MIN) {
+        const cx = (ls.x + rs.x) / 2;
+        const cy = (ls.y + rs.y) / 2;
+        ctx.strokeStyle = "#ffe600";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx - 14, cy);
+        ctx.lineTo(cx + 14, cy);
+        ctx.moveTo(cx, cy - 14);
+        ctx.lineTo(cx, cy + 14);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    /** Apparent head size, used only to pick the nearest person. */
+    /**
+     * Apparent body size: the depth signal for stepping, and the nearest-person metric.
+     *
+     * SHOULDER WIDTH, not head width. Ear span was used first (this started as a
+     * face-tracking mode) and is a poor depth signal: ~0.03-0.05 in normalized units,
+     * so landmark noise swamps the 10% change a real step produces, and it shrinks
+     * when the head turns, which is noise here. Shoulder width is 4-5x larger in the
+     * same units, so the same percentage change actually survives. Head width stays
+     * as a fallback for when shoulders are hidden.
+     */
+    function eyeBodySize(pts) {
+      const vis = (p) => p && (p.visibility ?? 1) >= EYE_VIS_FLOOR;
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      if (vis(ls) && vis(rs))
+        return { v: Math.hypot(ls.x - rs.x, ls.y - rs.y), src: "sh" };
+      // Shoulders hidden: fall back to head width, which is noisier but better than
+      // losing the person entirely. Scaled up so the two are roughly comparable and
+      // the step threshold does not have to change when the fallback kicks in.
+      const le = pts[7];
+      const re = pts[8];
+      if (vis(le) && vis(re))
+        return { v: Math.hypot(le.x - re.x, le.y - re.y) * 2.2, src: "ear" };
+      const l2 = pts[2];
+      const r5 = pts[5];
+      if (vis(l2) && vis(r5))
+        return { v: Math.hypot(l2.x - r5.x, l2.y - r5.y) * 5.0, src: "eye" };
+      return { v: 0, src: "" };
+    }
+
+    /**
+     * Pick who the robot looks at. Largest apparent body wins, but a challenger must
+     * be clearly bigger and stay bigger before we switch: projected size shrinks when
+     * someone turns, which would otherwise flip the target at the worst moment. If the
+     * incumbent vanishes we switch immediately instead.
+     */
+    function eyePickTarget(cands, now) {
+      if (!cands.length) {
+        if (eyeState.trackIdx !== -1) eyeResetWalkTracking();
+        eyeState.trackIdx = -1;
+        eyeState.trackSize = 0;
+        eyeState.challengerIdx = -1;
+        return null;
+      }
+      let best = cands[0];
+      for (const c of cands) if (c.size > best.size) best = c;
+
+      const held = cands.find((c) => c.idx === eyeState.trackIdx);
+      if (!held) {
+        if (eyeState.trackIdx !== best.idx) eyeResetWalkTracking();
+        eyeState.trackIdx = best.idx;
+        eyeState.trackSize = best.size;
+        eyeState.challengerIdx = -1;
+        return best;
+      }
+      eyeState.trackSize = held.size;
+      if (best.idx !== held.idx && best.size > held.size * EYE_SWITCH_MARGIN) {
+        if (eyeState.challengerIdx !== best.idx) {
+          eyeState.challengerIdx = best.idx;
+          eyeState.challengerSinceMs = now;
+        } else if (now - eyeState.challengerSinceMs >= EYE_SWITCH_HOLD_MS) {
+          eyeResetWalkTracking(); // new person, previous baseline is meaningless
+          eyeState.trackIdx = best.idx;
+          eyeState.trackSize = best.size;
+          eyeState.challengerIdx = -1;
+          return best;
+        }
+      } else {
+        eyeState.challengerIdx = -1;
+      }
+      return held;
+    }
+
+    function renderEyeTracking(poseResult, now) {
+      const { w: cw, h: ch } = stageSize();
+      ctx.clearRect(0, 0, cw, ch);
+      syncColumnGuides(0);
+
+      const people = poseResult?.landmarks || [];
+      const cands = [];
+      for (let i = 0; i < people.length; i++) {
+        const pts = people[i];
+        const nose = pts && pts[0];
+        if (!nose || (nose.visibility ?? 1) < EYE_VIS_FLOOR) continue;
+        const m = eyeBodySize(pts);
+        if (m.v <= 0) continue;
+        cands.push({ idx: i, nose, size: m.v, sizeSrc: m.src });
+      }
+
+      const target = eyePickTarget(cands, now);
+
+      // Non-target bodies first so the tracked one draws on top of them.
+      for (const c of cands) {
+        if (!target || c.idx !== target.idx) drawBodyFollowSkeleton(people[c.idx], false);
+      }
+      if (target) drawBodyFollowSkeleton(people[target.idx], true);
+
+      const lines = [];
+
+      if (!target) {
+        // Grace period: a dropped frame should not make the eyes twitch home.
+        if (eyeState.lastSeenMs && now - eyeState.lastSeenMs < EYE_LOST_MS) {
+          lines.push("eye: face lost, holding");
+        } else if (!eyeState.releasedQ) {
+          // releasedQ, not quiet: a release whose zeros all failed leaves this false
+          // so the next frame tries again instead of assuming it is done.
+          eyeStopWalk(now); // never leave a gait running with nobody in frame
+          releaseEyeLook();
+          lines.push("eye: face lost, recentring");
+        } else {
+          lines.push("eye: " + t("eyeNoFace"));
+        }
+        // Only nag once the grace period has lapsed, so a dropped frame does not
+        // flash a banner over the view mid-demo.
+        showBodyFollowHint(
+          eyeState.lastSeenMs && now - eyeState.lastSeenMs < EYE_LOST_MS
+            ? null
+            : t("eyeHintNoBody")
+        );
+        coordTextEl.textContent = lines.join("\n");
+        statPoseEl.textContent = "0";
+        statElbowsEl.textContent = "—";
+        statKneesEl.textContent = "—";
+        return;
+      }
+
+      eyeState.lastSeenMs = now;
+
+      // Raw normalized landmarks, NOT landmarkToClient: keeps the mapping
+      // independent of the preview's CSS rotation and mirror.
+      const tune = window.EYE_TUNE;
+      // Horizontal comes from the TORSO (shoulder midpoint), so the aim follows
+      // where your body actually is and does not jitter when you turn your head.
+      // Vertical stays on the nose: shoulder-y sits well below head height, so
+      // using it would bias the gaze permanently downward.
+      const pts = people[target.idx];
+      const ls = pts[11];
+      const rs = pts[12];
+      const bodyOk =
+        ls && rs && (ls.visibility ?? 1) >= EYE_VIS_FLOOR && (rs.visibility ?? 1) >= EYE_VIS_FLOOR;
+      const aimX = bodyOk ? (ls.x + rs.x) / 2 : target.nose.x;
+      const rawDx = (aimX - 0.5) * 2;
+      const rawDy = (target.nose.y - 0.5) * 2;
+
+      // Tracking still works in both of these states (head fallback, and far away),
+      // so these are advice rather than errors. Clear once the body reads well.
+      // The far hint needs to be sustained: size dips on a turned head or an occluded
+      // ear, and a banner that blinks on and off is worse than no banner.
+      const farLimit = tune.minSize ?? EYE_MIN_SIZE;
+      const isFar = farLimit > 0 && target.size < farLimit;
+      if (!isFar) eyeState.farSince = 0;
+      else if (!eyeState.farSince) eyeState.farSince = now;
+      const farConfirmed = isFar && now - eyeState.farSince >= EYE_FAR_CONFIRM_MS;
+      showBodyFollowHint(
+        !bodyOk
+          ? t("eyeHintNoShoulders")
+          : farConfirmed
+            ? t("eyeHintTooFar")
+            : null
+      );
+      // EMA on position, not on the stick value: landmark jitter of ±0.01 crosses
+      // the send deadband once gain is high, and a twitching robot reads as broken
+      // rather than alive. Snap on first acquire so it does not sweep in from centre.
+      const a = Math.max(0.05, Math.min(1, tune.smooth ?? EYE_SMOOTH));
+      eyeState.smoothDx =
+        eyeState.smoothDx === null ? rawDx : eyeState.smoothDx + a * (rawDx - eyeState.smoothDx);
+      eyeState.smoothDy =
+        eyeState.smoothDy === null ? rawDy : eyeState.smoothDy + a * (rawDy - eyeState.smoothDy);
+      const dx = eyeState.smoothDx;
+      const dy = eyeState.smoothDy;
+      const span = EYE_FULL_SCALE * (tune.gain || EYE_GAIN);
+      let hx = Math.max(-EYE_FULL_SCALE, Math.min(EYE_FULL_SCALE, Math.round(tune.signX * dx * span)));
+      let rsy = Math.max(-EYE_FULL_SCALE, Math.min(EYE_FULL_SCALE, Math.round(tune.signY * dy * span)));
+      // A centred face must not read as "no face" to joystickJrRstickIsActive().
+      if (Math.abs(hx) <= EYE_DEADBAND && Math.abs(rsy) <= EYE_DEADBAND) {
+        hx = EYE_MIN_MAG;
+      }
+
+      // A reconnect gets a fresh robot with an unknown view, so the guard has to be
+      // re-established rather than inherited from before the drop.
+      const linkUp = transport.isConnected() || petoiPool.list().length > 0;
+      if (linkUp && !eyeState.linkWasUp) eyeState.viewAssertedMs = 0;
+      eyeState.linkWasUp = linkUp;
+
+      // viewMode 3 is the only thing keeping this stream out of the legs. Assert it
+      // BEFORE any stick command and return: `ve` and `J` must not compete for the
+      // single in-flight slot, or the stick gets dropped while we record it as sent
+      // and the gaze silently stops tracking. One frame (~33ms) of delay is free.
+      // Only advance the timestamp when the command was actually dispatched, so a
+      // dropped `ve` does not buy itself five seconds of unguarded streaming.
+      if (!eyeState.viewAssertedMs || now - eyeState.viewAssertedMs >= EYE_VIEW_REASSERT_MS) {
+        if (sendEyeCommand(encodeCommand("v", ["e"]))) eyeState.viewAssertedMs = now;
+        coordTextEl.textContent = lines.concat("  view: asserting ve").join("\n");
+        return;
+      }
+
+      // A send whose transports all rejected never reached the robot, so the cached
+      // value is a lie; drop it and let this frame resend.
+      if (eyeState.sendFailed) {
+        eyeState.sendFailed = false;
+        eyeState.lastSentHx = null;
+      }
+      const moved =
+        eyeState.lastSentHx === null ||
+        Math.abs(hx - eyeState.lastSentHx) > EYE_DEADBAND ||
+        Math.abs(rsy - eyeState.lastSentRsy) > EYE_DEADBAND;
+      if (moved && now - eyeState.lastSendMs >= EYE_SEND_MIN_MS) {
+        // Only record it as sent if it actually went out. Otherwise the deadband
+        // compares against a value the robot never received and tracking stalls.
+        if (sendEyeStick(hx, rsy)) {
+          eyeState.lastSentHx = hx;
+          eyeState.lastSentRsy = rsy;
+          eyeState.lastSendMs = now;
+          eyeState.quiet = false;
+          eyeState.releasedQ = false; // something non-zero is applied again
+        }
+      }
+
+      const dtMs = eyeState.lastFrameMs ? now - eyeState.lastFrameMs : 16;
+      eyeState.lastFrameMs = now;
+      const walkState = eyeUpdateWalk(target.size, target.sizeSrc, now, dtMs);
+
+      lines.push("mode=eye  faces=" + cands.length + "  target=#" + target.idx);
+      lines.push(
+        "  aim: x=" + dx.toFixed(2) + " y=" + dy.toFixed(2) +
+          " (" + (bodyOk ? "torso" : "head") + ")  size=" + target.size.toFixed(3)
+      );
+      lines.push(
+        "  walk: " + walkState +
+          (eyeState.walkBase ? "  base=" + eyeState.walkBase.toFixed(3) +
+            "  ratio=" + (target.size / eyeState.walkBase).toFixed(2) : "")
+      );
+      lines.push(
+        "  stick: hx=" + hx + " rsy=" + rsy +
+          "  (±" + EYE_FULL_SCALE + " = full travel, gain " + EYE_GAIN + ")"
+      );
+      lines.push("  " + t("eyeTracking") + " · legs idle");
+      coordTextEl.textContent = lines.join("\n");
+      statPoseEl.textContent = String(cands.length);
+      statElbowsEl.textContent = String(hx);
+      statKneesEl.textContent = String(rsy);
+    }
+
     /** Latest page snapshot, taken 0.5s after the first post-READY joint command. */
     let roundPhotoDataUrl = "";
     /** Set when control starts; cleared once that round's first `I` is sent. */
@@ -5960,9 +6769,20 @@
     let surpriseShotTimer = null;
     const SURPRISE_PHOTO_DELAY_MS = 500;
     let photoDialogOpen = false;
+    /**
+     * Lucky-draw photo prompt, OFF. Set to true to bring it back — that is the only
+     * change needed; the dialog markup, styles, enrol form and handlers are all still
+     * here and untouched.
+     *
+     * This gates the capture as well as the dialog, deliberately. With the prompt off
+     * nothing would ever display the snapshot, so taking one each round would be a
+     * silent capture of the camera view that nobody asked for and nobody sees.
+     */
+    const PHOTO_LOTTERY_ENABLED = false;
 
     /** One shot per ready cycle, 0.5s after the first motion command is sent. */
     function scheduleSurprisePhoto() {
+      if (!PHOTO_LOTTERY_ENABLED) return;
       if (!surpriseShotDue || surpriseShotTimer || photoDialogOpen) return;
       surpriseShotDue = false;
       surpriseShotTimer = setTimeout(() => {
@@ -6117,6 +6937,7 @@
 
     /** Lost-target reset ends the round and offers the post-READY photo. */
     function finishRoundAfterLostTarget() {
+      if (!PHOTO_LOTTERY_ENABLED) return;
       if (photoDialogOpen || !roundPhotoDataUrl) return;
       openPhotoDialog(roundPhotoDataUrl);
       addConsoleMessage("Round ended (target lost) — photo ready", "warn");
@@ -6135,11 +6956,23 @@
       try {
         if (fingerMode) {
           renderFingers(handLandmarker.detectForVideo(video, Math.round(now)));
+        } else if (trackMode === "eye") {
+          renderEyeTracking(
+            poseLandmarker.detectForVideo(video, Math.round(now)),
+            now
+          );
         } else {
           render(poseLandmarker.detectForVideo(video, Math.round(now)));
         }
       } catch (e) {
         console.error(e);
+        // Inference failed. The eye-mode cleanup paths all live inside
+        // renderEyeTracking(), which just did not run, so release here too rather
+        // than leaving the last gaze applied until the watchdog notices.
+        if (trackMode === "eye" && !eyeState.releasedQ) {
+          eyeStopWalk(performance.now());
+          releaseEyeLook();
+        }
         return;
       }
 
@@ -6183,6 +7016,11 @@
     }
 
     function stopCamera() {
+      // Frames are about to stop, so the render loop cannot recentre for us.
+      if (trackMode === "eye") {
+        eyeStopWalk(performance.now());
+        releaseEyeLook();
+      }
       if (rafId) cancelAnimationFrame(rafId);
       rafId = 0;
       if (stream) {
@@ -6440,19 +7278,27 @@
       el.textContent = t(key);
     }
 
+    function trackModeTitleKey() {
+      if (trackMode === "finger") return "modeFinger";
+      if (trackMode === "eye") return "modeEye";
+      return "modeElbow";
+    }
+
     function applyTrackModeChrome() {
       const finger = trackMode === "finger";
-      const elbowBtn = document.getElementById("modeElbow");
-      const fingerBtn = document.getElementById("modeFinger");
-      if (elbowBtn) {
-        elbowBtn.classList.toggle("active", !finger);
-        elbowBtn.setAttribute("aria-checked", finger ? "false" : "true");
+      for (const [id, mode] of [
+        ["modeElbow", "elbow"],
+        ["modeFinger", "finger"],
+        ["modeEye", "eye"],
+      ]) {
+        const btn = document.getElementById(id);
+        if (!btn) continue;
+        const on = trackMode === mode;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-checked", on ? "true" : "false");
       }
-      if (fingerBtn) {
-        fingerBtn.classList.toggle("active", finger);
-        fingerBtn.setAttribute("aria-checked", finger ? "true" : "false");
-      }
-      document.title = t(finger ? "modeFinger" : "modeElbow");
+      document.title = t(trackModeTitleKey());
+      refreshEyeWalkButton();
       setI18nText(
         document.getElementById("labelStatElbows"),
         finger ? "statIndex" : "statElbows"
@@ -6472,10 +7318,18 @@
     }
 
     function setTrackMode(mode) {
-      const next = mode === "finger" ? "finger" : "elbow";
+      const next =
+        mode === "finger" || mode === "eye" || mode === "elbow" ? mode : "elbow";
       if (next === trackMode) {
         applyTrackModeChrome();
         return;
+      }
+      // Leaving eye mode: the robot has no lease on the gaze offset, so a stale
+      // non-zero stick would stay applied forever. Recenter before switching.
+      if (trackMode === "eye") {
+        eyeStopWalk(performance.now());
+        releaseEyeLook();
+        showBodyFollowHint(null); // do not leave a stale banner over the next mode
       }
       trackMode = next;
       playerStates.clear();
@@ -6485,16 +7339,26 @@
       lastControlSnapshot = null;
       angleChartHistory = [];
       scheduleAngleChartDraw();
+      resetEyeTrackingState();
       applyTrackModeChrome();
       refreshCameraButton();
       addConsoleMessage(
         trackMode === "finger"
           ? "Tracking mode: fingers (index→front legs, middle→back legs; straight→a_min)"
-          : "Tracking mode: elbows & knees",
+          : trackMode === "eye"
+            ? "Tracking mode: eye contact (face position → pupils + body lean). " +
+              "Tune live: EYE_TUNE.signX = -1 if pupils move away from you; EYE_TUNE.gain scales eyes and lean together."
+            : "Tracking mode: elbows & knees",
         "good"
       );
       if (document.body.classList.contains("camera-on")) {
-        coordTextEl.textContent = t(trackMode === "finger" ? "noHands" : "noBody");
+        coordTextEl.textContent = t(
+          trackMode === "finger"
+            ? "noHands"
+            : trackMode === "eye"
+              ? "eyeNoFace"
+              : "noBody"
+        );
       }
     }
 
@@ -6611,6 +7475,32 @@
     document.getElementById("modeFinger").addEventListener("click", () => {
       setTrackMode("finger");
     });
+    document.getElementById("modeEye").addEventListener("click", () => {
+      setTrackMode("eye");
+    });
+    document.getElementById("btnEyeWalk").addEventListener("click", toggleEyeWalk);
+    refreshEyeWalkButton();
+    /**
+     * Teardown must not depend on camera frames continuing to arrive. Every other
+     * cleanup path lives inside renderEyeTracking(), so stopping the camera, a run of
+     * failing detectForVideo() calls, or a throttled background tab would all leave the
+     * last gaze and lean applied indefinitely. This runs on its own timer and recovers
+     * all three, and also retries a release whose zeros never reached the robot.
+     */
+    setInterval(() => {
+      const stale =
+        !eyeState.lastFrameMs || performance.now() - eyeState.lastFrameMs > EYE_STALL_MS;
+      if (trackMode !== "eye" || stale) {
+        if (!eyeState.releasedQ) {
+          eyeStopWalk(performance.now());
+          releaseEyeLook();
+        }
+      }
+    }, EYE_WATCHDOG_MS);
+    // No gaze lease on the robot: if this page goes away mid-stream the last
+    // stick value stays applied, so recenter on every teardown path.
+    window.addEventListener("pagehide", releaseEyeLook);
+    window.addEventListener("beforeunload", releaseEyeLook);
     btnUpdateModel.addEventListener("click", onUpdateModelClick);
     btnUseLocalModel.addEventListener("click", useLocalPoseModel);
     openSerialBtn.addEventListener("click", openSerialPort);
