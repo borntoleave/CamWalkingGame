@@ -169,9 +169,13 @@ Find a stable device path. The `/dev/ttyUSB0` style name can change between boot
 ls -l /dev/serial/by-id/
 ```
 
-Use the `/dev/serial/by-id/...` symlink in the config, never the bare `ttyUSB0`/`ttyACM0`. Which of
-those two appears depends on whether the S3 enumerates natively or through a bridge chip; the
-`by-id` path makes it moot.
+Use the `/dev/serial/by-id/...` symlink in the config, never the bare device name; the `by-id` path
+survives reboots and reordering.
+
+**Expect `/dev/ttyACM0`, not `/dev/ttyUSB0`.** Measured 2026-10-18: on macOS the same board
+enumerates as `/dev/cu.usbmodem5C843473501`, and `usbmodem` means USB CDC-ACM, so the S3 is using
+its native USB rather than a bridge chip. On Linux that is the `ttyACM` family. This was listed as
+unknown-either-way before; it is now settled.
 
 Add yourself to the dialout group so the service can open the port without root:
 
