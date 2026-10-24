@@ -36,6 +36,40 @@ hardware than the fast loop was.
   Module 3 ships with a 15-pin cable, so use the adapter cable from the Pi 5 box.
 - USB cable, Pi to the Quaddle's USB port, 115200.
 - Active cooling. Sustained inference will thermal-throttle a bare Pi 5.
+- Boot media: a USB SSD is enough, **no SD card required**. See section 0.
+
+## 0. Operating system, and booting with no SD card
+
+**Any current Raspberry Pi OS, 64-bit.** Unlike the Pi Zero build, the version
+does not matter here. That plan required Bookworm because MediaPipe needs
+Python <= 3.11 while picamera2 on Trixie builds against 3.13, so they cannot
+coexist. **This design has no MediaPipe.** Everything it needs comes from apt.
+
+```bash
+uname -m                     # expect aarch64
+```
+
+**You do not need an SD card.** The Pi 5's default `BOOT_ORDER` is `0xf461`,
+read right to left: SD (1), then NVMe (6), then USB (4), then restart. With no
+card inserted it falls through to USB by itself. No EEPROM edit and no
+bootloader flash.
+
+So: write the OS to a USB drive with Raspberry Pi Imager, plug it into a **blue
+USB 3.0 port**, boot.
+
+Use an **SSD rather than a cheap flash drive**. llama-server reads the 3-4GB
+model on every start, and you will restart it repeatedly while tuning the
+prompt. 32GB or more.
+
+Set the hostname, user and WiFi in Imager's settings so it joins your network on
+first boot, and enable SSH there too.
+
+> Imager erases the selected device without much ceremony. Confirm the device
+> name and size before writing, especially if other USB media is attached.
+
+If you use an NVMe HAT instead, note there is an open report of NVMe boot
+failing unless a USB-MSD device is also present
+(`raspberrypi/rpi-eeprom` issue 629). Plain USB boot is unaffected.
 
 ## 1. System packages
 
