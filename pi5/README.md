@@ -90,17 +90,32 @@ This is the critical path. Hackathon wifi is hackathon wifi.
 
 ```bash
 pip install -U huggingface_hub --break-system-packages
-huggingface-cli download unsloth/gemma-4-E2B-it-GGUF \
-  --include "*Q4_K_M*" --include "*mmproj*" --local-dir ~/gemma4
+hf download unsloth/gemma-4-E2B-it-GGUF \
+  --include "gemma-4-E2B-it-Q4_K_M.gguf" "mmproj-F16.gguf" \
+  --local-dir ~/gemma4
 ls -la ~/gemma4
 ```
 
-**Unverified: the exact filenames.** Check the `ls` output and use what is
-actually there. You need two files: the quantized model, and the **mmproj**
-(multimodal projector). Without the mmproj the server starts fine and is
-text-only, so the image is silently ignored — which looks like a bad prompt
-rather than a missing file. If the model answers the same regardless of what
-the camera sees, suspect this first.
+**Filenames verified against the HF API, 2026-10-24.** The repo holds 28 GGUFs;
+these are the two you want:
+
+| File | Role |
+|---|---|
+| `gemma-4-E2B-it-Q4_K_M.gguf` | the model |
+| `mmproj-F16.gguf` | the vision projector |
+
+`mmproj-BF16.gguf` and `mmproj-F32.gguf` also exist. F32 is twice the size for
+no useful gain here; F16 is the default choice.
+
+**The mmproj is the file people forget.** Without it llama-server starts
+cleanly and runs text-only, so the image is silently ignored. That presents as
+a bad prompt rather than a missing file. Tell them apart by pointing the camera
+somewhere completely different: if the answer does not change, the projector
+is missing, not the prompt.
+
+On macOS the CLI is `hf` (old name `huggingface-cli`), and Homebrew's Python
+refuses `pip install` under PEP 668 — use `brew install hf` or pipx instead of
+fighting it.
 
 ## 3. Build llama.cpp
 
@@ -123,8 +138,8 @@ Leave this in its own terminal:
 
 ```bash
 ~/llama.cpp/build/bin/llama-server \
-  -m ~/gemma4/<model>.gguf \
-  --mmproj ~/gemma4/<mmproj>.gguf \
+  -m ~/gemma4/gemma-4-E2B-it-Q4_K_M.gguf \
+  --mmproj ~/gemma4/mmproj-F16.gguf \
   -c 4096 -t 4 \
   --host 127.0.0.1 --port 8080
 ```
