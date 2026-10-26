@@ -1,9 +1,122 @@
-# Gemma 4 E2B on a Pi 5, driving Quaddle behaviours — hackathon scope
+# Gemma 4 E2B on a Pi 5, driving Quaddle behaviours
 
 **Date:** 2026-10-24
 **Branch:** `feature/gemma-pi5`, worktree `/Users/kaikai/projects/petoi codes/CamWalkingGame-gemma`, cut from `main` at `2163d0f`
-**Budget:** 1.5 hours of implementation
-**Hardware (confirmed by the user):** Raspberry Pi 5, 8GB RAM; Pi Camera Module 3
+
+## STATUS: code complete, NEVER RUN. No Pi 5 was available.
+
+Written during a hackathon against a 1.5 hour budget. The code was finished and
+tested; the demo never happened, because **no Pi 5 hardware was on hand.** An
+earlier statement in this session that a Pi 5 and camera were available turned
+out not to hold.
+
+Nothing below has executed on a Raspberry Pi. Treat every runtime claim as
+untested. The parts that ARE verified are called out as such.
+
+| Piece | State |
+|---|---|
+| `pi5/behaviour.py` | Written. **23 tests pass on a laptop.** Byte format verified against `app/index.html`. |
+| `pi5/gemma_bridge.py` | Written. CLI and failure path exercised; camera, model and serial paths **never run**. |
+| `pi5/README.md` | Written. Commands come from documentation, not from a run. |
+| Pi 5 setup | **Never attempted.** No hardware. |
+| llama-server | **Never started.** |
+| Model download | **Incomplete.** See "Network reality" below. |
+
+**Read "Prerequisites" before picking this up again.** The thing that stopped
+this project was not code or architecture; it was a shopping list.
+
+## Prerequisites — the actual lesson from 2026-10-24
+
+Everything here was blocked by hardware and bandwidth, not by the design. If
+you are restarting this, get these BEFORE writing or running anything.
+
+### Hardware
+
+| Item | Why | Failure without it |
+|---|---|---|
+| Raspberry Pi 5, 8GB | 4-bit Gemma 4 E2B needs ~5GB | A 4GB board cannot load the model at all |
+| Pi Camera Module 3 | The eyes | — |
+| **22-to-15-pin CSI adapter cable** | The Pi 5 has the narrow connector; Module 3 ships with the wide one | Camera physically will not connect |
+| **USB-C SD card reader** | A MacBook Air has no SD slot and only USB-C ports | **Cannot write the card at all.** This is what stopped 2026-10-24. |
+| microSD or USB SSD, 32GB+ | OS, a 3GB model, and the llama.cpp build | — |
+| Official 5V/5A USB-C PSU | A Pi 5 under sustained inference | Brownouts that present as a bad SD card |
+| Active cooling | Sustained inference throttles a bare Pi 5 | tok/s decays through a long demo |
+| USB-C to Ethernet adapter *or* micro-HDMI cable + monitor + USB keyboard | A rescue path when WiFi setup fails | No way to reach a headless Pi that did not join |
+
+The SD reader is the one people assume they have. A MacBook Air cannot write a
+card without one, and **a Pi cannot be configured without writing its card** —
+the `firstrun.sh` and `userconf.txt` tricks all require mounting the boot
+partition. There is no software route around this.
+
+### Network
+
+Both of these were measured at the venue on 2026-10-24 and both broke things:
+
+- **Client isolation.** ARP resolved a Pi's MAC on the venue WiFi, the gateway
+  answered pings at 180ms, and the Pi dropped 100% of packets. 332 hosts in the
+  ARP table, one reachable. A correctly configured Pi would still have been
+  unreachable over SSH. **Use a phone hotspot, not venue WiFi.**
+- **Bandwidth.** Sustained ~275 KB/s, so roughly an hour per gigabyte. A spot
+  measurement of 29 KB/s led to a published estimate that was about 10x too
+  pessimistic; the sustained figure is the one to plan against.
+
+**Download the model before you arrive anywhere.** 3.11GB at venue bandwidth is
+about three hours, assuming it completes at all. On 2026-10-24 it did not: the
+first attempt died with a HuggingFace Xet transfer error
+(`CAS Client Error: ... error decoding response body`) and the retry died on DNS
+when the network dropped entirely. Only `mmproj-F16.gguf` (940MB) landed.
+
+If a transfer keeps failing, set `HF_HUB_DISABLE_XET=1` to fall back to plain
+HTTP, which resumes far better on an unreliable link.
+
+## Model format — read this before downloading anything
+
+**There are two incompatible ecosystems and they are easy to confuse.**
+
+| Format | Runtime | What this plan's code expects |
+|---|---|---|
+| **GGUF** (`.gguf`) | llama.cpp / llama-server | **Yes.** `gemma_bridge.py` posts to llama-server's HTTP API. |
+| **LiteRT-LM** (`.litertlm`) | MediaPipe LLM Inference, LiteRT-LM runtime | No. llama.cpp cannot load these. |
+
+On 2026-10-24 the files already on the laptop were `.litertlm`, not GGUF:
+
+- `gemma-4-E2B-it-web.litertlm` (1.9GB) — converted for **WebGPU in a browser**
+- `gemma-4-E4B-it-gpu.litertlm` (2.8GB) — converted for a **GPU delegate**
+
+Neither is a CPU build, so neither is what a Pi 5 wants, and the Pi's VideoCore
+GPU is not a target either was converted for. LiteRT-LM does have a Linux
+aarch64 runtime, so a Pi port is not impossible, but it would need a CPU-target
+`.litertlm` and a different bridge than the one in `pi5/`.
+
+**For this plan's code, download GGUF.** Verified against the HF API on
+2026-10-24: `unsloth/gemma-4-E2B-it-GGUF` holds 28 GGUFs, of which you want
+`gemma-4-E2B-it-Q4_K_M.gguf` (3.11GB) and `mmproj-F16.gguf` (940MB).
+
+## Alternative with no Pi at all: run it in the browser
+
+Worth recording because it needs **zero additional downloads** and this repo is
+already most of the way there.
+
+MediaPipe's Web LLM Inference API loads `.litertlm` directly, runs it on
+WebGPU, and supports image input when `maxNumImages` is set positive. This
+project is already a MediaPipe browser app with a working Web Serial path to
+the Quaddle, so the pieces line up:
+
+- `gemma-4-E2B-it-web.litertlm` is the right format and already on disk
+- `mediapipe-tasks-genai-0.10.29.tgz` (23MB, `genai_bundle.mjs` + WASM) was
+  fetched on 2026-10-24 and stashed at `~/gemma4/vendor/`
+- `app/vendor/mediapipe/tasks-vision` is 0.10.18, so the versions are close
+
+**Unverified:** Google's docs name **Gemma 3n** E2B/E4B for multimodal web
+prompting. These files are **Gemma 4**. The `-web` suffix and the naming
+suggest it works the same way, but Gemma 4 vision on the web API has not been
+confirmed. A five minute test settles it: load the model, set `maxNumImages: 1`,
+send one frame. If vision is unsupported, the fallback is text or voice input
+rather than camera.
+
+Everything in `behaviour.py` ports to JavaScript unchanged in spirit: the
+allow-list, the word-boundary matching, the refusal on two different skills.
+That reasoning is runtime-independent, which is why it lives in its own file.
 
 ## What this is
 
@@ -143,10 +256,32 @@ Not a kill gate for the project, a scope gate for the demo.
 
 ## Unresolved
 
-- **U1** — Measured seconds per decision on this board with an image. Nobody has run it.
+- **U1** — Measured seconds per decision on a Pi 5 with an image. Nobody has run it.
   The 5.8-6.5 tok/s figure is from third-party Pi 5 benchmarks, not from this hardware.
 - **U2** — Whether a 2.3B model reliably emits one allow-listed token from a photo.
   The whitelist makes failure safe, but a high refusal rate makes the demo dull rather
   than dangerous. Settled by the prompt-tuning window.
 - **U3** — Whether Camera Module 3's continuous autofocus hunts on a moving chassis. If
   it does, pin the focus. Not worth pre-solving.
+- **U4** — Whether MediaPipe's Web LLM Inference API supports **image** input for
+  Gemma 4 (the docs name Gemma 3n). Gates the browser alternative above. A five
+  minute test settles it and needs no Pi.
+- **U5** — Whether a CPU-target `.litertlm` for Gemma 4 E2B exists, which would let
+  a Pi run the files already on disk instead of waiting on a 3GB GGUF download.
+
+## Pick-up checklist
+
+In order, because each step wastes the next one's time if skipped:
+
+1. **Buy or borrow the hardware** in Prerequisites, especially the SD reader
+   and the CSI adapter cable.
+2. **Download the GGUF at home**, on a connection you trust. Both files.
+   `HF_HUB_DISABLE_XET=1` if transfers fail.
+3. **Flash the card at home** with Imager: Raspberry Pi OS Lite 64-bit,
+   hostname, user, **phone-hotspot** SSID and password, SSH enabled.
+4. **Boot and SSH in before you need it.** Confirm `rpicam-hello --list-cameras`
+   sees the camera.
+5. Then follow `pi5/README.md` from section 1.
+
+Steps 1 to 3 are the ones that cannot be done at a venue. Everything that went
+wrong on 2026-10-24 traces back to attempting them there.
