@@ -171,10 +171,12 @@
     }
     .ip-chip button:hover { color: #ffa198; }
     #quickConnectBtn,
+    #bleConnectBtn,
     #langSelect {
       margin-top: 0.1rem;
     }
-    #quickConnectBtn {
+    #quickConnectBtn,
+    #bleConnectBtn {
       font: inherit;
       font-size: 0.85rem;
       font-weight: 600;
@@ -187,13 +189,18 @@
       white-space: nowrap;
     }
     #quickConnectBtn:hover { background: #2ea043; }
-    #quickConnectBtn:disabled { opacity: 0.55; cursor: not-allowed; }
-    #quickConnectBtn[data-connected="true"] {
+    #bleConnectBtn { background: #1f6feb; }
+    #bleConnectBtn:hover { background: #388bfd; }
+    #quickConnectBtn:disabled,
+    #bleConnectBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+    #quickConnectBtn[data-connected="true"],
+    #bleConnectBtn[data-connected="true"] {
       background: #4CAF50 !important;
       color: #fff;
       font-weight: bold;
     }
-    #quickConnectBtn[data-connected="true"]:hover {
+    #quickConnectBtn[data-connected="true"]:hover,
+    #bleConnectBtn[data-connected="true"]:hover {
       background: #45a049 !important;
     }
     #langSelect {
@@ -1247,6 +1254,7 @@
           ></div>
         </div>
         <button type="button" id="quickConnectBtn" data-i18n="quickConnect">Quick Connect</button>
+        <button type="button" id="bleConnectBtn" data-i18n="bleConnect" data-i18n-title="bleConnectTitle" title="Chrome searches for a nearby Petoi. Lower latency than Wi-Fi.">Bluetooth</button>
         <select id="langSelect" aria-label="Language">
           <option value="en">🇺🇸 English</option>
           <option value="zh">🇨🇳 中文</option>
@@ -1464,6 +1472,7 @@
           "<li><b>Query IP</b> — needs serial; fills IP and connects</li>" +
           "<li><b>Connect WiFi</b> — send SSID/password over serial, then auto-connect when an IP appears</li>" +
           "</ul></li>" +
+          "<li><b>Bluetooth</b> — Chrome searches for a nearby Petoi (Bittle, Nybble, Quaddle, Petoi, Mini). System pairing is not required. Live joint commands use this BLE serial link, which is quicker than Wi-Fi. Disconnect Bluetooth before using Wi-Fi.</li>" +
           "<li>Under the IP box: <b>Not connected</b> / <b>Connected</b> reflects online devices only (empty list ≠ connected). Click × on a chip to disconnect and forget that IP.</li>" +
           "<li>Online IPs are shown fixed under the ready prompt (not following the body).</li>" +
           "</ol>" +
@@ -1474,7 +1483,7 @@
           "<li><b>Join a WiFi network</b> by sending SSID and password (<b>Connect WiFi</b>)</li>" +
           "<li><b>Debug</b> with the Serial Monitor: see robot replies and send manual commands</li>" +
           "</ul>" +
-          "<p>After the robot has WiFi and its IP is known, pose control runs over <b>WebSocket</b> (<code>ws://IP:81</code>) using binary <code>I</code> joint commands (<code>T_INDEXED_SIMULTANEOUS_BIN</code> / <code>b64:</code>). You can unplug USB and keep controlling wirelessly.</p>" +
+          "<p>After the robot has WiFi and its IP is known, pose control can run over <b>WebSocket</b> (<code>ws://IP:81</code>) using binary <code>I</code> joint commands (<code>T_INDEXED_SIMULTANEOUS_BIN</code> / <code>b64:</code>). <b>Bluetooth</b> sends the same <code>I</code> bytes as USB, without the WebSocket round trip, so live pose control is quicker. Disconnect Bluetooth before switching back to Wi-Fi.</p>" +
           "<h4>3. Get ready before control</h4>" +
           "<p>Keep your full body in frame, then follow the on-screen prompts:</p>" +
           "<table><thead><tr><th>You see</th><th>Do this</th></tr></thead><tbody>" +
@@ -1525,8 +1534,16 @@
         connectedIpsNone: "Not connected",
         connectedIpsEmpty: "None",
         quickConnect: "Quick Connect",
+        bleConnect: "Bluetooth",
+        bleConnectTitle:
+          "Chrome searches for a nearby Petoi. No system pairing. Quicker than Wi-Fi for live pose control.",
+        bleDisconnectTitle: "Disconnect Bluetooth",
+        bleUnsupported: "This browser has no Web Bluetooth. Please use Chrome.",
+        bleConnectFailed: "Bluetooth connection failed: {error}",
+        bleActiveWifi:
+          "Bluetooth is connected ({name}). Disconnect it to use Wi-Fi.",
         setupDesc:
-          "After camera access, track left/right elbows and knees on the left. Connect a Petoi robot on the right (Web Serial, 115200). Switch to finger tracking with the dial at the top left.",
+          "After camera access, track left/right elbows and knees on the left. Connect a Petoi robot by Bluetooth (quicker) or Wi-Fi, or by Web Serial at 115200. Switch to finger tracking with the dial at the top left.",
         openCamera: "Open Camera",
         updateModel: "Update model",
         updateModelTitle:
@@ -1549,7 +1566,7 @@
         modelReady: "Model ready. You can open the camera.",
         modelFailed: "Model failed to load.",
         setupHint:
-          'Requires HTTPS or <code>localhost</code>. Use a Chromium browser for serial. Example: <code>python3 -m http.server 8765</code>',
+          'Requires HTTPS or <code>localhost</code>. Use Chrome for Bluetooth and serial. Example: <code>python3 -m http.server 8765</code>',
         legendSkeleton: "Skeleton",
         legendBaseline: "Pitch 0° (torso down)",
         legendDrop: "Limb pitch",
@@ -1636,6 +1653,7 @@
           "<li><b>Query IP</b> — 需要串口；查询后填入 IP 并自动连接</li>" +
           "<li><b>Connect WiFi</b> — 经串口发送 SSID/密码，收到 IP 后自动连接</li>" +
           "</ul></li>" +
+          "<li><b>蓝牙</b> — Chrome 会搜索附近的 Petoi（Bittle、Nybble、Quaddle、Petoi、Mini），不必先在系统蓝牙里配对。实时关节指令走这条 BLE 串口，比 Wi-Fi 更快。要用 Wi-Fi 时请先断开蓝牙。</li>" +
           "<li>IP 框下方：<b>未连接</b> / <b>已连接</b> 只表示当前在线设备（列表为空时不会显示已连接）。点芯片上的 × 可断开并忘记该 IP。</li>" +
           "<li>在线 IP 固定显示在准备提示下方（不跟随身体移动）。</li>" +
           "</ol>" +
@@ -1646,7 +1664,7 @@
           "<li><b>配置 WiFi</b>：下发 SSID 与密码（<b>Connect WiFi</b>）</li>" +
           "<li><b>调试</b>：在串口监视器查看回传、手动发送指令</li>" +
           "</ul>" +
-          "<p>机器人连上 WiFi 并得知 IP 后，姿态控制走 <b>WebSocket</b>（<code>ws://IP:81</code>），关节指令为二进制 <code>I</code>（<code>T_INDEXED_SIMULTANEOUS_BIN</code> / <code>b64:</code>）。此后可拔掉 USB，继续无线控制。</p>" +
+          "<p>机器人连上 WiFi 并得知 IP 后，姿态控制可以走 <b>WebSocket</b>（<code>ws://IP:81</code>），关节指令为二进制 <code>I</code>（<code>T_INDEXED_SIMULTANEOUS_BIN</code> / <code>b64:</code>）。<b>蓝牙</b>发送与 USB 相同的 <code>I</code> 字节，不经过 WebSocket 往返，实时姿态控制更快。切回 Wi-Fi 前请先断开蓝牙。</p>" +
           "<h4>3. 控制前的准备</h4>" +
           "<p>请全身入镜，并按屏幕提示操作：</p>" +
           "<table><thead><tr><th>看到</th><th>请做</th></tr></thead><tbody>" +
@@ -1697,8 +1715,14 @@
         connectedIpsNone: "未连接",
         connectedIpsEmpty: "无",
         quickConnect: "Quick Connect",
+        bleConnect: "蓝牙",
+        bleConnectTitle: "Chrome 搜索附近的 Petoi，不必先在系统里配对。实时姿态控制比 Wi-Fi 更快。",
+        bleDisconnectTitle: "断开蓝牙",
+        bleUnsupported: "当前浏览器不支持 Web Bluetooth，请使用 Chrome。",
+        bleConnectFailed: "蓝牙连接失败: {error}",
+        bleActiveWifi: "蓝牙已连接（{name}）。要使用 Wi-Fi 请先断开蓝牙。",
         setupDesc:
-          "允许摄像头后左侧实时追踪左右手肘与膝盖。右侧可连接 Petoi 机器人（Web Serial，115200）。左上角拨动按钮可切换到手指追踪。",
+          "允许摄像头后左侧实时追踪左右手肘与膝盖。可用蓝牙（更快）、Wi-Fi，或 Web Serial（115200）连接 Petoi 机器人。左上角拨动按钮可切换到手指追踪。",
         openCamera: "打开摄像头",
         updateModel: "更新模型",
         updateModelTitle: "有外网时从 CDN 下载最新姿态模型。若已在使用下载版，再点一次会重新下载刷新。",
@@ -1718,7 +1742,7 @@
         modelReady: "模型已就绪，可以打开摄像头。",
         modelFailed: "模型加载失败。",
         setupHint:
-          "需 HTTPS 或 <code>localhost</code>。串口连接请使用 Chromium 系浏览器。本地服务示例：<code>python3 -m http.server 8765</code>",
+          "需 HTTPS 或 <code>localhost</code>。蓝牙和串口请使用 Chrome。本地服务示例：<code>python3 -m http.server 8765</code>",
         legendSkeleton: "骨架",
         legendBaseline: "Pitch 0°（躯干朝下）",
         legendDrop: "肢体 pitch",
@@ -2023,6 +2047,7 @@
     const btnConsoleTime = document.getElementById("btnConsoleTime");
     const btnVerbose = document.getElementById("btnVerbose");
     const quickConnectBtn = document.getElementById("quickConnectBtn");
+    const bleConnectBtn = document.getElementById("bleConnectBtn");
     const robotIpInput = document.getElementById("robotIpInput");
     const connectedIpLabelEl = document.getElementById("connectedIpLabel");
     const connectedIpListEl = document.getElementById("connectedIpList");
@@ -2039,6 +2064,12 @@
     /** Ignore brief false-positive poses until seen this long. */
     const PERSON_CONFIRM_MS = 450;
     const SERIAL_ROBOT_ID = "serial";
+    const BLE_ROBOT_ID = "ble";
+    /** Nordic UART, same link as PetoiWebCoding BLE. */
+    const BLE_UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+    const BLE_UART_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+    const BLE_UART_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+    const BLE_WRITE_CHUNK = 20;
 
     let poseLandmarker = null;
     let handLandmarker = null;
@@ -2177,9 +2208,18 @@
       if (reason) addConsoleMessage("Ready gate reset: " + reason, "warn");
     }
 
-    /** Connected robots in connection order (WebSocket pool, else serial-only). */
+    /** Connected robots. An open BLE link is the only transport while it is up. */
     function connectedRobotsOrdered() {
       const robots = [];
+      if (typeof transport !== "undefined" && transport && transport.isBle()) {
+        robots.push({
+          id: BLE_ROBOT_ID,
+          ip: null,
+          via: "ble",
+          name: transport.bleName(),
+        });
+        return robots;
+      }
       if (typeof petoiPool !== "undefined" && petoiPool) {
         for (const ip of petoiPool.list()) {
           robots.push({ id: ip, ip, via: "ws" });
@@ -2305,6 +2345,7 @@
 
     function robotLabel(robot) {
       if (!robot) return "";
+      if (robot.via === "ble") return robot.name || "Bluetooth";
       if (robot.via === "serial") return "Serial";
       return robot.ip || robot.id || "";
     }
@@ -3201,6 +3242,20 @@
       else delete quickConnectBtn.dataset.connected;
     }
 
+    function updateBleButton() {
+      if (!bleConnectBtn) return;
+      const bleOk = typeof transport !== "undefined" && transport && transport.isBle();
+      if (bleOk) {
+        bleConnectBtn.dataset.connected = "true";
+        bleConnectBtn.textContent = transport.bleName() || t("bleConnect");
+        bleConnectBtn.title = t("bleDisconnectTitle");
+      } else {
+        delete bleConnectBtn.dataset.connected;
+        bleConnectBtn.textContent = t("bleConnect");
+        bleConnectBtn.title = t("bleConnectTitle");
+      }
+    }
+
     function renderConnectedIps() {
       if (!connectedIpListEl || typeof petoiPool === "undefined") return;
       // Dedupe by normalized IP (avoid "192.168.x.x" / "192.168.x.x." chips)
@@ -3212,7 +3267,28 @@
         seen.add(ip);
         ips.push(ip);
       }
+      const bleName =
+        typeof transport !== "undefined" && transport && transport.isBle()
+          ? transport.bleName() || "Bluetooth"
+          : "";
       connectedIpListEl.innerHTML = "";
+      if (bleName) {
+        const chip = document.createElement("span");
+        chip.className = "ip-chip";
+        chip.title = bleName;
+        const label = document.createElement("span");
+        label.textContent = bleName;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("aria-label", "Disconnect " + bleName);
+        btn.textContent = "×";
+        btn.addEventListener("click", () => {
+          disconnectBleLink();
+        });
+        chip.appendChild(label);
+        chip.appendChild(btn);
+        connectedIpListEl.appendChild(chip);
+      }
       for (const ip of ips) {
         const chip = document.createElement("span");
         chip.className = "ip-chip";
@@ -3235,7 +3311,7 @@
       }
       // Label is status, not a static title — empty list must not say "Connected"
       if (connectedIpLabelEl) {
-        const online = ips.length > 0;
+        const online = ips.length > 0 || !!bleName;
         connectedIpLabelEl.textContent = online
           ? t("connectedIpsLabel")
           : t("connectedIpsNone");
@@ -3245,9 +3321,10 @@
 
     function refreshConnectedUi() {
       const wifiOk = typeof petoiPool !== "undefined" && petoiPool && petoiPool.hasAny();
-      // Green "connected" only when the online IP list is non-empty
+      // Green Quick Connect only when a Wi-Fi device is online. BLE has its own button.
       setConnectedUi(!!wifiOk);
       renderConnectedIps();
+      updateBleButton();
     }
 
     /** Add/update a device IP (multi-device). */
@@ -3785,6 +3862,9 @@
       }
 
       connect(ip) {
+        if (typeof transport !== "undefined" && transport && transport.isBle()) {
+          return Promise.reject(new Error("BLE link is active"));
+        }
         const clean = normalizeIp(ip);
         if (!clean || !isValidIp(clean)) return Promise.reject(new Error("No IP"));
         ip = clean;
@@ -3823,6 +3903,16 @@
           }, 4000);
           ws.onopen = () => {
             if (settled) return;
+            if (typeof transport !== "undefined" && transport && transport.isBle()) {
+              try {
+                ws.close();
+              } catch {
+                /* ignore */
+              }
+              if (this.clients.get(ip)?.ws === ws) this.clients.delete(ip);
+              failConnect(new Error("BLE link is active"));
+              return;
+            }
             settled = true;
             clearTimeout(timer);
             this.reconnectAttempts.set(ip, 0);
@@ -3937,6 +4027,15 @@
 
     async function ensureWifiSocket(ip) {
       if (!ip) return;
+      if (typeof transport !== "undefined" && transport && transport.isBle()) {
+        rememberIp(ip);
+        addConsoleMessage(
+          "Saved IP " + ip + " (Bluetooth stays connected; Wi-Fi is paused)",
+          "warn"
+        );
+        refreshConnectedUi();
+        return;
+      }
       rememberIp(ip);
       if (petoiPool.isConnected(ip)) {
         refreshConnectedUi();
@@ -3979,13 +4078,30 @@
           ? robots
           : robots.filter((r) => robotIds.includes(r.id));
       const isBinary = !!bytesCommandToUint8Array(command);
+      const bleActive = transport.isBle();
+
+      if (bleActive) {
+        const from = transport.serialBuffer.length;
+        waits.push(
+          transport
+            .send(command, { addNewline: !isBinary, logConsole: false, logSerial: false })
+            .then(() => transport.waitForToken(token, timeoutMs, from))
+            .then(() => {
+              vias.push("ble");
+            })
+        );
+      }
 
       const wantSerial =
-        targets.some((r) => r.via === "serial") ||
-        (robotIds == null && transport.isConnected() && !petoiPool.hasAny());
+        !bleActive &&
+        (targets.some((r) => r.via === "serial") ||
+          (robotIds == null && transport.isConnected() && !petoiPool.hasAny()));
       // In sync broadcast with WS devices, also mirror to serial if plugged in
       const mirrorSerial =
-        robotIds == null && transport.isConnected() && petoiPool.hasAny();
+        !bleActive &&
+        robotIds == null &&
+        transport.isConnected() &&
+        petoiPool.hasAny();
 
       if ((wantSerial || mirrorSerial) && transport.isConnected()) {
         const from = transport.serialBuffer.length;
@@ -4002,7 +4118,7 @@
       const wsIps = targets
         .filter((r) => r.via === "ws" && r.ip)
         .map((r) => r.ip);
-      if (wsIps.length) {
+      if (!bleActive && wsIps.length) {
         waits.push(
           Promise.all(
             wsIps.map((ip) => petoiPool.sendAndWait(ip, command, timeoutMs))
@@ -4434,10 +4550,145 @@
         this.keepReading = false;
         this.lineCarry = "";
         this.onLine = null;
+        this.ble = null;
+        this.bleDecoder = new TextDecoder();
+        this._bleDevice = null;
+        this._onBleDisconnect = null;
+      }
+
+      isBle() {
+        return !!(
+          this.ble &&
+          !this.ble.closing &&
+          this.writer &&
+          this.ble.device &&
+          this.ble.device.gatt &&
+          this.ble.device.gatt.connected
+        );
+      }
+
+      bleName() {
+        return (this.ble && this.ble.name) || "";
       }
 
       isConnected() {
+        if (this.isBle()) return true;
         return !!(this.writer && this.port && this.port.readable && this.port.writable);
+      }
+
+      _createBleWriter(rx) {
+        let queue = Promise.resolve();
+        return {
+          write(data) {
+            const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+            const run = queue.catch(() => {}).then(async () => {
+              for (let offset = 0; offset < bytes.length; offset += BLE_WRITE_CHUNK) {
+                const chunk = bytes.slice(offset, offset + BLE_WRITE_CHUNK);
+                if (
+                  rx.properties.writeWithoutResponse &&
+                  typeof rx.writeValueWithoutResponse === "function"
+                ) {
+                  await rx.writeValueWithoutResponse(chunk);
+                } else {
+                  await rx.writeValue(chunk);
+                }
+              }
+            });
+            queue = run;
+            return run;
+          },
+        };
+      }
+
+      ingestSerialText(chunk) {
+        if (!chunk) return;
+        this.serialBuffer += chunk;
+        if (this.serialBuffer.length > 16000) {
+          this.serialBuffer = this.serialBuffer.slice(-8000);
+        }
+        this.lineCarry += chunk;
+        const parts = this.lineCarry.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+        this.lineCarry = parts.pop() || "";
+        for (const line of parts) {
+          if (line.length) appendSerialLine(line, false);
+          if (this.onLine) this.onLine(line);
+          const ipMatch = line.match(/IP Address:\s*(\d{1,3}(?:\.\d{1,3}){3})/i);
+          if (ipMatch) updateQuickConnectButton(normalizeIp(ipMatch[1]));
+        }
+      }
+
+      onBleGattDisconnected(event) {
+        const device = event && event.target ? event.target : null;
+        if (!this.ble || this.ble.closing) return;
+        if (device && this.ble.device && device !== this.ble.device) return;
+        this.ble = null;
+        this.writer = null;
+        this.keepReading = false;
+        setSerialConnectedUI(false);
+        refreshConnectedUi();
+        addConsoleMessage("Bluetooth disconnected", "warn");
+      }
+
+      /**
+       * Nordic UART. requestDevice() must already have run in the click handler.
+       * Drops USB and Wi-Fi so pose commands stay on this quicker link.
+       */
+      async attachBle(device) {
+        await this.disconnect();
+        if (!device || !device.gatt) throw new Error("No BLE GATT device");
+        let server;
+        try {
+          server = await device.gatt.connect();
+          const service = await server.getPrimaryService(BLE_UART_SERVICE);
+          const rx = await service.getCharacteristic(BLE_UART_RX);
+          const tx = await service.getCharacteristic(BLE_UART_TX);
+          this.bleDecoder = new TextDecoder();
+          const onNotify = (event) => {
+            const value = event && event.target ? event.target.value : null;
+            if (!value) return;
+            const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+            this.ingestSerialText(this.bleDecoder.decode(bytes, { stream: true }));
+          };
+          this.writer = this._createBleWriter(rx);
+          this.ble = {
+            device,
+            rx,
+            tx,
+            onNotify,
+            name: device.name || "Bluetooth",
+            closing: false,
+          };
+          this.serialBuffer = "";
+          this.lineCarry = "";
+          if (this._bleDevice && this._onBleDisconnect) {
+            this._bleDevice.removeEventListener("gattserverdisconnected", this._onBleDisconnect);
+          }
+          this._bleDevice = device;
+          this._onBleDisconnect = (event) => this.onBleGattDisconnected(event);
+          device.addEventListener("gattserverdisconnected", this._onBleDisconnect);
+          tx.addEventListener("characteristicvaluechanged", onNotify);
+          await tx.startNotifications();
+        } catch (error) {
+          this.ble = null;
+          this.writer = null;
+          if (this._bleDevice && this._onBleDisconnect) {
+            this._bleDevice.removeEventListener("gattserverdisconnected", this._onBleDisconnect);
+          }
+          try {
+            if (device.gatt.connected) device.gatt.disconnect();
+          } catch {
+            /* ignore */
+          }
+          throw error;
+        }
+        if (typeof petoiPool !== "undefined" && petoiPool) {
+          petoiPool.disconnectAll({ silent: true });
+        }
+        setSerialConnectedUI(true, this.ble.name);
+        refreshConnectedUi();
+        addConsoleMessage("Bluetooth connected: " + this.ble.name, "good");
+        sendConnectInitCmds({ serial: true });
+        return this.ble.name;
       }
 
       async connect() {
@@ -4493,20 +4744,7 @@
               const { value, done } = await this.reader.read();
               if (done) break;
               if (!value) continue;
-              const chunk = decoder.decode(value, { stream: true });
-              this.serialBuffer += chunk;
-              if (this.serialBuffer.length > 16000) {
-                this.serialBuffer = this.serialBuffer.slice(-8000);
-              }
-              this.lineCarry += chunk;
-              const parts = this.lineCarry.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-              this.lineCarry = parts.pop() || "";
-              for (const line of parts) {
-                if (line.length) appendSerialLine(line, false);
-                if (this.onLine) this.onLine(line);
-                const ipMatch = line.match(/IP Address:\s*(\d{1,3}(?:\.\d{1,3}){3})/i);
-                if (ipMatch) updateQuickConnectButton(normalizeIp(ipMatch[1]));
-              }
+              this.ingestSerialText(decoder.decode(value, { stream: true }));
             } catch {
               break;
             }
@@ -4516,7 +4754,7 @@
       }
 
       async send(data, { addNewline = true, logConsole = true, logSerial = true } = {}) {
-        if (!this.writer) throw new Error("Serial not connected");
+        if (!this.writer || !this.isConnected()) throw new Error("Serial not connected");
         let bytes = bytesCommandToUint8Array(data);
         let display;
         if (bytes) {
@@ -4580,6 +4818,28 @@
       }
 
       async disconnect() {
+        const link = this.ble;
+        if (link) {
+          link.closing = true;
+          this.ble = null;
+          try {
+            if (link.tx && link.onNotify) {
+              link.tx.removeEventListener("characteristicvaluechanged", link.onNotify);
+            }
+          } catch {
+            /* ignore */
+          }
+          if (this._bleDevice && this._onBleDisconnect) {
+            this._bleDevice.removeEventListener("gattserverdisconnected", this._onBleDisconnect);
+          }
+          try {
+            if (link.device && link.device.gatt && link.device.gatt.connected) {
+              link.device.gatt.disconnect();
+            }
+          } catch {
+            /* ignore */
+          }
+        }
         this.keepReading = false;
         if (this.reader) {
           try {
@@ -4595,10 +4855,12 @@
           this.reader = null;
         }
         if (this.writer) {
-          try {
-            this.writer.releaseLock();
-          } catch {
-            /* ignore */
+          if (!link) {
+            try {
+              this.writer.releaseLock();
+            } catch {
+              /* ignore */
+            }
           }
           this.writer = null;
         }
@@ -4611,6 +4873,7 @@
           this.port = null;
         }
         setSerialConnectedUI(false);
+        refreshConnectedUi();
       }
     }
 
@@ -4629,9 +4892,73 @@
     }
 
     async function closeSerialPort() {
+      const wasBle = transport.isBle();
       await transport.disconnect();
       refreshConnectedUi();
-      addConsoleMessage("Serial disconnected", "warn");
+      addConsoleMessage(wasBle ? "Bluetooth disconnected" : "Serial disconnected", "warn");
+    }
+
+    async function disconnectBleLink() {
+      if (!transport.isBle()) return;
+      await closeSerialPort();
+    }
+
+    /**
+     * Chrome BLE picker. requestDevice() is the first await so it stays in the click.
+     * A second click while connected disconnects.
+     */
+    async function connectBle() {
+      if (transport.isBle()) {
+        await disconnectBleLink();
+        return;
+      }
+      if (!navigator.bluetooth || typeof navigator.bluetooth.requestDevice !== "function") {
+        addConsoleMessage(t("bleUnsupported"), "error");
+        alert(t("bleUnsupported"));
+        return;
+      }
+      const prefixes = ["bittle", "nybble", "quaddle", "petoi", "mini"];
+      const names = [
+        ...new Set(
+          prefixes.flatMap((prefix) => [prefix, prefix[0].toUpperCase() + prefix.slice(1)])
+        ),
+      ];
+      let device;
+      try {
+        device = await navigator.bluetooth.requestDevice({
+          filters: names.map((namePrefix) => ({ namePrefix })),
+          optionalServices: [BLE_UART_SERVICE],
+        });
+      } catch (error) {
+        if (error && (error.name === "NotFoundError" || error.name === "AbortError")) {
+          addConsoleMessage("Bluetooth selection cancelled", "warn");
+          return;
+        }
+        const msg = t("bleConnectFailed", {
+          error: error && error.message ? error.message : String(error),
+        });
+        addConsoleMessage(msg, "error");
+        alert(msg);
+        return;
+      }
+      if (bleConnectBtn) bleConnectBtn.disabled = true;
+      try {
+        await transport.attachBle(device);
+      } catch (error) {
+        try {
+          await transport.disconnect();
+        } catch {
+          /* ignore */
+        }
+        refreshConnectedUi();
+        const msg = t("bleConnectFailed", {
+          error: error && error.message ? error.message : String(error),
+        });
+        addConsoleMessage(msg, "error");
+        alert(msg);
+      } finally {
+        if (bleConnectBtn) bleConnectBtn.disabled = false;
+      }
     }
 
     async function sendSerialData() {
@@ -4654,6 +4981,13 @@
     async function quickConnect() {
       quickConnectBtn.disabled = true;
       try {
+        if (transport.isBle()) {
+          addConsoleMessage(
+            t("bleActiveWifi", { name: transport.bleName() || "Bluetooth" }),
+            "warn"
+          );
+          return;
+        }
         if (transport.isConnected()) {
           addConsoleMessage("Quick Connect: serial active, querying IP (w)…");
           const ip = await transport.queryWifiIp(3500);
@@ -4703,6 +5037,13 @@
     }
 
     async function connectWifiFromDialog() {
+      if (transport.isBle()) {
+        addConsoleMessage(
+          t("bleActiveWifi", { name: transport.bleName() || "Bluetooth" }),
+          "warn"
+        );
+        return;
+      }
       const ip = normalizeIp(wifiDialogIp.value);
       if (!isValidIp(ip)) {
         addConsoleMessage("Enter a valid IP address", "error");
@@ -4724,6 +5065,15 @@
       robotIpInput.value = clean;
       rememberIp(clean);
       ip = clean;
+      if (connect && transport.isBle()) {
+        addConsoleMessage(
+          "Saved IP " + clean + ". " + t("bleActiveWifi", { name: transport.bleName() || "Bluetooth" }),
+          "warn"
+        );
+        if (hideDialog) hideWifiDialog();
+        refreshConnectedUi();
+        return true;
+      }
       if (connect) {
         try {
           await connectWifiByIp(ip);
@@ -6662,6 +7012,7 @@
       applyI18n();
     });
     quickConnectBtn.addEventListener("click", quickConnect);
+    bleConnectBtn.addEventListener("click", connectBle);
     robotIpInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") quickConnect();
     });
@@ -6712,10 +7063,17 @@
       }
       window.addEventListener("resize", resizeAngleChartCanvas);
     }
+    if (!navigator.bluetooth || typeof navigator.bluetooth.requestDevice !== "function") {
+      addConsoleMessage(t("bleUnsupported"), "warn");
+    }
     if (!navigator.serial) {
       addConsoleMessage("Web Serial unsupported in this browser", "warn");
-    } else {
-      addConsoleMessage("Ready. Use Quick Connect or Connect Serial Port.", "good");
+    }
+    if (
+      (navigator.bluetooth && typeof navigator.bluetooth.requestDevice === "function") ||
+      navigator.serial
+    ) {
+      addConsoleMessage("Ready. Use Bluetooth, Quick Connect, or Connect Serial Port.", "good");
     }
     const savedIps = loadSavedIps();
     if (savedIps.length) {
