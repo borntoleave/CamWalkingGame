@@ -111,6 +111,15 @@ def main():
                     help="override num_poses to measure a reduced-scope fallback")
     ap.add_argument("--width", type=int, default=CAPTURE_SIZE[0])
     ap.add_argument("--height", type=int, default=CAPTURE_SIZE[1])
+    # NOT off-spec: this corrects for how the module is physically bolted on,
+    # it does not change what is measured. Measured 2026-11-01: the module is
+    # mounted inverted, so without this the pose model sees an upside-down
+    # person. That is not only a quality problem -- in VIDEO mode the
+    # landmarker re-runs the heavy detector whenever tracking fails, and an
+    # inverted subject fails more often, so an unrotated run REPORTS WORSE
+    # LATENCY than the hardware is capable of.
+    ap.add_argument("--rot180", action="store_true",
+                    help="camera is mounted upside down; flip in the ISP (free)")
     args = ap.parse_args()
 
     capture_size = (args.width, args.height)
@@ -135,8 +144,14 @@ def main():
         print(f"serial: {args.serial} (sent kup, ve)")
 
     picam = Picamera2()
-    picam.configure(picam.create_preview_configuration(
-        main={"size": capture_size, "format": "RGB888"}))
+    cfg_kw = {"main": {"size": capture_size, "format": "RGB888"}}
+    if args.rot180:
+        # 180 degrees == hflip + vflip. Done by the VC4 ISP, so it costs no CPU;
+        # rotating the numpy array afterwards would, and this board has none to
+        # spare.
+        from libcamera import Transform
+        cfg_kw["transform"] = Transform(hflip=1, vflip=1)
+    picam.configure(picam.create_preview_configuration(**cfg_kw))
     picam.start()
     time.sleep(1.0)
 
@@ -164,7 +179,8 @@ def main():
     sensor_clock_ok = True
 
     print(f"measuring {args.seconds:.0f}s  size={capture_size}  num_poses={args.poses}  "
-          f"load={args.load}  serial={'yes' if ser else 'no'}")
+          f"load={args.load}  serial={'yes' if ser else 'no'}  "
+          f"rot180={'yes' if args.rot180 else 'no'}")
     if off_spec:
         print("*** OFF-SPEC RUN: this does NOT evaluate the v1 gate. ***\n"
               f"*** Gate configuration is num_poses={NUM_POSES}, size={CAPTURE_SIZE}. ***")
