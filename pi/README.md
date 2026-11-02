@@ -1,12 +1,23 @@
 # camWalk on a Raspberry Pi Zero 2 W
 
+> ## T1 FAILED on real hardware, 2026-11-01. Do not build v1 on this board.
+>
+> Measured 1.57-2.90fps against a 3.0 floor, p95 486-791ms against a 400ms gate.
+> All three documented fallbacks were tried and exhausted. Full numbers and the
+> reasoning: **`docs/pi-zero-t1-results.md`**.
+>
+> This setup guide is still correct and still worth following — the smoke test
+> passes and the camera works. But it now leads to a measured stop, not to T2.
+
 Setup guide. Everything here is a prerequisite for **T1**, the latency gate that decides whether
-this project continues. Nothing in `pi/` runs the robot yet; only this document exists so far.
+this project continues.
 
 Spec: `docs/superpowers/plans/2026-10-09-pi-zero-camwalk.md`.
 
-> **These commands come from documentation, not from a run on this hardware.** Nobody has executed
-> them on a Pi yet. Where something is likely to differ, it says so.
+> **Sections 1-5 have now been executed on real hardware (2026-11-01) and corrected where they
+> were wrong.** Three errors were found by running them: `pip install mediapipe` installs a build
+> that cannot execute on any Pi, NumPy 2.x breaks apt-built picamera2, and the section 5 heredoc
+> does not survive being pasted. Sections 6-9 remain documentation only.
 
 ## What v1 does, and does not
 
@@ -98,7 +109,7 @@ cd ~
 python3 -m venv --system-site-packages camwalk-env
 source camwalk-env/bin/activate
 pip install --upgrade pip
-pip install mediapipe pyserial
+pip install "mediapipe<1" "numpy<2" pyserial
 ```
 
 `--system-site-packages` is the part that matters. A plain venv cannot see the apt-installed
