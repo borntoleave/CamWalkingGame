@@ -114,42 +114,17 @@ produce a frame, and the model must load.
 ```bash
 source ~/camwalk-env/bin/activate
 cd ~/CamWalkingGame            # wherever you cloned it, see section 7
-
-python3 - <<'PY'
-import sys, time
-print("python", sys.version.split()[0])
-
-import mediapipe as mp
-print("mediapipe", mp.__version__)
-
-from picamera2 import Picamera2
-print("picamera2 imported")
-
-import serial
-print("pyserial", serial.__version__)
-
-cam = Picamera2()
-cam.configure(cam.create_preview_configuration(main={"size": (640, 480)}))
-cam.start(); time.sleep(1)
-frame = cam.capture_array()
-print("frame", frame.shape)
-cam.stop()
-
-from mediapipe.tasks import python as mp_python
-from mediapipe.tasks.python import vision
-opts = vision.PoseLandmarkerOptions(
-    base_options=mp_python.BaseOptions(
-        model_asset_path="app/vendor/mediapipe/models/pose_landmarker_lite.task"),
-    running_mode=vision.RunningMode.VIDEO,
-    num_poses=2,
-    min_pose_detection_confidence=0.5,
-    min_pose_presence_confidence=0.5,
-    min_tracking_confidence=0.5)
-with vision.PoseLandmarker.create_from_options(opts) as lm:
-    print("model loaded")
-print("SMOKE TEST PASSED")
-PY
+python3 pi/smoke_test.py
 ```
+
+This was an inline heredoc until 2026-11-01. It is a file now because a
+heredoc does not survive being copied through a chat window: every line
+arrives indented, Python raises `IndentationError`, and the closing `PY` is no
+longer at column 0 so the shell hangs waiting for a terminator that never
+comes. Measured on a real setup run, not hypothetical.
+
+`smoke_test.py` reports which of the five steps failed and what to do about
+it, rather than leaving you with a bare traceback.
 
 `num_poses=2` matches the browser's `MAX_POSES` and is what makes person-switching possible at all.
 It costs inference time. If T1 shows it is unaffordable, dropping to 1 removes person switching and
