@@ -56,6 +56,17 @@ def main():
                     "the venv lacks --system-site-packages. Delete camwalk-env "
                     "and recreate it with that flag. `pip install picamera2` "
                     "does NOT work: libcamera is not a pip package.")
+    except ValueError as e:
+        # Caught separately from ImportError because this one is NOT a missing
+        # package and the fix is completely different. apt builds simplejpeg
+        # (picamera2's JPEG path) against NumPy 1.x; MediaPipe's pip install
+        # pulls NumPy 2.x, which shadows it inside the venv, and the C
+        # extension then loads against the wrong ABI. The giveaway is
+        # "numpy.dtype size changed ... Expected 96 ... got 88".
+        hint = ("pip install 'numpy<2'   (MediaPipe runs fine on 1.26)"
+                if "numpy" in str(e).lower() or "dtype" in str(e).lower()
+                else "unexpected; paste the full traceback")
+        return fail("picamera2 import (NumPy ABI mismatch)", e, hint)
 
     try:
         import serial

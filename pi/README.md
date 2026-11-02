@@ -106,6 +106,25 @@ picamera2, and `pip install picamera2` does not work because libcamera is not a 
 
 Expect the MediaPipe install to take a while on this board and to use the swap you just configured.
 
+### Pin NumPy below 2. Measured 2026-11-01, this WILL bite you.
+
+```bash
+pip install "numpy<2"
+```
+
+`--system-site-packages` is what lets picamera2 and MediaPipe see each other, and it is also
+what lets pip shadow a system package. apt builds `simplejpeg` (picamera2's JPEG path) against
+**NumPy 1.x**. MediaPipe's pip install pulls **NumPy 2.x** into the venv, which takes precedence,
+and the apt-built C extension then loads against the wrong ABI:
+
+```
+ValueError: numpy.dtype size changed, may indicate binary incompatibility.
+Expected 96 from C header, got 88 from PyObject
+```
+
+It surfaces as a picamera2 import failure, so it reads like a missing package. It is not.
+MediaPipe runs fine on NumPy 1.26.
+
 ## 5. Smoke test
 
 This is the gate before T1. Both libraries must import in **one** interpreter, the camera must
