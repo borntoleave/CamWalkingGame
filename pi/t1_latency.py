@@ -100,7 +100,21 @@ def main():
     ap.add_argument("--serial", default="",
                     help="/dev/serial/by-id/... to include a real write in the measurement")
     ap.add_argument("--model", default=MODEL)
+    # Exploration knobs. The DEFAULTS are the spec'd gate configuration and the
+    # unit tests pin them; these flags exist so a fallback can be MEASURED
+    # without quietly editing the constants and making the gate describe
+    # something other than what ships. Overriding --poses is a scope change
+    # (person switching cannot exist at 1), not a tuning tweak: a run that
+    # passes at --poses 1 has not passed the v1 gate, it has measured a
+    # different, smaller v1. The output says so.
+    ap.add_argument("--poses", type=int, default=NUM_POSES,
+                    help="override num_poses to measure a reduced-scope fallback")
+    ap.add_argument("--width", type=int, default=CAPTURE_SIZE[0])
+    ap.add_argument("--height", type=int, default=CAPTURE_SIZE[1])
     args = ap.parse_args()
+
+    capture_size = (args.width, args.height)
+    off_spec = (args.poses != NUM_POSES or capture_size != CAPTURE_SIZE)
 
     if not os.path.exists(args.model):
         sys.exit(f"model not found: {args.model}\nRun from the repo root.")
@@ -122,14 +136,14 @@ def main():
 
     picam = Picamera2()
     picam.configure(picam.create_preview_configuration(
-        main={"size": CAPTURE_SIZE, "format": "RGB888"}))
+        main={"size": capture_size, "format": "RGB888"}))
     picam.start()
     time.sleep(1.0)
 
     opts = vision.PoseLandmarkerOptions(
         base_options=mp_python.BaseOptions(model_asset_path=args.model),
         running_mode=vision.RunningMode.VIDEO,
-        num_poses=NUM_POSES,
+        num_poses=args.poses,
         min_pose_detection_confidence=CONFIDENCE,
         min_pose_presence_confidence=CONFIDENCE,
         min_tracking_confidence=CONFIDENCE)
@@ -149,8 +163,11 @@ def main():
     ts_ms = 0
     sensor_clock_ok = True
 
-    print(f"measuring {args.seconds:.0f}s  size={CAPTURE_SIZE}  num_poses={NUM_POSES}  "
+    print(f"measuring {args.seconds:.0f}s  size={capture_size}  num_poses={args.poses}  "
           f"load={args.load}  serial={'yes' if ser else 'no'}")
+    if off_spec:
+        print("*** OFF-SPEC RUN: this does NOT evaluate the v1 gate. ***\n"
+              f"*** Gate configuration is num_poses={NUM_POSES}, size={CAPTURE_SIZE}. ***")
     print("stand in front of the camera and move around normally.\n")
 
     with vision.PoseLandmarker.create_from_options(opts) as landmarker:
@@ -219,8 +236,15 @@ def main():
     print(f"gate fps >= {GATE_MIN_FPS:.1f}     "
           f"{'PASS' if r['pass_fps'] else 'FAIL'}  ({r['fps']:.2f})")
     print()
+    if off_spec:
+        print("REMINDER: off-spec run. Whatever this says, the v1 gate is "
+              f"unevaluated. num_poses=1 removes person switching; {CAPTURE_SIZE[0]}x"
+              f"{CAPTURE_SIZE[1]} is the pinned capture size.")
     if r["passed"]:
-        print("T1 PASSED. The loop can close. Proceed to T2.")
+        print("T1 PASSED. The loop can close. Proceed to T2."
+              if not off_spec else
+              "This CONFIGURATION passes, but it is not the v1 configuration. "
+              "Treat it as evidence for a scope change, not as a passed gate.")
         if detected == 0:
             print("But nobody was detected in any frame. Re-run with a person in "
                   "view: inference on an empty scene is not the workload.")
