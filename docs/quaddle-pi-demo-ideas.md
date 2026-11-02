@@ -1,296 +1,311 @@
 # Quaddle + Raspberry Pi Zero 2 W — demo concepts
 
-**Date:** 2026-11-02
-**Grounding:** measured hardware numbers from `docs/camwalk-hardware-findings.md`,
-plus the command surface in `app/index.html`.
-
-Every idea below is scored against what the hardware actually does, not what a
-spec sheet suggests. Where something is unverified, it says so.
+**Date:** 2026-11-02 (rewritten; first draft was a list of obvious ideas)
+**Grounding:** measured numbers from `docs/camwalk-hardware-findings.md`, the
+command surface in `app/index.html`, and the research in §8.
 
 ---
 
-## 1. The organizing constraint
+## 1. Thesis: perform the latency, do not hide it
 
-T1 measured this board at **1.57-2.90 fps** on pose inference with ~153ms of
-pipeline overhead that no setting touches. A closed visual control loop is off
-the table and will stay off the table.
+The first version of this document treated 2.6 fps and 500ms inference as
+problems to engineer around. That was the wrong instinct, and two findings say
+so.
 
-But the same week's research shows **wake-word audio runs in real time** on this
-board: Porcupine runs real-time even on the original Zero, and VoxRT reports an
-RTF of 0.053 on a Zero 2 W — roughly 19x faster than real time.
+**Failure is the show.** Boston Dynamics' kicked BigDog has 17M views. The
+humanoid that reacted to a starting gun by lying down and staring at the sky was
+the breakout character of the 2026 World Humanoid Games. Showing robots as
+clumsy and a little stupid *puts people at ease*; obsessively stage-managed
+demos do the opposite.
 
-**The Pi Zero 2 W is a poor real-time vision controller and a good real-time
-listener.** That inverts the project's original premise and should drive demo
-selection.
+**A simple drawn face is enough.** Emotional expression in **simple line
+drawings** of a robot's face elicits the same response from humans as human
+telepresence, and people prefer to play games with a robot that shows sentiment.
+The Quaddle has a TFT with drawn eyes. It is the highest-leverage unused
+hardware on the robot, and the research says it does not need to be
+sophisticated to work.
 
-### Capability budget
+Put together: **a robot that visibly thinks, hesitates, gets confused, and shows
+all of it on its face is more engaging than one that performs flawlessly.** The
+500ms inference is not dead time. It is a beat of visible thought, and this
+board gives you one for free whether you want it or not.
 
-| Capability | Measured / known | Verdict |
+Every idea below is scored on that basis.
+
+### What the hardware actually gives you
+
+| Lever | Reality | Used today |
 |---|---|---|
-| Pose inference | 2.6-2.9 fps, 280ms, 153ms fixed overhead | Event detection only |
-| Capture-to-act p95 | 486-791ms, tail to 4.4s | No servo loops |
-| Wake word | RTF 0.053 (third-party, **unverified here**) | Real time |
-| Small LLM | SmolLM2-135M is the 512MB community pick | Seconds per reply |
-| Linux services | Full Debian, Python, WiFi AP, storage | Free |
-| RAM | 416 MiB usable + 1GB swap | The binding limit |
+| TFT eyes (`v`) | Drawn face, research-backed as sufficient | Barely |
+| **Joint 0 head pan, ±90°** | Fast, decoupled from the body | **Never** |
+| `I` binary | Direct per-joint angles, arbitrary poses, no firmware work | Legs only |
+| `k<skill> <n>` | Bounded gait, **firmware-terminated** | Yes |
+| Audio in | **Real time** (wake word RTF 0.053) | **Never** |
+| Vision | 2.6-2.9 fps, 153ms fixed overhead | The failed loop |
+| `J` | Held until changed — needs a live host | Yes, and it is the risky one |
 
-### The "why Pi at all" test
-
-The ESP32-S3 already does gaits, joystick input, the TFT eyes and WiFi, and has
-a voice module on `SERIAL_VOICE`. **Any demo that uses none of camera, Linux
-networking, real ML, or persistent storage should drop the Pi.** Each idea below
-states what it draws on.
-
-### What the robot can be told to do
-
-From `app/index.html`:
-
-| Token | Meaning | Demo relevance |
-|---|---|---|
-| `k<skill> <n>` | bounded gait, **firmware-terminated** | Safe under any host latency |
-| `I` (binary) | direct per-joint angles | **Arbitrary choreography, no firmware work** |
-| `J` (binary) | joystick stick values | Held until changed — needs a live host |
-| `v<mode>` | TFT eye view mode | Expression and reaction |
-
-Two things matter here. **Bounded gaits self-terminate**, so a host that freezes
-leaves a stopped robot — this is what makes slow, latency-tolerant demos *safer*
-than the streaming ones. And `I` reaches joints directly; the browser app only
-drives legs 2-5, but firmware exposes **joint 0 (head pan, ±90°)** and joint 1
-(head tilt), which no current demo uses.
+The two never-used levers — **the head joint and audio** — are the two fastest
+things on the robot. The project spent two months on the slowest.
 
 ---
 
-## 2. Tier 1 — build these first
+## 2. Tier 1 — the strong ones
 
-### 1.1 Event photo booth on the robot's own WiFi
+### 1.1 Startle, flinch, and boredom: reflexes, not cognition
 
-The robot watches for a person, frames them using head pan, takes a photo, and
-serves it from a gallery hosted on its own WPA2 access point. Visitors join
-`quaddle` on their phone and download their picture. No internet, no app.
+Not a demo on its own. The substrate everything else sits on.
 
-**Uses:** camera, Linux web server, WiFi AP, storage. Every Pi strength, none of
-its weaknesses.
+A loud sound or sudden motion makes the robot **flinch** — a fast head snap plus
+an eye change, under 100ms, no inference involved. Nothing happening for two
+minutes makes it **look around, settle, and sigh**. Someone approaching makes it
+**perk up**.
 
-**Why it fits:** framing a shot is a *slow* task. Two frames per second is
-generous when you are waiting for someone to stand still and smile. The head-pan
-range (±90°) does the aiming the body lean never could.
+**Why it matters more than it sounds:** idle and reflex behaviour is what makes
+a robot read as alive. It is nearly free, it never fails, and it fills every gap
+while slower systems think. A robot that sits perfectly still between commands
+reads as a machine; one that fidgets reads as a creature.
 
-**Why not a laptop:** the robot is the venue infrastructure. Nothing else to set
-up, nothing to install, works where there is no network at all.
+**Cost:** low. Audio threshold or frame differencing, head joint, eye mode.
+**Latency exposure:** none. This is the one thing on the board that is fast.
 
-**Effort:** moderate. Section 8 of `pi/README.md` already specifies AP mode;
-`scripts/demo_server.py` is the in-repo stdlib server pattern. The browser app
-already had a photo feature (`PHOTO_LOTTERY_ENABLED`, currently false).
+### 1.2 Red light, green light
 
-**Risks:** photographing the public needs a visible notice and a retention
-policy. Keep images on the Pi, delete on shutdown, say so on the page.
+The robot turns its head away (joint 0, ±90°). You advance. It turns back and
+compares frames. Caught anyone moving? It reacts — and sends them back.
 
-### 1.2 Voice command, fully offline
+**Why it is the best fit on the board:** the game is **turn-based**, so latency
+is structurally irrelevant. More than that, the rules *require* the robot to not
+be looking half the time, which is exactly what a 2fps camera wants. Comparing
+two still frames for motion is trivial compared to tracking.
 
-Wake word plus a small command vocabulary: "Hey Quaddle — sit / come / spin /
-look at me." Maps to bounded gait tokens over serial.
+**Why it travels:** it is a social game between a robot and a room full of
+people, it is instantly legible with no explanation, and it is already a shared
+cultural reference. When the robot gets it wrong, that is the funny part — which
+the virality research says is the point, not the failure.
 
-**Uses:** real-time audio ML, Linux. The one place this board is genuinely fast.
+**Cost:** low-moderate. Head pan, frame differencing, eye expressions, a bounded
+gait for the reaction. No tracking, no control loop.
 
-**Why not the ESP32 voice module:** fixed vocabulary and no custom wake word. A
-Pi gives you your own trigger phrase, your own command set, and Python to extend
-it. That is a product difference, not a reimplementation.
+### 1.3 Sound-seeking head
 
-**Effort:** low-moderate. Porcupine or openWakeWord, then a token lookup. The
-decision layer is the same shape as `pi5/behaviour.py` on `feature/gemma-pi5`:
-pure, allow-listed, default-deny. That file ports directly.
+Clap, and the robot snaps its head toward you.
 
-**Risk — BOM gap:** **the Pi Zero 2 W has no microphone and no audio input.**
-This needs a USB sound card plus mic, or an I2S MEMS mic (INMP441) on the GPIO
-header. Neither is in the current build. Settle this before planning around it.
+**Why this is the highest impact per hour of work on the list:** it combines the
+only real-time capability the board has with the only fast actuator nobody uses.
+A head that turns toward sound within 100ms is startlingly lifelike, and it
+costs no inference at all. Compare that to two months spent trying to make a 7°
+body lean track a person.
 
-### 1.3 Sentry mode
+**Cost:** low, *once the microphone exists*. Direction-of-arrival needs two
+mics; one mic gives presence and triggers a scan instead.
+**Blocked by:** the audio BOM gap (§7).
 
-The robot idles. When the camera sees motion or a person, it wakes, pans its
-head toward them, changes its TFT expression and does a short bounded gait. Then
-settles back.
+### 1.4 The thinking face
 
-**Uses:** camera, always-on Linux, local logging.
+Wire the TFT eyes to the robot's **actual internal state**: scanning, found you,
+lost you, confused, thinking. The 500ms inference becomes a visible pause with a
+face on it.
 
-**Why it fits the measurement exactly:** "is someone there" is a question 2fps
-answers perfectly well. There is no loop to close — detection is an *event*, and
-the response is a fire-and-forget bounded gait.
+**Why it is the cheapest upgrade available:** every other demo gets better the
+moment the robot's state is legible. It turns the board's weakness into
+characterisation, and the research says a simple drawn face is sufficient.
 
-**Why it demos well:** it runs unattended at a booth for hours and reacts to
-every person who walks up. No operator, no laptop, no explaining.
+**Honest version:** when the model is unsure, *show uncertainty* rather than
+faking confidence. A robot that squints and gets it wrong is more likeable and
+more honest than one that pretends.
 
-**Effort:** low. Frame differencing alone may be enough; pose detection is
-already proven to load and run.
+**Cost:** low. Mostly a mapping from existing state to `v` modes.
 
-### 1.4 Stop-and-scan seeking
+### 1.5 Copy me
 
-The honest version of "follow me." Look, decide, commit to a **bounded** burst,
-stop, look again. Deliberately built around 2fps instead of fighting it.
+You strike a pose. The robot maps it onto four legs and a head, and holds it.
 
-**Uses:** camera, and the bounded-gait safety property.
+**Why it fits:** held poses make latency irrelevant — nobody minds waiting a
+second for the robot to work it out. It uses `I` for direct joint angles, so no
+firmware work at all.
 
-**Why this matters beyond the demo:** it converts the T1 failure into a design
-constraint. A continuous visual servo is impossible here; a discrete
-sense-decide-act cycle at 2Hz is comfortable. It also needs **steering**, which
-v1 cut (D5) and milestone 2 defers — gaits exist in `Instinct_Quaddle.h` (`vtL`,
-`wkL`), but **only `L` variants are listed and the right-hand names must be
-confirmed on hardware, not guessed.**
+**Why it is interesting rather than generic:** mapping a bipedal human pose onto
+a quadruped is a genuinely unsolved little problem with no correct answer. The
+failures are charming, legible and funny, and people immediately start trying to
+break it. That is engagement, not a bug.
 
-**Effort:** moderate. The largest unknown is turn-gait behaviour on the floor.
+**Cost:** moderate. Pose landmarks already run. The mapping is the creative work.
 
----
+### 1.6 Paper-card programming
 
-## 3. Tier 2 — strong, more effort or more risk
+Lay printed cards on the floor: forward, turn, repeat. The robot walks the line,
+reads each card as it reaches it, and executes.
 
-### 2.1 Classroom console over the robot's AP
+**Why it is not just KUBO or Botley again:** those use proprietary RFID tiles or
+colour sensors on wheeled toys for ages 4-8. **A camera reading printed paper
+means the consumables cost nothing** — print more cards, invent new ones,
+localise them, let students design their own. And the thing executing is a
+walking quadruped, not a wheeled puck.
 
-Phone or laptop joins the robot's network and gets a control page: drive it,
-view the camera, adjust parameters, run saved routines. No installs, no school
-network admin, no accounts.
+**Why vision at 2fps is fine:** reading a card is a discrete event at a known
+moment, not a tracking problem. Stop, look, decide, walk a bounded burst, repeat.
 
-**Uses:** Linux networking, web server.
+**Strategic fit:** there is **no Quaddle curriculum as of 2026-11-01** — Petoi's
+curriculum pages cover Bittle and Nybble. This is open ground, and screen-free
+coding is a category parents actively search for.
 
-**Why it is worth more than it looks:** a class of thirty with no infrastructure
-dependency is an entirely different proposition from one that needs IT approval.
-Pairs naturally with the curriculum gap — **there is no Quaddle curriculum as of
-2026-11-01**, so this is open ground rather than a duplicate.
-
-**Caveat:** AP and client mode on one radio at once is reported fragile. One
-mode or the other.
-
-### 2.2 The robot as a data instrument
-
-Log joint angles, gait phase, battery and timing to CSV; plot in the browser.
-Students measure their robot rather than just driving it.
-
-**Uses:** storage, Python, web server. No camera, no ML.
-
-**Why it is interesting:** it reframes the robot as laboratory equipment for
-physics and data science, not only a coding toy. Low technical risk, high
-curriculum value.
-
-### 2.3 Choreography to music
-
-`I` gives direct per-joint angles, so arbitrary poses need no firmware work. The
-Pi sequences keyframes and plays audio.
-
-**Uses:** Linux audio, storage. **No camera, no ML, no latency exposure at all.**
-
-**Why it is a reliable showpiece:** nothing in it can be too slow. It is the
-lowest-risk crowd-pleaser available, and it is the one demo that would survive a
-board even weaker than this one. Note the same **audio-output BOM gap** as 1.2 —
-no analog out on a Zero 2 W.
-
-**Bonus:** head pan and tilt (joints 0 and 1) are unused by every current demo
-and would make choreography visibly richer than leg-only routines.
-
-### 2.4 Face-aware greeter
-
-Recognises returning visitors and greets them differently. Memorable at an event
-in a way generic reactions are not.
-
-**Uses:** camera, ML, storage.
-
-**Risk:** biometric data. Needs explicit opt-in, on-device-only storage, and
-deletion at end of day. Worth doing only with that handled properly, and worth
-checking against local rules before a public event.
-
-### 2.5 Multi-robot coordination
-
-One Pi driving several robots, choreographed. The Pi becomes a conductor rather
-than a brain.
-
-**Uses:** Linux, multiple serial or BLE links.
-
-**Why:** three Quaddles in formation is dramatically more impressive than one,
-and the per-robot cost is a USB cable. **Unverified:** how many serial links a
-Zero 2 W sustains cleanly, and whether its single OTG port needs a hub.
+**Cost:** moderate. ArUco markers are the robust choice over custom symbols.
 
 ---
 
-## 4. Tier 3 — speculative or blocked
+## 3. Tier 2 — strong, longer, or riskier
+
+### 2.1 Robot sees robot
+
+Two Quaddles that detect each other and react. Approach, mirror, retreat,
+circle. No human in the loop.
+
+**Why it is worth building:** two slow agents reacting to each other produce
+emergent behaviour that neither was programmed with, and watching robots deal
+with each other is a different and more durable kind of interesting than
+watching one obey a person. It also makes the case for owning two.
+
+**Cost:** moderate, plus a second robot and Pi.
+**Unverified:** how reliably a Quaddle recognises another Quaddle at floor level.
+
+### 2.2 The robot's diary
+
+It logs what it saw all day. At the end, a small language model turns the log
+into a short first-person account. *"Someone new came in around two. I lost
+track of them behind the chair."*
+
+**Why latency does not matter:** it runs once, overnight, with nobody watching.
+This is the only shape in which a 135M-parameter model on a 512MB board makes
+sense — and SmolLM2-135M is the community pick for exactly this board.
+
+**Why it travels:** it produces a shareable artifact that persists after the
+demo ends, and the robot's limited, slightly confused perspective is the charm
+rather than a limitation to apologise for.
+
+**Cost:** moderate. **Unverified:** SmolLM2 on this board; reported, not tested.
+
+### 2.3 Desk companion that reacts to your builds
+
+CI fails, the robot sulks. PR merged, it does a trick. Deploy goes out, it
+watches the dashboard.
+
+**Why it is a real product shape:** no camera, no ML, no latency exposure — just
+a webhook and a personality. Developers are a large, vocal audience who buy
+desk objects and post about them. It is also the lowest-effort idea here that
+someone would actually pay for.
+
+**Cost:** low.
+
+### 2.4 Quaddle-cam
+
+The robot walks a room slowly and records. The **footage** is the product: a
+dog's-eye-level tracking shot of a space, or an overnight timelapse.
+
+**Why slowness becomes an asset:** deliberate, steady motion is what a camera
+dolly is *for*. Every other idea fights the board's pace; this one bills it as a
+feature. Floor-level footage of ordinary rooms is genuinely unusual to look at.
+
+**Cost:** low-moderate. **Caveat:** gait shake at 2-4Hz will need either
+stabilisation or a stop-move-stop capture pattern.
+
+### 2.5 Guess what I'm looking at
+
+The robot displays what it thinks it sees. The audience sees how often it is
+wrong, and how confidently.
+
+**Why it earns its place:** it is honest AI education with the failures left in.
+For a STEM company this is more valuable than a demo that hides its limits, and
+it directly supports the "robots are clumsy and that is fine" framing that makes
+this stuff likeable. It also needs almost no new code — the inference is already
+running.
+
+**Cost:** low.
+
+---
+
+## 4. Tier 3 — blocked or weak
 
 | Idea | Status |
 |---|---|
-| On-board VLM scene understanding | Needs a Pi 5. Gemma 4 E2B is 3-8 tok/s *there*; a Zero 2 W cannot hold the model at all. Code exists on `feature/gemma-pi5`, never run. |
-| Small LLM (SmolLM2-135M) for free-form commands | Runs in 512MB per community reports, **unverified here**. Seconds per reply. Only viable where latency is invisible. |
-| Real-time visual tracking / ball chasing | **Measured impossible.** 2fps with a 4.4s tail. Do not attempt on this board. |
-| Autonomous navigation / SLAM | Far beyond this compute budget. |
-| Cloud-API vision or voice | Works at low bandwidth (~100KB/request), but a venue network may isolate clients or be saturated. Measured 275 KB/s at one event. Offline demos are more reliable. |
+| Real-time tracking, ball chasing, "follow me" | **Measured impossible.** 2.6 fps, 4.4s tail. |
+| On-board VLM scene understanding | Needs a Pi 5. Code on `feature/gemma-pi5`, never run. |
+| Photo booth | Works, but not robot-specific — a tripod does it. Dropped from Tier 1. |
+| Generic "it dances" | Every robot dances. Only interesting with reaction (§1.1) attached. |
+| Voice assistant with a command list | Alexa did it. The *listening head* (§1.3) is the robot-native version. |
+| SLAM / autonomous navigation | Far beyond this compute budget. |
+| Cloud-dependent anything | Venue networks measured at 275 KB/s with client isolation. |
 
 ---
 
-## 5. Ranked shortlist
+## 5. Ranked
 
-Scored on demo impact, effort, and risk of failing in public.
-
-| # | Demo | Impact | Effort | Public-failure risk |
+| # | Demo | Why it wins | Effort | Risk |
 |---|---|---|---|---|
-| 1 | Event photo booth (1.1) | High | Moderate | Low |
-| 2 | Sentry mode (1.3) | High | Low | Low |
-| 3 | Choreography (2.3) | High | Low | **Lowest** |
-| 4 | Voice command (1.2) | High | Low-moderate | Low, **BOM gap** |
-| 5 | Classroom console (2.1) | Moderate, high strategic | Moderate | Low |
-| 6 | Stop-and-scan seek (1.4) | Moderate | Moderate | Moderate |
+| 1 | **Reflexes and idle** (1.1) | Makes everything else feel alive. Never fails. | Low | None |
+| 2 | **Red light, green light** (1.2) | Turn-based, so the board's weakness vanishes. Socially legible. | Low-mod | Low |
+| 3 | **Sound-seeking head** (1.3) | Only real-time sense + only unused fast actuator | Low | BOM |
+| 4 | **Thinking face** (1.4) | Cheapest upgrade; improves every other demo | Low | None |
+| 5 | **Paper cards** (1.6) | Fills the Quaddle curriculum gap; zero-cost consumables | Mod | Low |
+| 6 | **Copy me** (1.5) | Failures are the fun part | Mod | Low |
 
-**If one thing ships: the photo booth.** It uses every Pi strength, avoids every
-measured weakness, gives visitors something to take home, and needs no internet.
+**Build 1.1 and 1.4 first regardless of what ships.** They are the substrate:
+reflexes and a legible face make every other item on this list better, and
+neither touches the slow path.
 
-**If a demo must not fail in front of people: choreography.** It has no sensing
-path, so there is nothing in it that latency can break.
+**The one to show a crowd: red light, green light.** It is the only idea here
+whose *rules* make a 2fps camera correct rather than merely tolerable.
 
----
-
-## 6. What to avoid, and why
-
-- **Anything described as "follows you."** The body lean is ~7°/joint and cannot
-  re-point a chassis camera; without steering the robot does not follow. v1 cut
-  stepping for exactly this reason, and `pi/README.md` is explicit that it must
-  not be described that way.
-- **Streaming `J` stick values.** They are **held by the firmware until power
-  cycle**. A frozen Pi leaves the robot holding a lean indefinitely. Prefer
-  bounded `k<skill> <n>`, which the firmware ends itself.
-- **Unverified gait names.** `Instinct_Quaddle.h` lists only `L` variants.
-  Guessing the right-hand name is how this project once made the robot hop
-  instead of lean.
-- **Demos that need the venue network.** Measured: client isolation blocking all
-  device-to-device traffic, and 275 KB/s bandwidth. Host your own AP.
-- **Any latency-sensitive loop.** The 2-4.4s tail stalls are unexplained and
-  present in every run.
+**The one that is a product, not a demo: paper cards.** Open curriculum ground,
+consumables that cost nothing, and a category parents already search for.
 
 ---
 
-## 7. Gaps to close before committing
+## 6. What to avoid
 
-1. **Audio hardware.** No mic and no audio out on a Zero 2 W. USB sound card or
-   I2S MEMS mic. **Blocks 1.2 and 2.3.**
-2. **The 2-4.4s tail stalls.** Unexplained. Harmless for event-driven demos,
+- **"It follows you."** The ~7°/joint lean cannot re-point a chassis camera, and
+  without steering it does not follow. `pi/README.md` is explicit.
+- **Streaming `J`.** Held by firmware until power cycle; a frozen host leaves a
+  held lean. Prefer bounded `k<skill> <n>`, which the firmware ends itself.
+- **Guessed gait names.** `Instinct_Quaddle.h` lists only `L` variants. Guessing
+  the right-hand name once made this robot hop instead of lean.
+- **Hiding the latency.** It will leak anyway. Give it a face instead.
+- **Flawless stage-managed demos.** The research is unusually clear that they
+  land worse than visible, likeable failure.
+
+---
+
+## 7. Gaps to close
+
+1. **Audio hardware — the big one.** No mic, no audio out on a Zero 2 W. Needs a
+   USB sound card or an I2S MEMS mic (INMP441). **Blocks 1.1 partially and 1.3
+   entirely**, which are two of the top three. Direction-of-arrival wants two
+   mics. Settle this first; it is cheap and it unlocks the board's only fast
+   sense.
+2. **Head joints 0 and 1.** ±90° pan, never used, central to four ideas above.
+   Verify range, speed and whether it is audible — a loud servo changes which
+   reflexes feel good.
+3. **TFT eye modes.** The app only ever sends `ve`. Enumerate what the firmware
+   actually offers before designing expressions around it.
+4. **Turn gaits on hardware.** Right-hand variants unconfirmed. Needed by 1.6.
+5. **The 2-4.4s tail stalls.** Unexplained. Harmless for event-driven work,
    fatal for anything timed.
-3. **Turn gaits on hardware.** Right-hand variants unconfirmed. **Blocks 1.4.**
-4. **Head joints 0 and 1.** Firmware exposes ±90° pan; no demo uses it and the
-   browser app drives only joints 2-5. Verify range and speed — it is the single
-   most underused capability on the robot.
-5. **Power budget.** Sustained camera plus inference shortens runtime by an
-   unmeasured amount. A shared battery does not guarantee the Pi and servos die
-   together.
-6. **Multi-robot serial limits** for 2.5.
+6. **Power budget.** Camera plus inference plus servos on one battery, unmeasured.
 
 ---
 
 ## 8. Sources
 
-Measured in this project: `docs/camwalk-hardware-findings.md`,
-`docs/pi-zero-t1-results.md`.
+Measured here: `docs/camwalk-hardware-findings.md`, `docs/pi-zero-t1-results.md`.
 
 External, 2026-11-02:
-- [Picovoice: speech recognition on Raspberry Pi](https://picovoice.ai/blog/speech-recognition-on-raspberrypi/)
-- [Edge AI compute ladder — what runs on every board](https://theaivibe.org/edge/edge-ai-compute-ladder-what-runs-on-every-board)
-- [Petoi: robot project ideas for students](https://www.petoi.com/blogs/blog/engaging-robot-project-ideas-for-students)
-- [Petoi: Raspberry Pi robotics projects](https://www.petoi.com/blogs/blog/raspberry-pi-robotics-projects-with-petoi-open-source-quadruped-robots)
-- [Petoi docs: Raspberry Pi serial port as an interface](https://docs.petoi.com/apis/raspberry-pi-serial-port-as-an-interfac)
-- [Petoi: quadruped robotics curriculum](https://www.petoi.com/blogs/blog/quadruped-robotics-curriculum-teaching-robotics-with-petoi)
+- [Emotional expression in simple line drawings of a robot's face](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5439005/) — line-drawing faces match human telepresence; people prefer playing with expressive robots
+- [Slate: on robots falling over, and why we like it](https://slate.com/technology/2026/09/world-humanoid-games-robot-olympics.html) — "failure is the show"; the shy robot; BigDog's 17M views
+- [TechCrunch: how to fake a robotics demo](https://techcrunch.com/2024/02/09/how-to-fake-a-robotics-demo-for-fun-and-profit/) — what over-staged demos cost in credibility
+- [Picovoice: speech recognition on Raspberry Pi](https://picovoice.ai/blog/speech-recognition-on-raspberrypi/) — real-time wake word on a Zero
+- [Edge AI compute ladder](https://theaivibe.org/edge/edge-ai-compute-ladder-what-runs-on-every-board) — SmolLM2-135M as the Zero 2 W pick
+- [Ozobot: screen-free coding](https://ozobot.com/blogs/news/screen-free-coding-for-kids) and [coding toys 2026](https://www.codingal.com/coding-for-kids/blog/coding-toys-for-kids-the-best-games-toys-and-apps-by-age-2026-guide/) — KUBO TagTiles, Botley, the proprietary-consumable model this would undercut
+- [Petoi: Raspberry Pi robotics projects](https://www.petoi.com/blogs/blog/raspberry-pi-robotics-projects-with-petoi-open-source-quadruped-robots) and [docs: Pi serial interface](https://docs.petoi.com/apis/raspberry-pi-serial-port-as-an-interfac) — existing Pi material is plumbing only
 
-Petoi's published Pi material is integration plumbing — `ardSerial.py`, serial
-UART, mounting. **No flagship Pi-plus-camera demo exists**, and the curriculum
-pages cover Bittle and Nybble rather than Quaddle. Everything in sections 2 and
-3 would be new ground rather than a duplicate.
+Petoi's published Pi content is integration plumbing. No flagship camera demo
+exists, and the curriculum covers Bittle and Nybble rather than Quaddle.
+Everything in §2 and §3 is open ground.
