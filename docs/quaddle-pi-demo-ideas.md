@@ -51,6 +51,56 @@ things on the robot. The project spent two months on the slowest.
 
 ## 2. Tier 1 — the strong ones
 
+### 1.0 Pushups together
+
+You and the robot do pushups side by side. It counts, it keeps score, it gets
+tired, and eventually it gives up.
+
+**Why the camera mounting finally helps.** A chassis-mounted camera at floor
+level is bad at looking at standing humans, which has been this project's core
+framing problem throughout. A person in a pushup position is **horizontal, at
+floor level, directly in front of the robot, and close enough to fill the
+frame**. The low mount and the 120 degree lens stop being limitations and become
+correct. No other idea on this list turns that constraint around.
+
+**Why it beats the 2fps problem by construction.** Rep detection is a threshold
+crossing, not tracking. But at 2.6 fps a 1.5s rep gives roughly two frames per
+phase, and faster reps would alias exactly like gait shake. The fix is to
+**invert who leads: the robot sets the tempo and you follow it**. The thing
+doing the sampling chooses the rate, so the aliasing problem cannot arise. The
+robot is the metronome.
+
+**Why it travels.** It has an emotional arc rather than just rules. The robot
+slows, shakes, shows strain on the TFT eyes, and collapses. Per the virality
+research in section 8, a robot giving up first is better content than a robot
+winning. It needs no explanation in any language, and it reads in a three second
+clip.
+
+**Why it is a product and not only a demo.** A desk companion that works out
+with you is an existing category people already buy into.
+
+**Build:** `I` direct joint angles on 2-5, flexed together. This is a direct
+extension of working code: the browser app already maps finger bend onto those
+same four joints within `ANGLE_RANGE = 25`. Check `Instinct_Quaddle.h` for an
+existing pushup skill on the bench rather than guessing the token.
+
+**Gating risk, test this first.** MediaPipe pose is trained overwhelmingly on
+upright people, and a human in plank is out of distribution. This project has
+already measured what that costs: an inverted subject dropped detection from 98%
+to 79%. Horizontal is likely worse.
+
+```bash
+python3 pi/t1_latency.py --seconds 30 --rot180 --poses 1
+```
+
+Do reps in frame for the full 30s and read the `detected` percentage. Above ~90%
+this works as designed. Below ~70% it needs a cruder signal than full pose,
+such as vertical motion of whichever landmarks survive.
+
+**Smaller unknowns:** servo thermal and battery load under repeated full-range
+flexion bearing body weight, and whether plus or minus 25 degrees produces a
+visually legible pushup or needs more travel than the app currently allows.
+
 ### 1.1 Startle, flinch, and boredom: reflexes, not cognition
 
 Not a demo on its own. The substrate everything else sits on.
@@ -241,16 +291,22 @@ running.
 
 | # | Demo | Why it wins | Effort | Risk |
 |---|---|---|---|---|
-| 1 | **Reflexes and idle** (1.1) | Makes everything else feel alive. Never fails. | Low | None |
-| 2 | **Red light, green light** (1.2) | Turn-based, so the board's weakness vanishes. Socially legible. | Low-mod | Low |
-| 3 | **Sound-seeking head** (1.3) | Only real-time sense + only unused fast actuator | Low | BOM |
-| 4 | **Thinking face** (1.4) | Cheapest upgrade; improves every other demo | Low | None |
-| 5 | **Paper cards** (1.6) | Fills the Quaddle curriculum gap; zero-cost consumables | Mod | Low |
-| 6 | **Copy me** (1.5) | Failures are the fun part | Mod | Low |
+| 1 | **Pushups together** (1.0) | Only idea where the floor-level camera is an asset. Robot-led tempo kills the fps problem. | Low-mod | **Pose detection on a horizontal human — test first** |
+| 2 | **Reflexes and idle** (1.1) | Makes everything else feel alive. Never fails. | Low | None |
+| 3 | **Red light, green light** (1.2) | Turn-based, so the board's weakness vanishes. Socially legible. | Low-mod | Low |
+| 4 | **Sound-seeking head** (1.3) | Only real-time sense + only unused fast actuator | Low | BOM |
+| 5 | **Thinking face** (1.4) | Cheapest upgrade; improves every other demo | Low | None |
+| 6 | **Paper cards** (1.6) | Fills the Quaddle curriculum gap; zero-cost consumables | Mod | Low |
+| 7 | **Copy me** (1.5) | Failures are the fun part | Mod | Low |
 
 **Build 1.1 and 1.4 first regardless of what ships.** They are the substrate:
 reflexes and a legible face make every other item on this list better, and
 neither touches the slow path.
+
+**The one to put in front of a camera: pushups.** It is the only idea here in
+which the chassis-mounted floor-level camera is an advantage rather than the
+thing to design around, and the only one with an emotional arc instead of a rule
+set. Gated on one ten minute test.
 
 **The one to show a crowd: red light, green light.** It is the only idea here
 whose *rules* make a 2fps camera correct rather than merely tolerable.
