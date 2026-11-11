@@ -1,6 +1,6 @@
 # CamWalkingGame: Control a Robot Dog With Your Body, Fingers or Face (Physical AI Demo)
 
-**Webcam pose control for the Quaddle robot dog and OpenCat robots, running in your browser.** Your elbows and knees (or two fingers on each hand) drive the robot's four leg joints in real time, so you can make it walk, trot, bound and race. No robot code, no controller, no cloud: the computer vision runs on your own computer.
+**Webcam pose control for the Quaddle robot dog and OpenCat robots, running in your browser.** Your elbows and knees (or two fingers on each hand) drive the robot's four leg joints in real time, so you can make it walk, trot, bound and race. Connect by USB, Bluetooth or Wi-Fi. No robot code, no controller, no cloud: the computer vision runs on your own computer.
 
 A hands-on physical AI demo for classrooms, makerspaces and exhibitions, by [Petoi](https://www.petoi.com/?utm_source=github&utm_medium=readme&utm_campaign=camwalkinggame).
 
@@ -14,8 +14,8 @@ A hands-on physical AI demo for classrooms, makerspaces and exhibitions, by [Pet
 |---|---|
 | [Physical AI: Teach Robot Dog How to Walk, Race (Pose-Controlled Teleoperation)](https://www.youtube.com/watch?v=8U3mROh88vQ) | Body tracking: from wriggling to first steps, then gaits, racing and stunts. |
 | [Finger-control Mini Robot Dog Quaddle](https://youtu.be/kbk8TnLfSDU) | Finger tracking: index fingers drive the front legs, middle fingers the back legs. |
-| [Quaddle's First Field Test: Robot Dog Learning from Kids](https://youtu.be/JRcUbzh_atc) | Kids at the Silicon Valley Robotics Fair make Quaddle copy their moves, no instructions needed. |
-| [Finger-Controlled Mini Robot Dog at Maker Faire Bay Area](https://youtube.com/shorts/2mOocKeKqsA) | A kid learns "magic fingers" at a crowded booth. |
+| [Quaddle's First Field Test: Robot Dog Learning from Kids](https://youtu.be/JRcUbzh_atc?t=6) | Kids at the Silicon Valley Robotics Fair make Quaddle copy their moves, no instructions needed. |
+| [Finger-Controlled Mini Robot Dog at Maker Faire Bay Area](https://youtube.com/shorts/2mOocKeKqsA?t=9) | A kid learns "magic fingers" at a crowded booth. |
 
 ## Three ways to control the robot
 
@@ -78,7 +78,7 @@ If Safari shows *HTTPS-Only* / `WebKitErrorDomain:305`, switch to Chrome, or tur
 |---|---|---|
 | USB (most reliable) | Plug a USB cable into the port on the back of Quaddle, then click **Connect** in the Serial Monitor (Web Serial, 115200) and pick the robot when Chrome asks for permission | Also used for setup: query the robot's IP, send Wi-Fi credentials, send manual commands. |
 | Bluetooth | **Bluetooth** button; Chrome finds a nearby Petoi robot and asks for permission, no system pairing needed | Faster than Wi-Fi for live control. Disconnect it before switching to Wi-Fi. |
-| Wi-Fi | **Connect WiFi** (over USB) or **Connect IP** | Pose control over WebSocket. Previously used IPs reconnect automatically. |
+| Wi-Fi | First time: plug in USB and use **Connect WiFi** to send your network name and password (or **Query IP** if it's already on Wi-Fi). After that: **Connect IP**, no cable needed | Pose control over WebSocket. Previously used IPs reconnect automatically. |
 
 ## Troubleshooting
 
