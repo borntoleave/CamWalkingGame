@@ -45,8 +45,8 @@ The robot reacts to where you are: its eyes follow you, it leans toward you, and
 
 ## Quick start
 
-1. Download or clone this repository.
-2. Launch it:
+1. Clone or [download](https://github.com/borntoleave/CamWalkingGame/archive/refs/heads/main.zip) this repository.
+2. Run the launcher for your computer from the top-level folder:
 
 | OS | Launch |
 |----|--------|
@@ -54,8 +54,9 @@ The robot reacts to where you are: its eyes follow you, it leans toward you, and
 | Windows | Double-click **`AutorunWin.bat`** (calls `scripts\AutorunWin.ps1`, **no Python**) |
 | Linux | Run **`./AutorunLinux.sh`** (uses `python3`; opens Chrome/Edge/Chromium) |
 
-3. Use **Chrome or Edge**, click **Open Camera** and allow camera access.
+3. Make sure the page opens in **Chrome** (Edge also works). Click **Open Camera** and allow camera access.
 4. Connect your robot (next section), then follow the on-screen prompts to get ready.
+5. Give the robot room so it can't walk off the table. A long rectangular box makes a good track.
 
 Web files live under **`app/`** so you do not double-click `index.html` by mistake. Keep the server window open while demoing.
 
@@ -75,9 +76,14 @@ If Safari shows *HTTPS-Only* / `WebKitErrorDomain:305`, switch to Chrome, or tur
 
 | Method | How | Notes |
 |---|---|---|
-| USB | **Connect** in the Serial Monitor (Web Serial, 115200) | Mainly for setup: query the robot's IP, send Wi-Fi credentials, send manual commands. |
-| Bluetooth | **Bluetooth** button; Chrome finds a nearby Petoi robot, no system pairing needed | Faster than Wi-Fi for live control. Disconnect it before switching to Wi-Fi. |
+| USB (most reliable) | Plug a USB cable into the port on the back of Quaddle, then click **Connect** in the Serial Monitor (Web Serial, 115200) and pick the robot when Chrome asks for permission | Also used for setup: query the robot's IP, send Wi-Fi credentials, send manual commands. |
+| Bluetooth | **Bluetooth** button; Chrome finds a nearby Petoi robot and asks for permission, no system pairing needed | Faster than Wi-Fi for live control. Disconnect it before switching to Wi-Fi. |
 | Wi-Fi | **Connect WiFi** (over USB) or **Connect IP** | Pose control over WebSocket. Previously used IPs reconnect automatically. |
+
+## Troubleshooting
+
+- **Finger Tracking won't get ready or stops responding:** cover the camera with your finger for about 2 seconds. Losing the hands restarts the ready step; then hold both hands up again.
+- **Robot heads for the edge:** give it more room, or run it inside a long rectangular box. With **Step** on in Body Follow, put a barrier at the table edge first.
 
 ## Two players, two robots
 
