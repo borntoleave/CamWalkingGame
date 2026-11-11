@@ -57,4 +57,5 @@ WASM / MediaPipe JS stay under `app/vendor/` (re-pack if you need to bump the pa
 [MIT](LICENSE) © 2026 Petoi LLC.
 
 Third-party: MediaPipe Tasks Vision 0.10.18 and the bundled pose model under
-`app/vendor/mediapipe/` are Apache-2.0, © Google LLC.
+`app/vendor/mediapipe/` are Apache-2.0, © Google LLC. Full text:
+[`app/vendor/mediapipe/LICENSE`](app/vendor/mediapipe/LICENSE).
