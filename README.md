@@ -1,6 +1,6 @@
 # CamWalkingGame: Control a Robot Dog With Your Body, Fingers or Face (Physical AI Demo)
 
-**Webcam pose control for the Quaddle robot dog and OpenCat robots, running in your browser.** Your elbows and knees (or two fingers on each hand) drive the robot's four leg joints in real time, so you can make it walk, trot, bound and race. Connect by USB, Bluetooth or Wi-Fi. No robot code, no controller, no cloud: the computer vision runs on your own computer.
+**Webcam pose control for the Quaddle robot dog, built on OpenCat, running in your browser.** Your elbows and knees (or two fingers on each hand) drive the robot's four leg joints in real time, so you can make it walk, trot, bound and race. Connect by USB, Bluetooth or Wi-Fi. No robot code, no controller, no cloud: the computer vision runs on your own computer.
 
 A hands-on physical AI demo for classrooms, makerspaces and exhibitions, by [Petoi](https://www.petoi.com/?utm_source=github&utm_medium=readme&utm_campaign=camwalkinggame).
 
@@ -40,9 +40,9 @@ The robot reacts to where you are: its eyes follow you, it leans toward you, and
 |----|--------|
 | macOS | Double-click **`AutorunMac.command`** (uses built-in `python3`) |
 | Windows | Double-click **`AutorunWin.bat`** (calls `scripts\AutorunWin.ps1`, **no Python**) |
-| Linux | Run **`./AutorunLinux.sh`** (uses `python3`; opens Chrome/Edge/Chromium) |
+| Linux | Run **`./AutorunLinux.sh`** (uses `python3`; opens Chrome) |
 
-3. Make sure the page opens in **Chrome** (Edge also works). Click **Open Camera** and allow camera access.
+3. Make sure the page opens in **Chrome**. Click **Open Camera** and allow camera access.
 4. Connect your robot (next section), then follow the on-screen prompts to get ready.
 5. Give the robot room so it can't walk off the table. A long rectangular box makes a good track.
 
@@ -106,16 +106,15 @@ Physical AI is AI that perceives the real world and acts in it through a body. H
 
 **Do I need to write code?** No. Open the page, connect the robot and move.
 
-**Which robot does it work with?** It is built for [Quaddle](https://www.petoi.com/pages/quaddle-educational-robot-kit?utm_source=github&utm_medium=readme&utm_campaign=camwalkinggame), whose four leg joints match your two elbows and two knees. Bluetooth also finds other Petoi robots running [OpenCat](https://github.com/PetoiCamp/OpenCat).
-<!-- [Kai: confirm Bittle X / Nybble Q support before claiming it here] -->
+**Which robots does it work with?** [Quaddle](https://www.petoi.com/pages/quaddle-educational-robot-kit?utm_source=github&utm_medium=readme&utm_campaign=camwalkinggame). The mapping is written for Quaddle's four leg joints, one per elbow and knee. Bittle and Nybble aren't supported yet, and we'd welcome a pull request that adds them. A good starting point is our earlier [OpenCat Imitation demo](https://docs.petoi.com/applications/opencat-imitation-tutorial), which had Nybble imitate human body movements ([code](https://github.com/PetoiCamp/OpenCat-Imitation)).
 
-**Which browsers work?** Chrome or Edge (Web Serial and Web Bluetooth).
+**Which browsers work?** Chrome (it uses Web Serial and Web Bluetooth). We haven't tested other browsers.
 
 **Does it need internet?** No. The pose model and MediaPipe are bundled.
 
 **Is this physical AI?** It's an entry-level physical AI demo: AI computer vision perceives a person, and a physical robot acts on it in real time. The robot doesn't plan on its own; you are the controller.
 
-**Is this AI training the robot?** No. It is pose-based teleoperation: computer vision reads your body, and your movements drive the robot directly. That makes it a quick way to feel what multi-joint gaits take.
+**Can I train my robot with my poses?** Yes. Every movement you make is a demonstration: you work out the joint timing for a gait, and the robot follows it in real time. Live control itself is pose-based teleoperation; your movements drive the robot directly, which makes it a quick way to feel what multi-joint gaits take.
 
 ## Credits
 
