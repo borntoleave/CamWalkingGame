@@ -4,9 +4,7 @@
 
 A hands-on physical AI demo for classrooms, makerspaces and exhibitions, by [Petoi](https://www.petoi.com/?utm_source=github&utm_medium=readme&utm_campaign=camwalkinggame).
 
-<!-- PLACEHOLDER (hero GIF, about 5 s, under 10 MB): a person moves and Quaddle copies.
-![A person raises their knees in front of a laptop webcam and the Quaddle robot dog walks in step](media/hero-body-tracking.gif)
--->
+[![A seated person moves their arms and knees in front of a laptop webcam, the app draws their skeleton, and the Quaddle robot dog walks forward and switches to a tripod gait](media/hero-body-tracking.gif)](https://www.youtube.com/watch?v=8U3mROh88vQ)
 
 ## Demo videos
 
@@ -23,25 +21,15 @@ A hands-on physical AI demo for classrooms, makerspaces and exhibitions, by [Pet
 
 Stand in front of the webcam. Your left and right elbows and knees map to the robot's four leg joints. The app reads each limb's 3D angle from the side (sagittal pitch), not its flat angle on the camera image. Moving your limbs in the right rhythm makes the robot walk, which turns gait coordination into something you feel, not a formula.
 
-<!-- PLACEHOLDER (screenshot): the app with the skeleton overlay on the left and the connection panel on the right.
-![CamWalkingGame Elbow & Knee Tracking screen with skeleton overlay on a person and the robot connection panel](media/screenshot-elbow-knee.png)
--->
-
 ### 2. Finger Tracking
 
 Built for crowded events, where several people in view confuse full-body tracking. Hold both hands up: index fingers drive the front legs, middle fingers the back legs, and each hand controls its own side. With the right timing and amplitude, Quaddle can walk, trot or bound.
 
-<!-- PLACEHOLDER (GIF): two hands bending fingers and Quaddle's legs following.
-![Two hands bend their index and middle fingers in front of a webcam and Quaddle's front and back legs follow](media/finger-tracking.gif)
--->
+[![Two hands make V signs in front of a webcam: index fingers move Quaddle's front legs and middle fingers its back legs; then visitors at an event steer Quaddle along a cardboard box track](media/finger-tracking.gif)](https://youtu.be/kbk8TnLfSDU)
 
 ### 3. Body Follow
 
 The robot reacts to where you are: its eyes follow you, it leans toward you, and with **Step** turned on it walks toward you as you approach and backs away as you retreat. Needs current robot firmware; the in-app Help has a pre-demo check.
-
-<!-- PLACEHOLDER (GIF): a person steps sideways and the robot's eyes and lean follow.
-![Quaddle's eyes and body follow a person who steps from side to side in front of the webcam](media/body-follow.gif)
--->
 
 ## Quick start
 
