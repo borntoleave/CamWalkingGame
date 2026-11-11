@@ -1,6 +1,6 @@
-# CamWalkingGame: Control a Robot Dog With Your Body, Fingers or Face
+# CamWalkingGame: Control a Robot Dog With Your Body, Fingers or Face (Physical AI Demo)
 
-**Webcam pose control for the Quaddle robot dog and OpenCat robots, running in your browser.** Your elbows and knees (or two fingers on each hand) drive the robot's four leg joints in real time, so you can make it walk, trot, bound and race. No robot code, no controller, no cloud.
+**Webcam pose control for the Quaddle robot dog and OpenCat robots, running in your browser.** Your elbows and knees (or two fingers on each hand) drive the robot's four leg joints in real time, so you can make it walk, trot, bound and race. No robot code, no controller, no cloud: the computer vision runs on your own computer.
 
 A hands-on physical AI demo for classrooms, makerspaces and exhibitions, by [Petoi](https://www.petoi.com/?utm_source=github&utm_medium=readme&utm_campaign=camwalkinggame).
 
@@ -108,9 +108,11 @@ WASM / MediaPipe JS stay under `app/vendor/` (re-pack if you need to bump the pa
 ./scripts/download-mediapipe.sh
 ```
 
-## How it works
+## How it works: physical AI in a browser
 
 Webcam → [MediaPipe](https://ai.google.dev/edge/mediapipe) pose or hand landmarks (in the browser) → joint angles → OpenCat joint commands → the robot over USB, Bluetooth or Wi-Fi.
+
+Physical AI is AI that perceives the real world and acts in it through a body. Here, an on-device computer vision model perceives your body or hands, and a real robot dog moves in response. You stay in control (pose-based teleoperation), so it's a gentle first step: students watch the perception side work live, and feel the control side, coordinating four joints into a gait, with their own bodies.
 
 ## FAQ
 
@@ -122,6 +124,8 @@ Webcam → [MediaPipe](https://ai.google.dev/edge/mediapipe) pose or hand landma
 **Which browsers work?** Chrome or Edge (Web Serial and Web Bluetooth).
 
 **Does it need internet?** No. The pose model and MediaPipe are bundled.
+
+**Is this physical AI?** It's an entry-level physical AI demo: AI computer vision perceives a person, and a physical robot acts on it in real time. The robot doesn't plan on its own; you are the controller.
 
 **Is this AI training the robot?** No. It is pose-based teleoperation: computer vision reads your body, and your movements drive the robot directly. That makes it a quick way to feel what multi-joint gaits take.
 
