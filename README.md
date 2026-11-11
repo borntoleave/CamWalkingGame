@@ -2,6 +2,15 @@
 
 Browser webcam pose control for Quaddle / OpenCat (elbow & knee → joints).
 
+## Demos
+
+| | |
+|---|---|
+| [**Finger-control Mini Robot Dog Quaddle \| Physical AI Robotics Kit**](https://youtu.be/kbk8TnLfSDU) | Finger tracking: bend your fingers, the robot's legs follow. |
+| [**Physical AI: Teach Robot Dog to How to Walk, Race \| Pose-Controlled Teleoperation Quaddle Robot Kit**](https://www.youtube.com/watch?v=8U3mROh88vQ) | Body tracking: full-body pose drives the robot's gait. |
+
+Both run entirely in the browser over Web Serial. No install, no cloud, no SDK.
+
 ## Run (macOS / Windows / Linux)
 
 Web files live under **`app/`** so you do not double-click `index.html` by mistake.
@@ -42,3 +51,10 @@ WASM / MediaPipe JS stay under `app/vendor/` (re-pack if you need to bump the pa
 ```bash
 ./scripts/download-mediapipe.sh
 ```
+
+## License
+
+[MIT](LICENSE) © 2026 Petoi LLC.
+
+Third-party: MediaPipe Tasks Vision 0.10.18 and the bundled pose model under
+`app/vendor/mediapipe/` are Apache-2.0, © Google LLC.
