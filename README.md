@@ -33,7 +33,7 @@ The robot reacts to where you are: its eyes follow you, it leans toward you, and
 
 ## Quick start
 
-1. Clone or [download](https://github.com/borntoleave/CamWalkingGame/archive/refs/heads/main.zip) this repository.
+1. Clone or [download](https://github.com/PetoiCamp/CamWalkingGame/archive/refs/heads/main.zip) this repository.
 2. Run the launcher for your computer from the top-level folder:
 
 | OS | Launch |
