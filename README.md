@@ -1,6 +1,6 @@
 # CamWalkingGame: Control a Robot Dog With Your Body, Fingers or Face (Physical AI Demo)
 
-**Webcam pose control for the Quaddle robot dog, built on OpenCat, running in your browser.** Your elbows and knees (or two fingers on each hand) drive the robot's four leg joints in real time, so you can make it walk, trot, bound and race. Connect by USB, Bluetooth or Wi-Fi. No robot code, no controller, no cloud: the computer vision runs on your own computer.
+**Webcam pose control for Quaddle, an open-source robot dog built on [OpenCat](https://github.com/PetoiCamp/OpenCat), running in your browser.** Your elbows and knees (or two fingers on each hand) drive the robot's four leg joints in real time, so you can make it walk, trot, bound and race. Connect by USB, Bluetooth or Wi-Fi. No robot code, no controller, no cloud: the computer vision runs on your own computer.
 
 A hands-on physical AI demo for classrooms, makerspaces and exhibitions, by [Petoi](https://www.petoi.com/?utm_source=github&utm_medium=readme&utm_campaign=camwalkinggame).
 
@@ -113,6 +113,12 @@ Physical AI is AI that perceives the real world and acts in it through a body. H
 **Does it need internet?** No. The pose model and MediaPipe are bundled.
 
 **Is this physical AI?** It's an entry-level physical AI demo: AI computer vision perceives a person, and a physical robot acts on it in real time. The robot doesn't plan on its own; you are the controller.
+
+**How do you teach a robot new movements without writing code?** Move your own body. Each elbow or knee drives one of Quaddle's legs, so you invent a movement by doing it, and the robot copies it as you go.
+
+**How do quadruped robots walk?** By moving their legs in a timed pattern. In a walk, three feet stay on the ground while one leg swings (a tripod gait). In a trot, diagonal legs move together. In a bound, the front pair moves, then the back pair. Here you can find those patterns yourself: Quaddle has one joint per leg, so the timing is all yours. [OpenCat](https://github.com/PetoiCamp/OpenCat) is the open-source framework behind Petoi's built-in gaits.
+
+**How can students learn AI hands-on, not just in a simulator?** This demo pairs AI computer vision with a real robot on a real table, so students see what a simulator hides: feet slipping, the robot tipping, a gait that works in theory but not on the floor.
 
 **Can I train my robot with my poses?** Yes. Every movement you make is a demonstration: you work out the joint timing for a gait, and the robot follows it in real time. Live control itself is pose-based teleoperation; your movements drive the robot directly, which makes it a quick way to feel what multi-joint gaits take.
 
