@@ -51,9 +51,7 @@ function Open-DemoBrowser([string]$Url) {
   $candidates = @(
     "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
     "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
-    "$env:LocalAppData\Google\Chrome\Application\chrome.exe",
-    "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
-    "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+    "$env:LocalAppData\Google\Chrome\Application\chrome.exe"
   )
   foreach ($exe in $candidates) {
     if ($exe -and (Test-Path -LiteralPath $exe)) {
@@ -83,7 +81,7 @@ Write-Host "URL:     $prefix"
 Write-Host "Photos:  $picsDir"
 Write-Host ""
 Write-Host "Keep this window open while demoing. Press Ctrl+C to stop."
-Write-Host "Tip: Chrome or Edge needed for Web Serial. Do not open index.html via file://"
+Write-Host "Tip: Chrome needed for Web Serial. Do not open index.html via file://"
 Write-Host ""
 
 Open-DemoBrowser $prefix

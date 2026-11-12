@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run on Linux: serve app/ and open Chrome/Edge/Chromium.
+# Run on Linux: serve app/ and open Chrome/Chromium.
 # Photos posted to /api/photo are saved under pics/ by scripts/demo_server.py.
 # Use 127.0.0.1 (not "localhost") for a consistent IPv4 bind.
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -49,7 +49,7 @@ URL="http://127.0.0.1:$PORT/"
 echo "Serving $ROOT/app at $URL"
 echo "Photos save under $ROOT/pics"
 echo "Keep this window open while demoing. Press Ctrl+C to stop."
-echo "Tip: use Chrome/Edge/Chromium (Web Serial)."
+echo "Tip: use Chrome or Chromium (Web Serial)."
 
 open_demo() {
   sleep 0.8
@@ -61,14 +61,10 @@ open_demo() {
     chromium-browser "$URL" >/dev/null 2>&1 &
   elif command -v chromium >/dev/null 2>&1; then
     chromium "$URL" >/dev/null 2>&1 &
-  elif command -v microsoft-edge >/dev/null 2>&1; then
-    microsoft-edge "$URL" >/dev/null 2>&1 &
-  elif command -v microsoft-edge-stable >/dev/null 2>&1; then
-    microsoft-edge-stable "$URL" >/dev/null 2>&1 &
   elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$URL" >/dev/null 2>&1 &
   else
-    echo "Open in Chrome/Edge: $URL"
+    echo "Open in Chrome: $URL"
   fi
 }
 open_demo &

@@ -36,14 +36,12 @@ URL="http://127.0.0.1:$PORT/"
 echo "Serving $ROOT/app at $URL"
 echo "Photos save under $ROOT/pics"
 echo "Keep this window open while demoing. Press Ctrl+C to stop."
-echo "Tip: use Chrome/Edge (Web Serial)."
+echo "Tip: use Chrome (Web Serial)."
 
 open_demo() {
   sleep 0.8
   if [ -d "/Applications/Google Chrome.app" ]; then
     open -a "Google Chrome" "$URL"
-  elif [ -d "/Applications/Microsoft Edge.app" ]; then
-    open -a "Microsoft Edge" "$URL"
   elif [ -d "/Applications/Chromium.app" ]; then
     open -a "Chromium" "$URL"
   else
